@@ -15,6 +15,7 @@ local BuyRod = Remotes:WaitForChild("BuyRod")
 local UnlockBiome = Remotes:WaitForChild("UnlockBiome")
 local TeleportTo = Remotes:WaitForChild("TeleportTo")
 local OpenBiomeWarp = Remotes:WaitForChild("OpenBiomeWarp", 10)
+local OpenSellFish = Remotes:WaitForChild("OpenSellFish", 10)
 local AquariumAction = Remotes:WaitForChild("AquariumAction")
 local ToggleAutoFish = Remotes:WaitForChild("ToggleAutoFish")
 local StateUpdated = Remotes:WaitForChild("StateUpdated")
@@ -31,6 +32,9 @@ local state = nil
 local activeTab = "Fish"
 local fishingBusy = false
 local minigameRunning = false
+local biomeWarpActualBiome = nil
+local panelCollapsed = false
+local lastFishingBiomeId = nil
 
 local fishingBlur = Lighting:FindFirstChild("FishyFishUiBlur")
 if not fishingBlur then
@@ -281,7 +285,7 @@ local function renderBiomeWarpOptions()
 	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
 		local biome = GameConfig.Biomes[biomeId]
 		local unlocked = state.UnlockedBiomes[biomeId] == true
-		local current = state.CurrentBiome == biomeId
+		local current = biomeWarpActualBiome == biomeId
 		local card = Instance.new("Frame")
 		card.Name = biomeId .. "WarpOption"
 		card.BackgroundColor3 = Color3.fromRGB(24, 32, 44)
@@ -326,7 +330,8 @@ local function renderBiomeWarpOptions()
 	end
 end
 
-local function openBiomeWarp()
+local function openBiomeWarp(actualBiome)
+	biomeWarpActualBiome = actualBiome
 	renderBiomeWarpOptions()
 	setBiomeWarpVisible(true)
 end
@@ -339,6 +344,127 @@ if OpenBiomeWarp then
 	OpenBiomeWarp.OnClientEvent:Connect(openBiomeWarp)
 else
 	warn("OpenBiomeWarp remote was not available; biome warp popup is disabled until remotes resync.")
+end
+
+local fishmongerOverlay = Instance.new("Frame")
+fishmongerOverlay.Name = "FishmongerSellOverlay"
+fishmongerOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+fishmongerOverlay.BackgroundTransparency = 0.35
+fishmongerOverlay.Size = UDim2.fromScale(1, 1)
+fishmongerOverlay.Visible = false
+fishmongerOverlay.ZIndex = 95
+fishmongerOverlay.Parent = root
+
+local fishmongerPanel = Instance.new("Frame")
+fishmongerPanel.Name = "FishmongerSellPanel"
+fishmongerPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+fishmongerPanel.BackgroundColor3 = Color3.fromRGB(17, 24, 34)
+fishmongerPanel.Position = UDim2.fromScale(0.5, 0.5)
+fishmongerPanel.Size = UDim2.new(0, 460, 0, 460)
+fishmongerPanel.ZIndex = 96
+fishmongerPanel.Parent = fishmongerOverlay
+addCorner(fishmongerPanel, 8)
+addStroke(fishmongerPanel, Color3.fromRGB(108, 78, 48), 1)
+
+local fishmongerTitle = makeText(fishmongerPanel, "Sell Fish", 20, Color3.fromRGB(255, 255, 255), true)
+fishmongerTitle.Position = UDim2.new(0, 18, 0, 12)
+fishmongerTitle.Size = UDim2.new(1, -72, 0, 28)
+fishmongerTitle.ZIndex = 97
+
+local fishmongerClose = makeButton(fishmongerPanel, "X", Color3.fromRGB(91, 104, 124))
+fishmongerClose.Position = UDim2.new(1, -48, 0, 12)
+fishmongerClose.Size = UDim2.new(0, 32, 0, 28)
+fishmongerClose.TextSize = 14
+fishmongerClose.ZIndex = 97
+
+local fishmongerList = Instance.new("ScrollingFrame")
+fishmongerList.Name = "FishmongerSellList"
+fishmongerList.Active = true
+fishmongerList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+fishmongerList.BackgroundTransparency = 1
+fishmongerList.BorderSizePixel = 0
+fishmongerList.CanvasSize = UDim2.new(0, 0, 0, 0)
+fishmongerList.Position = UDim2.new(0, 16, 0, 56)
+fishmongerList.ScrollBarThickness = 6
+fishmongerList.Size = UDim2.new(1, -32, 1, -72)
+fishmongerList.ZIndex = 97
+fishmongerList.Parent = fishmongerPanel
+
+local fishmongerListLayout = Instance.new("UIListLayout")
+fishmongerListLayout.Padding = UDim.new(0, 10)
+fishmongerListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+fishmongerListLayout.Parent = fishmongerList
+
+local function setFishmongerSellVisible(visible)
+	fishmongerOverlay.Visible = visible
+end
+
+local function renderFishmongerSellOptions()
+	clearChildren(fishmongerList)
+
+	if not state then
+		return
+	end
+
+	if #state.Inventory == 0 then
+		local empty = makeText(fishmongerList, "No fish in your bag.", 16, Color3.fromRGB(190, 204, 220), true)
+		empty.Size = UDim2.new(1, -8, 0, 54)
+		empty.ZIndex = 98
+		return
+	end
+
+	for index = #state.Inventory, 1, -1 do
+		local fish = state.Inventory[index]
+		local color = GameConfig.RarityColors[fish.rarity] or Color3.fromRGB(255, 255, 255)
+
+		local card = Instance.new("Frame")
+		card.Name = "SellOption_" .. tostring(fish.serial or index)
+		card.BackgroundColor3 = Color3.fromRGB(24, 32, 44)
+		card.Size = UDim2.new(1, -8, 0, 82)
+		card.ZIndex = 97
+		card.Parent = fishmongerList
+		addCorner(card, 8)
+		addStroke(card, color, 1).Transparency = 0.25
+
+		local icon = makeFishIcon(card, fish.id, fish.rarity, true)
+		icon.Position = UDim2.new(0, 8, 0, 12)
+		icon.Size = UDim2.new(0, 58, 0, 58)
+		icon.ZIndex = 98
+
+		local name = makeText(card, fish.name .. " [" .. fish.rarity .. "]", 15, color, true)
+		name.Position = UDim2.new(0, 76, 0, 10)
+		name.Size = UDim2.new(1, -182, 0, 24)
+		name.ZIndex = 98
+
+		local info = makeText(card, "Sell value: " .. tostring(fish.value or 0) .. " coins", 13, Color3.fromRGB(190, 204, 220), false)
+		info.Position = UDim2.new(0, 76, 0, 40)
+		info.Size = UDim2.new(1, -182, 0, 20)
+		info.ZIndex = 98
+
+		local sell = makeButton(card, "Sell", Color3.fromRGB(230, 126, 48))
+		sell.Position = UDim2.new(1, -92, 0, 23)
+		sell.Size = UDim2.new(0, 76, 0, 34)
+		sell.TextSize = 13
+		sell.ZIndex = 98
+		sell.MouseButton1Click:Connect(function()
+			SellFish:FireServer("Single", fish.serial, index)
+		end)
+	end
+end
+
+local function openFishmongerSell()
+	renderFishmongerSellOptions()
+	setFishmongerSellVisible(true)
+end
+
+fishmongerClose.MouseButton1Click:Connect(function()
+	setFishmongerSellVisible(false)
+end)
+
+if OpenSellFish then
+	OpenSellFish.OnClientEvent:Connect(openFishmongerSell)
+else
+	warn("OpenSellFish remote was not available; fishmonger sell popup is disabled until remotes resync.")
 end
 
 local hud = Instance.new("Frame")
@@ -448,6 +574,33 @@ panel.BackgroundTransparency = 0.04
 panel.Parent = root
 addCorner(panel, 8)
 addStroke(panel, Color3.fromRGB(71, 85, 105), 1)
+
+local panelToggle = makeButton(root, ">", Color3.fromRGB(38, 45, 57))
+panelToggle.Name = "PanelToggle"
+panelToggle.AnchorPoint = Vector2.new(1, 0.5)
+panelToggle.Position = UDim2.new(1, -456, 0.42, 0)
+panelToggle.Size = UDim2.new(0, 34, 0, 64)
+panelToggle.ZIndex = 30
+panelToggle.TextSize = 18
+
+local function updatePanelCollapsed()
+	if panelCollapsed then
+		panel.Position = UDim2.new(1, 430, 0.42, 0)
+		panelToggle.Position = UDim2.new(1, -10, 0.42, 0)
+		panelToggle.Text = "<"
+	else
+		panel.Position = UDim2.new(1, -18, 0.42, 0)
+		panelToggle.Position = UDim2.new(1, -456, 0.42, 0)
+		panelToggle.Text = ">"
+	end
+end
+
+panelToggle.MouseButton1Click:Connect(function()
+	panelCollapsed = not panelCollapsed
+	updatePanelCollapsed()
+end)
+
+updatePanelCollapsed()
 
 local tabs = Instance.new("Frame")
 tabs.Name = "Tabs"
@@ -644,12 +797,59 @@ end
 
 local renderContent
 
+local function getLocalFishingBiomeId()
+	local character = player.Character
+	local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+	if not rootPart then
+		return nil
+	end
+
+	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
+		local biome = GameConfig.Biomes[biomeId]
+		local center = biome.position
+		local dx = math.abs(rootPart.Position.X - center.X)
+		local dz = math.abs(rootPart.Position.Z - center.Z)
+		local rangeX = biomeId == "BeginnerPond" and 100 or 58
+		local rangeZ = biomeId == "BeginnerPond" and 96 or 54
+
+		if dx <= rangeX and dz <= rangeZ then
+			return biomeId
+		end
+	end
+
+	return nil
+end
+
+local function getActiveFishingBiomeId()
+	local character = player.Character
+	if character and character:FindFirstChild("HumanoidRootPart") then
+		return getLocalFishingBiomeId()
+	end
+
+	local localBiomeId = getLocalFishingBiomeId()
+	if localBiomeId then
+		return localBiomeId
+	end
+
+	if not state or not state.ActualBiome or not GameConfig.Biomes[state.ActualBiome] then
+		return nil
+	end
+
+	return state.ActualBiome
+end
+
 local function startManualFishing()
 	if fishingBusy or not state then
 		return
 	end
 
-	local biome = GameConfig.Biomes[state.CurrentBiome] or GameConfig.Biomes.BeginnerPond
+	local biomeId = getActiveFishingBiomeId()
+	if not biomeId then
+		showToast("Move to a fishing area first.")
+		return
+	end
+
+	local biome = GameConfig.Biomes[biomeId]
 	fishingBusy = true
 	showToast("Casting in " .. biome.displayName .. "...")
 	setMinigameVisible(true)
@@ -657,12 +857,14 @@ local function startManualFishing()
 	forcePureWhiteText(minigameText)
 	forcePureWhiteText(catchButton)
 	catchButton.Visible = false
-	StartFishing:FireServer(state.CurrentBiome)
+	StartFishing:FireServer(biomeId)
 	renderContent()
 end
 
 local function refreshCenterControls()
-	if not state then
+	local biomeId = getActiveFishingBiomeId()
+	if not state or not biomeId then
+		centerControls.Visible = false
 		centerTitle.Text = "Beginner Pond"
 		centerTitle.Visible = false
 		centerCastButton.Text = "Cast Rod"
@@ -678,7 +880,8 @@ local function refreshCenterControls()
 		return
 	end
 
-	local biome = GameConfig.Biomes[state.CurrentBiome] or GameConfig.Biomes.BeginnerPond
+	centerControls.Visible = true
+	local biome = GameConfig.Biomes[biomeId]
 	centerTitle.Text = biome.displayName
 	centerTitle.Visible = false
 	centerCastButton.Text = fishingBusy and "Fishing..." or "Cast Rod"
@@ -705,6 +908,11 @@ end
 centerCastButton.MouseButton1Click:Connect(startManualFishing)
 
 centerAutoButton.MouseButton1Click:Connect(function()
+	if not getActiveFishingBiomeId() then
+		showToast("Move to a fishing area first.")
+		return
+	end
+
 	ToggleAutoFish:FireServer()
 end)
 
@@ -727,7 +935,20 @@ local function refreshTabs()
 end
 
 local function renderFishTab()
-	local biome = state and GameConfig.Biomes[state.CurrentBiome] or GameConfig.Biomes.BeginnerPond
+	local biomeId = getActiveFishingBiomeId()
+	if not biomeId then
+		local card = makeCard(content, 96)
+		local heading = makeText(card, "Fishing Area", 19, Color3.fromRGB(255, 255, 255), true)
+		heading.Position = UDim2.new(0, 14, 0, 10)
+		heading.Size = UDim2.new(1, -28, 0, 28)
+
+		local detail = makeText(card, "Enter Beginner Pond, River, or Ocean to fish.", 14, Color3.fromRGB(190, 204, 220), false)
+		detail.Position = UDim2.new(0, 14, 0, 44)
+		detail.Size = UDim2.new(1, -28, 0, 24)
+		return
+	end
+
+	local biome = GameConfig.Biomes[biomeId]
 	local rod = state and GameConfig.Rods[state.EquippedRod] or GameConfig.Rods.WoodenRod
 
 	local card = makeCard(content, 132)
@@ -1033,8 +1254,8 @@ end
 
 local function renderTeleportTab()
 	local targets = {
-		{ id = "Lobby", name = "Lobby", requirement = "Free" },
-		{ id = "Home", name = "Home Aquarium", requirement = "Free" },
+		{ id = "Lobby", name = "Lobby" },
+		{ id = "Home", name = "Home Aquarium" },
 	}
 
 	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
@@ -1043,14 +1264,14 @@ local function renderTeleportTab()
 			id = biomeId,
 			name = biome.displayName,
 			biome = biome,
-			requirement = GameConfig.getBiomeUnlockText(biomeId),
+			requirement = biomeId ~= "BeginnerPond" and GameConfig.getBiomeUnlockText(biomeId) or nil,
 		})
 	end
 
 	for _, target in ipairs(targets) do
 		local biome = target.biome
 		local unlocked = not biome or state.UnlockedBiomes[target.id]
-		local current = biome and state.CurrentBiome == target.id
+		local current = state.ActualLocation == target.id
 		local card = makeCard(content, biome and 96 or 72)
 		local nameColor = biome and biome.color or Color3.fromRGB(255, 255, 255)
 		if not unlocked then
@@ -1061,14 +1282,19 @@ local function renderTeleportTab()
 		name.Position = UDim2.new(0, 12, 0, 8)
 		name.Size = UDim2.new(1, -132, 0, 22)
 
-		local requirement = makeText(card, "Requirement: " .. target.requirement, 13, Color3.fromRGB(190, 204, 220), false)
-		requirement.Position = UDim2.new(0, 12, 0, 34)
-		requirement.Size = UDim2.new(1, -132, 0, 20)
+		local detailY = 34
+		if target.requirement then
+			local requirement = makeText(card, "Requirement: " .. target.requirement, 13, Color3.fromRGB(190, 204, 220), false)
+			requirement.Position = UDim2.new(0, 12, 0, detailY)
+			requirement.Size = UDim2.new(1, -132, 0, 20)
+			detailY = 58
+		end
 
-		local detailText = biome and ("Species: " .. #biome.fish) or "Safe travel point"
-		local detail = makeText(card, detailText, 12, Color3.fromRGB(143, 160, 180), false)
-		detail.Position = UDim2.new(0, 12, 0, 58)
-		detail.Size = UDim2.new(1, -132, 0, 18)
+		if biome then
+			local detail = makeText(card, "Species: " .. #biome.fish, 12, Color3.fromRGB(143, 160, 180), false)
+			detail.Position = UDim2.new(0, 12, 0, detailY)
+			detail.Size = UDim2.new(1, -132, 0, 18)
+		end
 
 		local label = current and "Selected" or (unlocked and "Go" or "Unlock")
 		local color = unlocked and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(28, 160, 92)
@@ -1258,6 +1484,9 @@ StateUpdated.OnClientEvent:Connect(function(newState)
 	if biomeWarpOverlay.Visible then
 		renderBiomeWarpOptions()
 	end
+	if fishmongerOverlay.Visible then
+		renderFishmongerSellOptions()
+	end
 end)
 
 FishingPrompt.OnClientEvent:Connect(function(prompt)
@@ -1282,7 +1511,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		return
 	end
 
-	if input.KeyCode == Enum.KeyCode.F and state and not fishingBusy then
+	if input.KeyCode == Enum.KeyCode.F and state and not fishingBusy and getActiveFishingBiomeId() then
 		startManualFishing()
 	elseif input.KeyCode == Enum.KeyCode.B then
 		setTab("Bag")
@@ -1299,4 +1528,19 @@ task.spawn(function()
 	end
 
 	renderContent()
+end)
+
+local locationCheckElapsed = 0
+RunService.RenderStepped:Connect(function(deltaTime)
+	locationCheckElapsed += deltaTime
+	if locationCheckElapsed < 0.25 then
+		return
+	end
+	locationCheckElapsed = 0
+
+	local biomeId = getLocalFishingBiomeId()
+	if biomeId ~= lastFishingBiomeId then
+		lastFishingBiomeId = biomeId
+		renderContent()
+	end
 end)

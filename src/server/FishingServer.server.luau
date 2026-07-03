@@ -4,7 +4,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPack = game:GetService("StarterPack")
 local CollectionService = game:GetService("CollectionService")
-local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
 local EARLY_ROD_TEMPLATE_FOLDER_NAME = "FishyFishModelTemplates"
@@ -118,6 +117,7 @@ local BuyRod = Remotes:WaitForChild("BuyRod")
 local UnlockBiome = Remotes:WaitForChild("UnlockBiome")
 local TeleportTo = Remotes:WaitForChild("TeleportTo")
 local OpenBiomeWarp = getOrCreateRemoteEvent("OpenBiomeWarp")
+local OpenSellFish = getOrCreateRemoteEvent("OpenSellFish")
 local AquariumAction = Remotes:WaitForChild("AquariumAction")
 local ToggleAutoFish = Remotes:WaitForChild("ToggleAutoFish")
 local StateUpdated = Remotes:WaitForChild("StateUpdated")
@@ -131,6 +131,17 @@ local saveStore = DataStoreService:GetDataStore(SAVE_STORE)
 local playerData = {}
 local pendingFishing = {}
 local fishSerial = 0
+local getPlayerFishingBiome
+local getPlayerTravelLocation
+local playerAquariumSlots = {}
+
+local AQUARIUM_AREA_ORIGIN = Vector3.new(6000, 0, 6000)
+local AQUARIUM_COLUMNS = 12
+local AQUARIUM_SLOT_SPACING_X = 110
+local AQUARIUM_SLOT_SPACING_Z = 90
+local AQUARIUM_LAND_MARGIN = 180
+local AQUARIUM_MIN_SHOWCASE_SLOTS = 1000
+local AQUARIUM_LAND_TILE_SIZE = 180
 
 local AUTO_FISH_MIN_WAIT = 11
 local AUTO_FISH_MAX_WAIT = 18
@@ -360,7 +371,7 @@ local function findInventoryFishIndex(data, fishSerial, fishIndex)
 	return nil
 end
 
-local function makeClientState(data)
+local function makeClientState(player, data)
 	recalcLevel(data)
 
 	return {
@@ -376,6 +387,8 @@ local function makeClientState(data)
 		EquippedRod = data.EquippedRod,
 		UnlockedBiomes = shallowCopyMap(data.UnlockedBiomes),
 		CurrentBiome = data.CurrentBiome,
+		ActualBiome = getPlayerFishingBiome and getPlayerFishingBiome(player) or nil,
+		ActualLocation = getPlayerTravelLocation and getPlayerTravelLocation(player) or nil,
 		AutoFishEnabled = data.AutoFishEnabled,
 		Fishdex = shallowCopyMap(data.Fishdex),
 		FishdexTotal = GameConfig.getFishCount(),
@@ -395,7 +408,7 @@ local function sendState(player)
 		return
 	end
 
-	StateUpdated:FireClient(player, makeClientState(data))
+	StateUpdated:FireClient(player, makeClientState(player, data))
 end
 
 local function notify(player, message)
@@ -543,6 +556,182 @@ local function updateLeaderstats(player)
 	if level then
 		level.Value = data.Level
 	end
+end
+
+local function sellAllFishForPlayer(player)
+	local data = playerData[player]
+	if not data then
+		return false
+	end
+
+	local total = getInventoryValue(data)
+	if total <= 0 then
+		notify(player, "No fish to sell.")
+		return false
+	end
+
+	data.Inventory = {}
+	data.Coins += total
+
+	updateLeaderstats(player)
+	sendState(player)
+	notify(player, "Sold fish for " .. total .. " coins.")
+	return true
+end
+
+local function connectSellFishPrompt(prompt)
+	if not prompt:IsA("ProximityPrompt") or prompt.Name ~= "SellFishPrompt" then
+		return
+	end
+
+	if prompt:GetAttribute("FishyFishSellConnected") then
+		return
+	end
+
+	prompt:SetAttribute("FishyFishSellConnected", true)
+	prompt.Triggered:Connect(function(player)
+		OpenSellFish:FireClient(player)
+	end)
+end
+
+local function connectSellFishPrompts()
+	for _, descendant in ipairs(workspace:GetDescendants()) do
+		connectSellFishPrompt(descendant)
+	end
+end
+
+workspace.DescendantAdded:Connect(connectSellFishPrompt)
+
+local biomeWarpTouchCooldowns = {}
+
+local function openBiomeWarpForPlayer(player)
+	local now = os.clock()
+	if biomeWarpTouchCooldowns[player] and now - biomeWarpTouchCooldowns[player] < 1.5 then
+		return
+	end
+
+	biomeWarpTouchCooldowns[player] = now
+	OpenBiomeWarp:FireClient(player, getPlayerFishingBiome and getPlayerFishingBiome(player) or nil)
+end
+
+local function connectBiomeWarpFountainTouch(part)
+	if not part:IsA("BasePart") then
+		return
+	end
+
+	local lowerName = string.lower(part.Name)
+	local isFountainWater = string.find(lowerName, "fountain")
+		and not string.find(lowerName, "plaza")
+		and not string.find(lowerName, "path")
+		and not string.find(lowerName, "effect")
+	local isBiomeWarpTrigger = part:GetAttribute("TargetArea") == "BiomeWarp"
+	if not isFountainWater and not isBiomeWarpTrigger then
+		return
+	end
+
+	if part:GetAttribute("FishyFishBiomeWarpConnected") then
+		return
+	end
+
+	part:SetAttribute("FishyFishBiomeWarpConnected", true)
+	part.CanTouch = true
+	part.Touched:Connect(function(hit)
+		local character = hit:FindFirstAncestorOfClass("Model")
+		local player = character and Players:GetPlayerFromCharacter(character)
+		if not player then
+			return
+		end
+
+		openBiomeWarpForPlayer(player)
+	end)
+end
+
+local function connectBiomeWarpFountainTouches()
+	for _, descendant in ipairs(workspace:GetDescendants()) do
+		connectBiomeWarpFountainTouch(descendant)
+	end
+end
+
+workspace.DescendantAdded:Connect(connectBiomeWarpFountainTouch)
+
+local function ensureFountainBiomeWarpTrigger()
+	local fountainParts = {}
+	local root = workspace
+
+	for _, descendant in ipairs(workspace:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			local lowerName = string.lower(descendant.Name)
+			local insideFountainEffects = false
+			local ancestor = descendant.Parent
+			while ancestor do
+				if ancestor.Name == "AnimatedFountainEffects" then
+					insideFountainEffects = true
+					break
+				end
+				ancestor = ancestor.Parent
+			end
+
+			if string.find(lowerName, "fountain")
+				and not string.find(lowerName, "plaza")
+				and not string.find(lowerName, "path")
+				and not string.find(lowerName, "trigger")
+				and not insideFountainEffects
+			then
+				table.insert(fountainParts, descendant)
+
+				local current = descendant
+				while current and current ~= workspace do
+					if current:IsA("Model") and current.Name == "LobbyArea" then
+						root = current
+						break
+					end
+					current = current.Parent
+				end
+			end
+		end
+	end
+
+	if #fountainParts == 0 then
+		return
+	end
+
+	local minX, minY, minZ = math.huge, math.huge, math.huge
+	local maxX, maxY, maxZ = -math.huge, -math.huge, -math.huge
+
+	for _, part in ipairs(fountainParts) do
+		local halfSize = part.Size / 2
+		minX = math.min(minX, part.Position.X - halfSize.X)
+		minY = math.min(minY, part.Position.Y - halfSize.Y)
+		minZ = math.min(minZ, part.Position.Z - halfSize.Z)
+		maxX = math.max(maxX, part.Position.X + halfSize.X)
+		maxY = math.max(maxY, part.Position.Y + halfSize.Y)
+		maxZ = math.max(maxZ, part.Position.Z + halfSize.Z)
+	end
+
+	local trigger = root:FindFirstChild("FountainBiomeWarpTrigger", true)
+	if trigger and not trigger:IsA("BasePart") then
+		trigger:Destroy()
+		trigger = nil
+	end
+
+	if not trigger then
+		trigger = Instance.new("Part")
+		trigger.Name = "FountainBiomeWarpTrigger"
+		trigger.Parent = root
+	end
+
+	trigger.Anchored = true
+	trigger.Size = Vector3.new((maxX - minX) + 10, math.max(12, (maxY - minY) + 8), (maxZ - minZ) + 10)
+	trigger.Position = Vector3.new((minX + maxX) / 2, minY + (trigger.Size.Y / 2), (minZ + maxZ) / 2)
+	trigger.Transparency = 1
+	trigger.CanCollide = false
+	trigger.CanTouch = true
+	trigger.CanQuery = false
+	trigger.Material = Enum.Material.ForceField
+	trigger:SetAttribute("TargetArea", "BiomeWarp")
+	trigger:SetAttribute("PortalName", "Biome Warp")
+	trigger:SetAttribute("RequiredLevel", 1)
+	connectBiomeWarpFountainTouch(trigger)
 end
 
 local function setupLeaderstats(player)
@@ -1215,9 +1404,46 @@ local function makePart(parent, name, size, position, color, material)
 end
 
 local function removeNonLobbySpawnLocations()
+	local world = workspace:FindFirstChild("FishyFishWorld")
+	if not world then
+		return
+	end
+
 	for _, descendant in ipairs(workspace:GetDescendants()) do
-		if descendant:IsA("SpawnLocation") and descendant.Name ~= "LobbySpawn" then
+		if descendant:IsA("SpawnLocation") and descendant:IsDescendantOf(world) and descendant.Name ~= "LobbySpawn" then
 			descendant:Destroy()
+		end
+	end
+end
+
+local function removeGeneratedGrassLobby()
+	local world = workspace:FindFirstChild("FishyFishWorld")
+	if not world then
+		return
+	end
+
+	for _, descendant in ipairs(world:GetDescendants()) do
+		if descendant:IsA("Model")
+			and descendant.Name == "LobbyArea"
+			and descendant:FindFirstChild("Blocks")
+			and descendant:FindFirstChild("Paths")
+			and descendant:FindFirstChild("Structures")
+		then
+			descendant:Destroy()
+		end
+	end
+end
+
+local function removeGeneratedOldLobbyShops()
+	local world = workspace:FindFirstChild("FishyFishWorld")
+	if not world then
+		return
+	end
+
+	for _, shopName in ipairs({ "SeasideLShop", "SeasideRodShop" }) do
+		local shop = world:FindFirstChild(shopName)
+		if shop and shop:IsA("Model") then
+			shop:Destroy()
 		end
 	end
 end
@@ -1238,30 +1464,164 @@ local function getAquariumsFolder()
 	return folder
 end
 
-local function getPlayerAquariumSlot(player)
-	local players = Players:GetPlayers()
-	table.sort(players, function(left, right)
-		return left.UserId < right.UserId
-	end)
+local function getAquariumSlotName(slot)
+	return string.format("AquariumSlot_%03d", slot)
+end
 
-	for index, candidate in ipairs(players) do
-		if candidate == player then
-			return index
+local function getAquariumSlotOrigin(slot)
+	local slotIndex = slot - 1
+	local column = slotIndex % AQUARIUM_COLUMNS
+	local row = math.floor(slotIndex / AQUARIUM_COLUMNS)
+	return AQUARIUM_AREA_ORIGIN + Vector3.new(column * AQUARIUM_SLOT_SPACING_X, 0, row * AQUARIUM_SLOT_SPACING_Z)
+end
+
+local function getPlayerAquariumSlot(player)
+	if playerAquariumSlots[player] then
+		return playerAquariumSlots[player]
+	end
+
+	local folder = getAquariumsFolder()
+	for slot = 1, AQUARIUM_MIN_SHOWCASE_SLOTS do
+		local aquarium = folder and folder:FindFirstChild(getAquariumSlotName(slot))
+		local occupantUserId = aquarium and aquarium:GetAttribute("OccupantUserId")
+		if occupantUserId == nil or occupantUserId == player.UserId then
+			playerAquariumSlots[player] = slot
+			if aquarium then
+				aquarium:SetAttribute("OccupantUserId", player.UserId)
+				aquarium:SetAttribute("OccupantName", player.DisplayName)
+			end
+			return slot
 		end
 	end
 
-	return 1
+	local overflowSlot = AQUARIUM_MIN_SHOWCASE_SLOTS + #Players:GetPlayers()
+	playerAquariumSlots[player] = overflowSlot
+	return overflowSlot
 end
 
 local function getPlayerAquariumOrigin(player)
-	local slot = getPlayerAquariumSlot(player) - 1
-	local column = slot % 3
-	local row = math.floor(slot / 3)
-	return Vector3.new(-232 + (column * 34), 0, 52 + (row * 24))
+	return getAquariumSlotOrigin(getPlayerAquariumSlot(player))
 end
 
 local function getPlayerAquariumTeleportPosition(player)
-	return getPlayerAquariumOrigin(player) + Vector3.new(0, 5, -15)
+	local data = playerData[player]
+	local level = data and data.Aquarium and data.Aquarium.Level or 1
+	local tankDepth = 10 + ((level - 1) * 4)
+	return getPlayerAquariumOrigin(player) + Vector3.new(0, 5, -(tankDepth / 2 + 16))
+end
+
+local function getAquariumDimensions(level)
+	level = math.clamp(tonumber(level) or 1, 1, 4)
+	local tankWidth = 24 + ((level - 1) * 8)
+	local tankHeight = 10 + ((level - 1) * 2.5)
+	local tankDepth = 10 + ((level - 1) * 4)
+
+	return {
+		level = level,
+		tankWidth = tankWidth,
+		tankHeight = tankHeight,
+		tankDepth = tankDepth,
+		baseWidth = tankWidth + 8,
+		baseDepth = tankDepth + 8,
+		glassY = 1 + (tankHeight / 2),
+		waterY = 1 + (tankHeight * 0.78),
+		topY = 1 + tankHeight + 0.3,
+	}
+end
+
+local function ensureAquariumSharedLand(folder, minimumSlots)
+	local slotCount = math.max(minimumSlots or 1, #Players:GetPlayers(), AQUARIUM_MIN_SHOWCASE_SLOTS)
+	local rows = math.max(1, math.ceil(slotCount / AQUARIUM_COLUMNS))
+	local existing = folder:FindFirstChild("SharedAquariumShowcase")
+
+	if existing and existing:GetAttribute("Rows") == rows then
+		return existing
+	end
+
+	if existing then
+		existing:Destroy()
+	end
+
+	local showcase = Instance.new("Model")
+	showcase.Name = "SharedAquariumShowcase"
+	showcase:SetAttribute("Rows", rows)
+	showcase.Parent = folder
+
+	local landWidth = ((AQUARIUM_COLUMNS - 1) * AQUARIUM_SLOT_SPACING_X) + AQUARIUM_LAND_MARGIN
+	local landDepth = ((rows - 1) * AQUARIUM_SLOT_SPACING_Z) + AQUARIUM_LAND_MARGIN
+	local center = AQUARIUM_AREA_ORIGIN + Vector3.new(
+		((AQUARIUM_COLUMNS - 1) * AQUARIUM_SLOT_SPACING_X) / 2,
+		0,
+		((rows - 1) * AQUARIUM_SLOT_SPACING_Z) / 2
+	)
+
+	local firstLandTile = nil
+	local tileColumns = math.ceil(landWidth / AQUARIUM_LAND_TILE_SIZE)
+	local tileRows = math.ceil(landDepth / AQUARIUM_LAND_TILE_SIZE)
+	local landMinX = center.X - (landWidth / 2)
+	local landMinZ = center.Z - (landDepth / 2)
+
+	for tileX = 0, tileColumns - 1 do
+		for tileZ = 0, tileRows - 1 do
+			local tileWidth = math.min(AQUARIUM_LAND_TILE_SIZE, landWidth - (tileX * AQUARIUM_LAND_TILE_SIZE))
+			local tileDepth = math.min(AQUARIUM_LAND_TILE_SIZE, landDepth - (tileZ * AQUARIUM_LAND_TILE_SIZE))
+			local tileCenter = Vector3.new(
+				landMinX + (tileX * AQUARIUM_LAND_TILE_SIZE) + (tileWidth / 2),
+				0,
+				landMinZ + (tileZ * AQUARIUM_LAND_TILE_SIZE) + (tileDepth / 2)
+			)
+			local tile = makePart(showcase, "WhiteQuartzFloorTile", Vector3.new(tileWidth, 1, tileDepth), tileCenter, Color3.fromRGB(236, 240, 238), Enum.Material.Marble)
+			firstLandTile = firstLandTile or tile
+		end
+	end
+
+	local carpetColor = Color3.fromRGB(190, 34, 45)
+	for row = 0, rows - 1 do
+		local z = AQUARIUM_AREA_ORIGIN.Z + (row * AQUARIUM_SLOT_SPACING_Z) - 30
+		makePart(showcase, "RedCarpet_Row_" .. tostring(row + 1), Vector3.new(landWidth - 34, 0.18, 10), Vector3.new(center.X, 0.62, z), carpetColor, Enum.Material.Fabric)
+	end
+
+	if rows > 1 then
+		for column = 0, AQUARIUM_COLUMNS - 1 do
+			local x = AQUARIUM_AREA_ORIGIN.X + (column * AQUARIUM_SLOT_SPACING_X) - 34
+			makePart(showcase, "RedCarpet_Column_" .. tostring(column + 1), Vector3.new(10, 0.18, landDepth - 40), Vector3.new(x, 0.63, center.Z), carpetColor, Enum.Material.Fabric)
+		end
+	end
+
+	local function makeInvisibleWall(name, size, position)
+		local wall = makePart(showcase, name, size, position, Color3.fromRGB(255, 255, 255), Enum.Material.ForceField)
+		wall.Transparency = 1
+		wall.CanCollide = true
+		wall.CanTouch = false
+		wall.CanQuery = false
+		return wall
+	end
+
+	local wallHeight = 42
+	local wallThickness = 4
+	local segmentLength = AQUARIUM_LAND_TILE_SIZE
+	local halfWidth = landWidth / 2
+	local halfDepth = landDepth / 2
+
+	for index = 0, math.ceil(landWidth / segmentLength) - 1 do
+		local segmentWidth = math.min(segmentLength, landWidth - (index * segmentLength))
+		local x = center.X - halfWidth + (index * segmentLength) + (segmentWidth / 2)
+		makeInvisibleWall("InvisibleWall_North_" .. tostring(index + 1), Vector3.new(segmentWidth, wallHeight, wallThickness), Vector3.new(x, wallHeight / 2, center.Z - halfDepth - (wallThickness / 2)))
+		makeInvisibleWall("InvisibleWall_South_" .. tostring(index + 1), Vector3.new(segmentWidth, wallHeight, wallThickness), Vector3.new(x, wallHeight / 2, center.Z + halfDepth + (wallThickness / 2)))
+	end
+
+	for index = 0, math.ceil(landDepth / segmentLength) - 1 do
+		local segmentDepth = math.min(segmentLength, landDepth - (index * segmentLength))
+		local z = center.Z - halfDepth + (index * segmentLength) + (segmentDepth / 2)
+		makeInvisibleWall("InvisibleWall_West_" .. tostring(index + 1), Vector3.new(wallThickness, wallHeight, segmentDepth), Vector3.new(center.X - halfWidth - (wallThickness / 2), wallHeight / 2, z))
+		makeInvisibleWall("InvisibleWall_East_" .. tostring(index + 1), Vector3.new(wallThickness, wallHeight, segmentDepth), Vector3.new(center.X + halfWidth + (wallThickness / 2), wallHeight / 2, z))
+	end
+
+	local sign = makePart(showcase, "ShowcaseSign", Vector3.new(42, 5, 0.6), center + Vector3.new(0, 4.5, -(landDepth / 2) + 8), Color3.fromRGB(34, 40, 46), Enum.Material.SmoothPlastic)
+	createLabel(sign, "Aquarium Showcase")
+	showcase.PrimaryPart = firstLandTile
+
+	return showcase
 end
 
 local function getAquariumFishColor(fish)
@@ -1581,49 +1941,68 @@ local function buildAquariumFishModel(model, root, fish, scale)
 	return rarityGlow
 end
 
-local function getAquariumFishSwimLane(origin, index)
+local function getAquariumFishSwimLane(origin, index, dimensions)
+	dimensions = dimensions or getAquariumDimensions(1)
 	local lane = (index - 1) % 24
-	local xIndex = lane % 4
-	local yIndex = math.floor(lane / 4) % 3
-	local zIndex = math.floor(lane / 12)
+	local layer = lane % 4
 
 	return {
-		center = origin + Vector3.new(-8.4 + (xIndex * 5.6), 3.7 + (yIndex * 2.1), -2.6 + (zIndex * 5.2)),
-		range = Vector3.new(0.95, 0.35, 0.55),
+		center = origin + Vector3.new(0, 3.6 + (layer * math.max(1.1, dimensions.tankHeight * 0.11)), 0),
+		xRadius = math.max(5.5, (dimensions.tankWidth / 2) - 4 - (layer * 0.35)),
+		zRadius = math.max(2.4, (dimensions.tankDepth / 2) - 2.4 - ((layer % 2) * 0.25)),
+		heightDrift = math.max(0.24, dimensions.tankHeight * 0.035),
 	}
 end
 
-local function animateAquariumFish(part, origin, index, seed)
+local function animateAquariumFish(part, origin, index, seed, dimensions)
 	local random = Random.new(seed)
-	local lane = getAquariumFishSwimLane(origin, index)
+	local lane = getAquariumFishSwimLane(origin, index, dimensions)
+	local phase = random:NextNumber(0, math.pi * 2)
+	local direction = random:NextInteger(0, 1) == 0 and -1 or 1
+	local angularSpeed = random:NextNumber(0.5, 0.75) * direction
+	local swaySpeed = random:NextNumber(0.8, 1.3)
+	local heightPhase = random:NextNumber(0, math.pi * 2)
+	local sidePhase = random:NextNumber(0, math.pi * 2)
+	local sideDrift = random:NextNumber(0.22, 0.46)
 
 	task.spawn(function()
+		local startedAt = os.clock()
+		local lastPosition = part.Position
+		local lookVector = Vector3.new(direction, 0, 0)
+		local lastTick = os.clock()
+
 		while part.Parent do
-			local target = lane.center + Vector3.new(
-				random:NextNumber(-lane.range.X, lane.range.X),
-				random:NextNumber(-lane.range.Y, lane.range.Y),
-				random:NextNumber(-lane.range.Z, lane.range.Z)
+			local now = os.clock()
+			local deltaTime = math.clamp(now - lastTick, 0.016, 0.12)
+			lastTick = now
+
+			local elapsed = now - startedAt
+			local currentPhase = phase + (elapsed * angularSpeed)
+			local position = lane.center + Vector3.new(
+				math.cos(currentPhase) * lane.xRadius,
+				math.sin((elapsed * swaySpeed) + heightPhase) * lane.heightDrift,
+				(math.sin(currentPhase) * lane.zRadius) + (math.sin((elapsed * 0.7) + sidePhase) * sideDrift)
 			)
-			local current = part.Position
-			local direction = target - current
-			if direction.Magnitude < 0.1 then
-				direction = Vector3.new(1, 0, 0)
+
+			local moveDirection = position - lastPosition
+			if moveDirection.Magnitude > 0.01 then
+				local turnAlpha = math.clamp(deltaTime * 2.8, 0, 1)
+				lookVector = lookVector:Lerp(moveDirection.Unit, turnAlpha)
+				if lookVector.Magnitude < 0.01 then
+					lookVector = moveDirection.Unit
+				else
+					lookVector = lookVector.Unit
+				end
 			end
 
-			local travelTime = random:NextNumber(2.2, 4.6) + (index * 0.04)
-			local tween = TweenService:Create(
-				part,
-				TweenInfo.new(travelTime, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
-				{ CFrame = CFrame.lookAt(target, target + direction.Unit) }
-			)
-			tween:Play()
-			tween.Completed:Wait()
-			task.wait(random:NextNumber(0.15, 0.55))
+			part.CFrame = CFrame.lookAt(position, position + lookVector)
+			lastPosition = position
+			task.wait(0.05)
 		end
 	end)
 end
 
-local function makeAquariumFish(parent, fish, origin, index, ownerUserId)
+local function makeAquariumFish(parent, fish, origin, index, ownerUserId, dimensions)
 	local rarityScale = {
 		Common = 0.85,
 		Uncommon = 0.95,
@@ -1633,7 +2012,7 @@ local function makeAquariumFish(parent, fish, origin, index, ownerUserId)
 		Mythic = 1.65,
 	}
 	local scale = rarityScale[fish.rarity] or 1
-	local lane = getAquariumFishSwimLane(origin, index)
+	local lane = getAquariumFishSwimLane(origin, index, dimensions)
 
 	local model = Instance.new("Model")
 	model.Name = "AquariumFish_" .. tostring(fish.id or index)
@@ -1660,68 +2039,133 @@ local function makeAquariumFish(parent, fish, origin, index, ownerUserId)
 	light.Parent = root
 
 	model.PrimaryPart = root
-	animateAquariumFish(root, origin, index, ownerUserId + (index * 997))
+	animateAquariumFish(root, origin, index, ownerUserId + (index * 997), dimensions)
 	return model
 end
 
-local function refreshPlayerAquarium(player)
-	local data = playerData[player]
+local function buildAquariumSlotModel(slot, ownerPlayer, ownerData)
 	local folder = getAquariumsFolder()
-	if not data or not folder then
+	if not folder then
 		return
 	end
 
-	local modelName = "Aquarium_" .. tostring(player.UserId)
+	ensureAquariumSharedLand(folder, slot)
+
+	local modelName = getAquariumSlotName(slot)
 	local existing = folder:FindFirstChild(modelName)
 	if existing then
 		existing:Destroy()
 	end
 
-	local origin = getPlayerAquariumOrigin(player)
+	local origin = getAquariumSlotOrigin(slot)
+	local aquariumLevel = ownerData and ownerData.Aquarium and ownerData.Aquarium.Level or 1
+	local dimensions = getAquariumDimensions(aquariumLevel)
 	local model = Instance.new("Model")
 	model.Name = modelName
+	model:SetAttribute("SlotNumber", slot)
+	if ownerPlayer then
+		model:SetAttribute("OccupantUserId", ownerPlayer.UserId)
+		model:SetAttribute("OccupantName", ownerPlayer.DisplayName)
+	end
 	model.Parent = folder
 
-	local base = makePart(model, "AquariumBase", Vector3.new(28, 1, 14), origin + Vector3.new(0, 0.5, 0), Color3.fromRGB(89, 122, 88), Enum.Material.Grass)
-	local tank = makePart(model, "GlassTank", Vector3.new(24, 10, 10), origin + Vector3.new(0, 5.8, 0), Color3.fromRGB(75, 165, 220), Enum.Material.Glass)
-	tank.Transparency = 0.55
-	tank.CanCollide = false
+	local base = makePart(model, "AquariumBase", Vector3.new(dimensions.baseWidth, 1, dimensions.baseDepth), origin + Vector3.new(0, 0.8, 0), Color3.fromRGB(74, 82, 88), Enum.Material.Metal)
+	makePart(model, "AquariumBaseTopPlate", Vector3.new(dimensions.baseWidth - 1.4, 0.18, dimensions.baseDepth - 1.4), origin + Vector3.new(0, 1.39, 0), Color3.fromRGB(132, 142, 150), Enum.Material.Metal)
 
-	local water = makePart(model, "AquariumWater", Vector3.new(22, 7.5, 8), origin + Vector3.new(0, 5.1, 0), Color3.fromRGB(50, 145, 220), Enum.Material.Glass)
-	water.Transparency = 0.35
-	water.CanCollide = false
-
-	for _, corner in ipairs({
-		Vector3.new(-12, 5.8, -5), Vector3.new(12, 5.8, -5),
-		Vector3.new(-12, 5.8, 5), Vector3.new(12, 5.8, 5),
+	local halfWidth = dimensions.tankWidth / 2
+	local halfDepth = dimensions.tankDepth / 2
+	for _, glassPanel in ipairs({
+		{ name = "GlassFront", size = Vector3.new(dimensions.tankWidth, dimensions.tankHeight, 0.25), offset = Vector3.new(0, dimensions.glassY, -halfDepth - 0.15) },
+		{ name = "GlassBack", size = Vector3.new(dimensions.tankWidth, dimensions.tankHeight, 0.25), offset = Vector3.new(0, dimensions.glassY, halfDepth + 0.15) },
+		{ name = "GlassLeft", size = Vector3.new(0.25, dimensions.tankHeight, dimensions.tankDepth), offset = Vector3.new(-halfWidth - 0.15, dimensions.glassY, 0) },
+		{ name = "GlassRight", size = Vector3.new(0.25, dimensions.tankHeight, dimensions.tankDepth), offset = Vector3.new(halfWidth + 0.15, dimensions.glassY, 0) },
 	}) do
-		makePart(model, "AquariumFramePost", Vector3.new(0.5, 10.5, 0.5), origin + corner, Color3.fromRGB(38, 52, 68), Enum.Material.Metal)
+		local panel = makePart(model, glassPanel.name, glassPanel.size, origin + glassPanel.offset, Color3.fromRGB(75, 165, 220), Enum.Material.Glass)
+		panel.Transparency = 0.72
+		panel.CanCollide = false
 	end
 
-	makePart(model, "AquariumTopFrame", Vector3.new(25, 0.5, 11), origin + Vector3.new(0, 11.1, 0), Color3.fromRGB(38, 52, 68), Enum.Material.Metal)
-	makePart(model, "AquariumBottomFrame", Vector3.new(25, 0.5, 11), origin + Vector3.new(0, 0.9, 0), Color3.fromRGB(38, 52, 68), Enum.Material.Metal)
+	local waterSurface = makePart(model, "AquariumWaterSurface", Vector3.new(dimensions.tankWidth - 2, 0.18, dimensions.tankDepth - 2), origin + Vector3.new(0, dimensions.waterY, 0), Color3.fromRGB(50, 145, 220), Enum.Material.Glass)
+	waterSurface.Transparency = 0.55
+	waterSurface.CanCollide = false
 
-	local sign = makePart(model, "AquariumOwnerSign", Vector3.new(18, 3.5, 0.5), origin + Vector3.new(0, 13.6, -5.8), Color3.fromRGB(34, 40, 46), Enum.Material.SmoothPlastic)
-	createLabel(sign, player.DisplayName .. "'s Aquarium")
+	for _, corner in ipairs({
+		Vector3.new(-halfWidth, dimensions.glassY, -halfDepth), Vector3.new(halfWidth, dimensions.glassY, -halfDepth),
+		Vector3.new(-halfWidth, dimensions.glassY, halfDepth), Vector3.new(halfWidth, dimensions.glassY, halfDepth),
+	}) do
+		makePart(model, "AquariumFramePost", Vector3.new(0.5, dimensions.tankHeight + 0.5, 0.5), origin + corner, Color3.fromRGB(38, 52, 68), Enum.Material.Metal)
+	end
+
+	local function makeFrameRails(prefix, y)
+		makePart(model, prefix .. "Front", Vector3.new(dimensions.tankWidth + 1, 0.5, 0.5), origin + Vector3.new(0, y, -halfDepth - 0.25), Color3.fromRGB(38, 52, 68), Enum.Material.Metal)
+		makePart(model, prefix .. "Back", Vector3.new(dimensions.tankWidth + 1, 0.5, 0.5), origin + Vector3.new(0, y, halfDepth + 0.25), Color3.fromRGB(38, 52, 68), Enum.Material.Metal)
+		makePart(model, prefix .. "Left", Vector3.new(0.5, 0.5, dimensions.tankDepth + 1), origin + Vector3.new(-halfWidth - 0.25, y, 0), Color3.fromRGB(38, 52, 68), Enum.Material.Metal)
+		makePart(model, prefix .. "Right", Vector3.new(0.5, 0.5, dimensions.tankDepth + 1), origin + Vector3.new(halfWidth + 0.25, y, 0), Color3.fromRGB(38, 52, 68), Enum.Material.Metal)
+	end
+
+	makeFrameRails("AquariumTopFrame", dimensions.topY)
+	makeFrameRails("AquariumBottomFrame", 1.05)
+
+	local sign = makePart(model, "AquariumOwnerSign", Vector3.new(math.min(dimensions.tankWidth, 30), 3.5, 0.5), origin + Vector3.new(0, dimensions.topY + 2.6, -halfDepth - 1.2), Color3.fromRGB(34, 40, 46), Enum.Material.SmoothPlastic)
+	local signText = ownerPlayer and (ownerPlayer.DisplayName .. "'s Aquarium") or "Available Aquarium"
+	createLabel(sign, signText)
 
 	local fishFolder = Instance.new("Folder")
 	fishFolder.Name = "Fish"
 	fishFolder.Parent = model
 
-	local maxVisualFish = 24
-	for index, fish in ipairs(data.Aquarium.Fish) do
-		if index > maxVisualFish then
-			break
+	if ownerData then
+		local maxVisualFish = 24
+		for index, fish in ipairs(ownerData.Aquarium.Fish) do
+			if index > maxVisualFish then
+				break
+			end
+			makeAquariumFish(fishFolder, fish, origin, index, ownerPlayer.UserId, dimensions)
 		end
-		makeAquariumFish(fishFolder, fish, origin, index, player.UserId)
-	end
-
-	if #data.Aquarium.Fish == 0 then
-		local emptySign = makePart(model, "EmptyAquariumSign", Vector3.new(14, 3, 0.4), origin + Vector3.new(0, 4.5, 0), Color3.fromRGB(24, 90, 130), Enum.Material.SmoothPlastic)
-		createLabel(emptySign, "Display a fish")
 	end
 
 	model.PrimaryPart = base
+	return model
+end
+
+local function ensurePrebuiltAquariumSlots()
+	local folder = getAquariumsFolder()
+	if not folder then
+		return
+	end
+
+	ensureAquariumSharedLand(folder, AQUARIUM_MIN_SHOWCASE_SLOTS)
+	for slot = 1, AQUARIUM_MIN_SHOWCASE_SLOTS do
+		if not folder:FindFirstChild(getAquariumSlotName(slot)) then
+			buildAquariumSlotModel(slot, nil, nil)
+		end
+	end
+end
+
+local function refreshPlayerAquarium(player)
+	local data = playerData[player]
+	if not data then
+		return
+	end
+
+	ensurePrebuiltAquariumSlots()
+	local slot = getPlayerAquariumSlot(player)
+	buildAquariumSlotModel(slot, player, data)
+end
+
+local function playerOwnsAssignedAquarium(player)
+	local folder = getAquariumsFolder()
+	local slot = getPlayerAquariumSlot(player)
+	local aquarium = folder and folder:FindFirstChild(getAquariumSlotName(slot))
+	if not aquarium then
+		return false
+	end
+
+	if aquarium:GetAttribute("OccupantUserId") ~= player.UserId then
+		return false
+	end
+
+	return true
 end
 
 local function buildCleanLobby(world)
@@ -1745,25 +2189,28 @@ local function buildCleanLobby(world)
 	pathsFolder.Name = "Paths"
 	pathsFolder.Parent = lobby
 
-	local decorFolder = Instance.new("Folder")
-	decorFolder.Name = "Decorations"
-	decorFolder.Parent = lobby
-
-	local shopsFolder = Instance.new("Folder")
-	shopsFolder.Name = "Shops"
-	shopsFolder.Parent = lobby
-
-	local warpFolder = Instance.new("Folder")
-	warpFolder.Name = "Warps"
-	warpFolder.Parent = lobby
-
-	local spawnFolder = Instance.new("Folder")
-	spawnFolder.Name = "Spawn"
-	spawnFolder.Parent = lobby
+	local structuresFolder = Instance.new("Folder")
+	structuresFolder.Name = "Structures"
+	structuresFolder.Parent = lobby
 
 	local zonesFolder = Instance.new("Folder")
 	zonesFolder.Name = "Zones"
 	zonesFolder.Parent = lobby
+
+	local function makeStructureModel(name)
+		local model = Instance.new("Model")
+		model.Name = name
+		model.Parent = structuresFolder
+		return model
+	end
+
+	local fountainModel = makeStructureModel("FountainBiomeWarp")
+	local leaderboardModel = makeStructureModel("Leaderboard")
+	local aquariumWarpModel = makeStructureModel("AquariumWarp")
+	local spawnAreaModel = makeStructureModel("SpawnArea")
+	local lanternsFolder = Instance.new("Folder")
+	lanternsFolder.Name = "Lanterns"
+	lanternsFolder.Parent = structuresFolder
 
 	local function localPosition(position)
 		return center + position
@@ -1827,11 +2274,14 @@ local function buildCleanLobby(world)
 	local cyanUI = Color3.fromRGB(0, 220, 255)
 	local aquariumColor = Color3.fromRGB(0, 190, 255)
 
-	local function makeLantern(position)
-		makeLobbyPart(decorFolder, "LanternPost", Vector3.new(0.8, 5, 0.8), position, woodDark, Enum.Material.Wood)
+	local function makeLantern(position, index)
+		local lanternModel = makeStructureModel("Lantern_" .. tostring(index))
+		lanternModel.Parent = lanternsFolder
+
+		makeLobbyPart(lanternModel, "LanternPost", Vector3.new(0.8, 5, 0.8), position, woodDark, Enum.Material.Wood)
 
 		local lantern = makeLobbyPart(
-			decorFolder,
+			lanternModel,
 			"Lantern",
 			Vector3.new(1.4, 1.4, 1.4),
 			position + Vector3.new(0, 3.2, 0),
@@ -1846,12 +2296,13 @@ local function buildCleanLobby(world)
 		light.Range = 16
 		light.Color = Color3.fromRGB(255, 225, 160)
 		light.Parent = lantern
+		lanternModel.PrimaryPart = lantern
 	end
 
 	local function makeShopBuilding(name, gridX, gridZ, title, roofColor)
 		local shopModel = Instance.new("Model")
 		shopModel.Name = name
-		shopModel.Parent = shopsFolder
+		shopModel.Parent = structuresFolder
 
 		local footprint = {
 			{ -2, -1 }, { -1, -1 }, { 0, -1 }, { 1, -1 }, { 2, -1 },
@@ -1873,10 +2324,594 @@ local function buildCleanLobby(world)
 
 		makeLobbyPart(shopModel, name .. "_BackWall", Vector3.new(30, 12, 1), Vector3.new(gridX * block, 8.5, (gridZ + 2.9) * block), woodDark, Enum.Material.Wood)
 		makeLobbyPart(shopModel, name .. "_SideWall", Vector3.new(1, 12, 22), Vector3.new((gridX - 3.1) * block, 8.5, (gridZ + 0.5) * block), woodDark, Enum.Material.Wood)
-		makeLobbyPart(shopModel, name .. "_Counter", Vector3.new(24, 5, 4), Vector3.new(gridX * block, 5.5, (gridZ - 1.9) * block), woodColor, Enum.Material.WoodPlanks)
+		local counter = makeLobbyPart(shopModel, name .. "_Counter", Vector3.new(24, 5, 4), Vector3.new(gridX * block, 5.5, (gridZ - 1.9) * block), woodColor, Enum.Material.WoodPlanks)
 		makeLobbyPart(shopModel, name .. "_Roof", Vector3.new(34, 2, 30), Vector3.new(gridX * block, 15, (gridZ + 0.5) * block), roofColor, Enum.Material.SmoothPlastic)
 		makeSign(shopModel, name .. "_Sign", Vector3.new(gridX * block, 11.5, (gridZ - 2.9) * block), Vector3.new(22, 4, 0.5), title, roofColor, Enum.NormalId.Front)
+		shopModel.PrimaryPart = counter
 	end
+
+	local function makeSeasideLShop(gridX, gridZ)
+		local shopModel = makeStructureModel("SeasideLShop")
+		local shopBlock = block
+		local origin = Vector3.new(gridX * shopBlock, 0, gridZ * shopBlock)
+
+		local function makeFolder(name)
+			local folder = Instance.new("Folder")
+			folder.Name = name
+			folder.Parent = shopModel
+			return folder
+		end
+
+		local structureFolder = makeFolder("Structure")
+		local awningFolder = makeFolder("RedWhiteAwning")
+		local counterFolder = makeFolder("Counters")
+		local decorFolder = makeFolder("Decorations")
+		local shelfFolder = makeFolder("Shelves")
+		local lightFolder = makeFolder("Lights")
+		local signFolder = makeFolder("Signs")
+		local propFolder = makeFolder("BeachProps")
+
+		local stone = Color3.fromRGB(170, 165, 150)
+		local stoneLight = Color3.fromRGB(205, 200, 185)
+		local wood = Color3.fromRGB(135, 85, 45)
+		local woodDarkLocal = Color3.fromRGB(85, 50, 28)
+		local woodLight = Color3.fromRGB(175, 115, 55)
+		local red = Color3.fromRGB(190, 45, 38)
+		local white = Color3.fromRGB(235, 235, 225)
+		local sand = Color3.fromRGB(224, 196, 128)
+		local beachGrass = Color3.fromRGB(70, 155, 65)
+		local darkMetal = Color3.fromRGB(45, 45, 50)
+		local fishOrange = Color3.fromRGB(230, 145, 60)
+		local bottleGreen = Color3.fromRGB(70, 160, 85)
+		local bottleBlue = Color3.fromRGB(50, 125, 210)
+		local bottlePurple = Color3.fromRGB(140, 90, 200)
+		local lanternYellow = Color3.fromRGB(255, 220, 120)
+
+		local function shopPart(parent, name, size, position, color, material, transparency, canCollide)
+			return makeLobbyPart(parent, name, size, origin + position, color, material, transparency, canCollide)
+		end
+
+		local function shopBlockPart(parent, name, x, y, z, color, material)
+			return shopPart(parent, name, Vector3.new(shopBlock, shopBlock, shopBlock), Vector3.new(x * shopBlock, y * shopBlock, z * shopBlock), color, material)
+		end
+
+		local function shopCylinder(parent, name, size, position, color, material, orientation)
+			local part = shopPart(parent, name, size, position, color, material)
+			part.Shape = Enum.PartType.Cylinder
+			part.Orientation = orientation or Vector3.new(0, 0, 90)
+			return part
+		end
+
+		local function shopTextSign(parent, name, position, size, textValue, boardColor, textColor, face)
+			local board = shopPart(parent, name, size, position, boardColor, Enum.Material.Wood)
+			local gui = Instance.new("SurfaceGui")
+			gui.Name = name .. "_SurfaceGui"
+			gui.Face = face or Enum.NormalId.Front
+			gui.CanvasSize = Vector2.new(700, 300)
+			gui.Parent = board
+
+			local text = Instance.new("TextLabel")
+			text.Size = UDim2.fromScale(1, 1)
+			text.BackgroundTransparency = 1
+			text.Text = textValue
+			text.TextScaled = true
+			text.TextColor3 = textColor or Color3.fromRGB(255, 255, 255)
+			text.TextStrokeTransparency = 0
+			text.TextStrokeColor3 = Color3.fromRGB(40, 25, 10)
+			text.Font = Enum.Font.FredokaOne
+			text.Parent = gui
+
+			return board
+		end
+
+		local function shopLantern(position)
+			shopPart(lightFolder, "LanternChain", Vector3.new(0.25, 2.4, 0.25), position + Vector3.new(0, 2, 0), darkMetal, Enum.Material.Metal, 0, false)
+			local lantern = shopPart(lightFolder, "HangingLantern", Vector3.new(1.4, 1.4, 1.4), position, lanternYellow, Enum.Material.Neon, 0.05, false)
+			shopPart(lightFolder, "LanternFrameTop", Vector3.new(1.7, 0.25, 1.7), position + Vector3.new(0, 0.82, 0), darkMetal, Enum.Material.Metal, 0, false)
+			shopPart(lightFolder, "LanternFrameBottom", Vector3.new(1.7, 0.25, 1.7), position + Vector3.new(0, -0.82, 0), darkMetal, Enum.Material.Metal, 0, false)
+
+			local light = Instance.new("PointLight")
+			light.Brightness = 1.5
+			light.Range = 18
+			light.Color = Color3.fromRGB(255, 225, 155)
+			light.Parent = lantern
+		end
+
+		local function makeFishmongerNPC()
+			local npc = Instance.new("Model")
+			npc.Name = "FishmongerNPC"
+			npc.Parent = shopModel
+
+			local npcFolder = Instance.new("Folder")
+			npcFolder.Name = "EditableParts"
+			npcFolder.Parent = npc
+
+			local apronBlue = Color3.fromRGB(45, 105, 150)
+			local shirtWhite = Color3.fromRGB(235, 238, 232)
+			local skin = Color3.fromRGB(226, 178, 132)
+			local pants = Color3.fromRGB(42, 62, 82)
+			local capRed = Color3.fromRGB(190, 45, 38)
+			local bootDark = Color3.fromRGB(35, 28, 22)
+			local npcBase = Vector3.new(0, 0, -0.85 * shopBlock)
+
+			local body = shopPart(npcFolder, "FishmongerBody", Vector3.new(3.2, 4.2, 1.6), npcBase + Vector3.new(0, 10.8, 0), apronBlue, Enum.Material.SmoothPlastic, 0, false)
+			shopPart(npcFolder, "FishmongerShirt", Vector3.new(3.45, 1.2, 1.7), npcBase + Vector3.new(0, 12.25, -0.05), shirtWhite, Enum.Material.SmoothPlastic, 0, false)
+			shopPart(npcFolder, "FishmongerHead", Vector3.new(2.4, 2.4, 2.4), npcBase + Vector3.new(0, 14.3, 0), skin, Enum.Material.SmoothPlastic, 0, false)
+			shopPart(npcFolder, "FishmongerCap", Vector3.new(2.7, 0.7, 2.7), npcBase + Vector3.new(0, 15.75, 0), capRed, Enum.Material.SmoothPlastic, 0, false)
+			shopPart(npcFolder, "FishmongerCapBill", Vector3.new(2.1, 0.3, 1.2), npcBase + Vector3.new(0, 15.45, -1.1), capRed, Enum.Material.SmoothPlastic, 0, false)
+			shopPart(npcFolder, "FishmongerLeftArm", Vector3.new(0.9, 3.4, 0.9), npcBase + Vector3.new(-2.2, 10.8, 0), skin, Enum.Material.SmoothPlastic, 0, false)
+			shopPart(npcFolder, "FishmongerRightArm", Vector3.new(0.9, 3.4, 0.9), npcBase + Vector3.new(2.2, 10.8, 0), skin, Enum.Material.SmoothPlastic, 0, false)
+			shopPart(npcFolder, "FishmongerLeftLeg", Vector3.new(1.1, 2.6, 1), npcBase + Vector3.new(-0.9, 7.4, 0), pants, Enum.Material.SmoothPlastic, 0, false)
+			shopPart(npcFolder, "FishmongerRightLeg", Vector3.new(1.1, 2.6, 1), npcBase + Vector3.new(0.9, 7.4, 0), pants, Enum.Material.SmoothPlastic, 0, false)
+			shopPart(npcFolder, "FishmongerLeftBoot", Vector3.new(1.2, 0.6, 1.2), npcBase + Vector3.new(-0.9, 5.9, -0.1), bootDark, Enum.Material.SmoothPlastic, 0, false)
+			shopPart(npcFolder, "FishmongerRightBoot", Vector3.new(1.2, 0.6, 1.2), npcBase + Vector3.new(0.9, 5.9, -0.1), bootDark, Enum.Material.SmoothPlastic, 0, false)
+
+			local leftEye = shopPart(npcFolder, "FishmongerLeftEye", Vector3.new(0.3, 0.3, 0.12), npcBase + Vector3.new(-0.45, 14.55, -1.22), Color3.fromRGB(20, 20, 20), Enum.Material.SmoothPlastic, 0, false)
+			local rightEye = shopPart(npcFolder, "FishmongerRightEye", Vector3.new(0.3, 0.3, 0.12), npcBase + Vector3.new(0.45, 14.55, -1.22), Color3.fromRGB(20, 20, 20), Enum.Material.SmoothPlastic, 0, false)
+			leftEye.CanQuery = false
+			rightEye.CanQuery = false
+
+			shopPart(npcFolder, "FishmongerFishCrate", Vector3.new(5, 2, 3), npcBase + Vector3.new(-5.2, 6.2, 0.6), wood, Enum.Material.WoodPlanks, 0, true)
+			shopPart(npcFolder, "CrateFishBlue", Vector3.new(2.8, 0.7, 0.9), npcBase + Vector3.new(-5.3, 7.55, 0.35), bottleBlue, Enum.Material.SmoothPlastic, 0, false)
+			shopPart(npcFolder, "CrateFishTail", Vector3.new(0.8, 1.2, 0.8), npcBase + Vector3.new(-6.1, 7.55, 0.35), bottleBlue, Enum.Material.SmoothPlastic, 0, false)
+
+			local prompt = Instance.new("ProximityPrompt")
+			prompt.Name = "SellFishPrompt"
+			prompt.ActionText = "Choose Fish"
+			prompt.ObjectText = "Fishmonger"
+			prompt.KeyboardKeyCode = Enum.KeyCode.E
+			prompt.HoldDuration = 0.25
+			prompt.MaxActivationDistance = 12
+			prompt.RequiresLineOfSight = false
+			prompt.Parent = body
+			connectSellFishPrompt(prompt)
+
+			npc.PrimaryPart = body
+		end
+
+		for x = -10, 12 do
+			for z = -8, 10 do
+				shopBlockPart(structureFolder, "BeachSandBlock", x, -1, z, sand, Enum.Material.Sand)
+			end
+		end
+
+		for x = -7, 8 do
+			for z = -5, -2 do
+				shopPart(structureFolder, "WoodenFrontDeck", Vector3.new(shopBlock, 0.55, shopBlock), Vector3.new(x * shopBlock, 2.15, z * shopBlock), woodLight, Enum.Material.WoodPlanks)
+			end
+		end
+
+		local floorCells = {}
+		for x = -7, 8 do
+			for z = -1, 2 do
+				table.insert(floorCells, { x, z })
+			end
+		end
+		for x = 5, 8 do
+			for z = -1, 7 do
+				table.insert(floorCells, { x, z })
+			end
+		end
+		for _, cell in ipairs(floorCells) do
+			shopPart(structureFolder, "ShopWoodFloor", Vector3.new(shopBlock, 0.65, shopBlock), Vector3.new(cell[1] * shopBlock, 2.25, cell[2] * shopBlock), woodLight, Enum.Material.WoodPlanks)
+		end
+
+		for x = -8, 9 do
+			for y = 0, 3 do
+				local color = ((x + y) % 2 == 0) and stoneLight or stone
+				shopBlockPart(structureFolder, "BackStoneWall", x, y, 3, color, Enum.Material.Cobblestone)
+			end
+		end
+		for z = 3, 8 do
+			for y = 0, 3 do
+				local color = ((z + y) % 2 == 0) and stoneLight or stone
+				shopBlockPart(structureFolder, "RightStoneWall", 9, y, z, color, Enum.Material.Cobblestone)
+			end
+		end
+		for _, column in ipairs({
+			{ name = "LeftFrontStoneColumn", x = -8, z = -1 },
+			{ name = "InnerCornerStoneColumn", x = 9, z = -1 },
+			{ name = "RightFrontStoneColumn", x = 9, z = 8 },
+		}) do
+			for y = 0, 4 do
+				shopBlockPart(structureFolder, column.name, column.x, y, column.z, stoneLight, Enum.Material.Cobblestone)
+			end
+		end
+
+		for x = -8, 9 do
+			shopPart(structureFolder, "TopStoneTrimFront", Vector3.new(shopBlock, 1, shopBlock), Vector3.new(x * shopBlock, 18.5, -shopBlock), stoneLight, Enum.Material.Cobblestone)
+		end
+		for z = -1, 8 do
+			shopPart(structureFolder, "TopStoneTrimRight", Vector3.new(shopBlock, 1, shopBlock), Vector3.new(9 * shopBlock, 18.5, z * shopBlock), stoneLight, Enum.Material.Cobblestone)
+		end
+
+		for x = -7, 8 do
+			for y = 0, 1 do
+				shopPart(counterFolder, "FrontCounterStone", Vector3.new(shopBlock, shopBlock, shopBlock), Vector3.new(x * shopBlock, y * shopBlock + 4, -2 * shopBlock), stone, Enum.Material.Cobblestone)
+			end
+			shopPart(counterFolder, "FrontWoodCounterTop", Vector3.new(shopBlock, 0.65, shopBlock), Vector3.new(x * shopBlock, 10.45, -2 * shopBlock), woodLight, Enum.Material.WoodPlanks)
+		end
+		for z = -1, 6 do
+			for y = 0, 1 do
+				shopPart(counterFolder, "RightCounterStone", Vector3.new(shopBlock, shopBlock, shopBlock), Vector3.new(8 * shopBlock, y * shopBlock + 4, z * shopBlock), stone, Enum.Material.Cobblestone)
+			end
+			shopPart(counterFolder, "RightWoodCounterTop", Vector3.new(shopBlock, 0.65, shopBlock), Vector3.new(8 * shopBlock, 10.45, z * shopBlock), woodLight, Enum.Material.WoodPlanks)
+		end
+		shopPart(counterFolder, "FrontCounterDarkTrim", Vector3.new(68, 1, 0.7), Vector3.new(0.5 * shopBlock, 8.5, -2.55 * shopBlock), woodDarkLocal, Enum.Material.Wood)
+		shopPart(counterFolder, "RightCounterDarkTrim", Vector3.new(0.7, 1, 32), Vector3.new(8.55 * shopBlock, 8.5, 2.5 * shopBlock), woodDarkLocal, Enum.Material.Wood)
+
+		for i = 0, 17 do
+			local x = -8 + i
+			local stripeColor = (i % 2 == 1) and white or red
+			shopPart(awningFolder, "FrontAwningStripe", Vector3.new(shopBlock, 3.2, 7), Vector3.new(x * shopBlock, 20.5, -2.5 * shopBlock), stripeColor, Enum.Material.Fabric)
+		end
+		for i = 0, 9 do
+			local z = -1 + i
+			local stripeColor = (i % 2 == 1) and white or red
+			shopPart(awningFolder, "RightAwningStripe", Vector3.new(7, 3.2, shopBlock), Vector3.new(9.5 * shopBlock, 20.5, z * shopBlock), stripeColor, Enum.Material.Fabric)
+		end
+		shopPart(awningFolder, "FrontAwningUnderside", Vector3.new(72, 0.6, 8), Vector3.new(0.5 * shopBlock, 18.6, -2.5 * shopBlock), Color3.fromRGB(95, 45, 45), Enum.Material.Fabric)
+		shopPart(awningFolder, "RightAwningUnderside", Vector3.new(8, 0.6, 42), Vector3.new(9.5 * shopBlock, 18.6, 3.5 * shopBlock), Color3.fromRGB(95, 45, 45), Enum.Material.Fabric)
+
+		for x = -8, 9 do
+			shopPart(awningFolder, "RooftopWoodRailFront", Vector3.new(shopBlock, 1, 0.8), Vector3.new(x * shopBlock, 24, -4 * shopBlock), woodDarkLocal, Enum.Material.Wood)
+			for z = -1, 8 do
+				shopPart(awningFolder, "RooftopDeck", Vector3.new(shopBlock, 0.5, shopBlock), Vector3.new(x * shopBlock, 23.15, z * shopBlock), wood, Enum.Material.WoodPlanks)
+			end
+		end
+		for z = -4, 8 do
+			shopPart(awningFolder, "RooftopWoodRailRight", Vector3.new(0.8, 1, shopBlock), Vector3.new(11 * shopBlock, 24, z * shopBlock), woodDarkLocal, Enum.Material.Wood)
+		end
+
+		for y = 0, 1 do
+			shopPart(shelfFolder, "LeftShelfFrame", Vector3.new(6, 0.7, 1.2), Vector3.new(-7 * shopBlock, 5.5 + y * 3, -3.5 * shopBlock), woodDarkLocal, Enum.Material.Wood)
+		end
+		for i = 0, 3 do
+			shopPart(shelfFolder, "LeftShelfBooks", Vector3.new(0.8, 2, 1), Vector3.new((-7.7 + i * 0.55) * shopBlock, 6.4, -3.4 * shopBlock), ({ red, bottleBlue, bottleGreen, bottlePurple })[i + 1], Enum.Material.SmoothPlastic)
+		end
+		shopPart(shelfFolder, "RightShelfBack", Vector3.new(12, 7, 1), Vector3.new(6.5 * shopBlock, 8, 5.5 * shopBlock), woodDarkLocal, Enum.Material.Wood)
+		for y = 0, 2 do
+			shopPart(shelfFolder, "RightShelfLayer", Vector3.new(12, 0.6, 1.2), Vector3.new(6.5 * shopBlock, 5 + y * 2.5, 5 * shopBlock), woodLight, Enum.Material.Wood)
+		end
+		local bottleColors = { bottleGreen, bottleBlue, bottlePurple, red, Color3.fromRGB(230, 190, 60) }
+		for i = 1, 10 do
+			local row = math.floor((i - 1) / 5)
+			local column = (i - 1) % 5
+			shopPart(shelfFolder, "PotionBottle", Vector3.new(0.9, 1.7, 0.9), Vector3.new((4.6 + column * 0.9) * shopBlock, 5.9 + row * 2.5, 4.65 * shopBlock), bottleColors[(column % #bottleColors) + 1], Enum.Material.Glass, 0.05, false)
+		end
+
+		for _, pos in ipairs({
+			Vector3.new(-2 * shopBlock, 11.5, -1.7 * shopBlock),
+			Vector3.new(4 * shopBlock, 11.5, -1.7 * shopBlock),
+			Vector3.new(7.8 * shopBlock, 11.5, 2 * shopBlock),
+		}) do
+			shopPart(decorFolder, "SmallCrate", Vector3.new(3, 3, 3), pos, wood, Enum.Material.WoodPlanks)
+		end
+
+		shopPart(decorFolder, "FishPaintingFrame", Vector3.new(12, 7, 0.6), Vector3.new(-2 * shopBlock, 10, 2.45 * shopBlock), woodDarkLocal, Enum.Material.Wood)
+		shopPart(decorFolder, "FishPaintingCanvas", Vector3.new(10, 5, 0.5), Vector3.new(-2 * shopBlock, 10, 2.15 * shopBlock), Color3.fromRGB(210, 180, 120), Enum.Material.SmoothPlastic)
+		shopPart(decorFolder, "FishPaintingBody", Vector3.new(4, 1.5, 0.6), Vector3.new(-2 * shopBlock, 10, 1.8 * shopBlock), fishOrange, Enum.Material.SmoothPlastic)
+		shopPart(decorFolder, "FishPaintingTail", Vector3.new(1.2, 2, 0.6), Vector3.new(-3.3 * shopBlock, 10, 1.8 * shopBlock), fishOrange, Enum.Material.SmoothPlastic)
+		shopPart(decorFolder, "FishPaintingEye", Vector3.new(0.4, 0.4, 0.65), Vector3.new(-1.15 * shopBlock, 10.2, 1.45 * shopBlock), Color3.fromRGB(30, 30, 30), Enum.Material.SmoothPlastic)
+
+		for i = 0, 3 do
+			local rod = shopPart(decorFolder, "WallFishingRod", Vector3.new(0.35, 9, 0.35), Vector3.new((1.5 + i * 1.2) * shopBlock, 9.5, 2.2 * shopBlock), woodDarkLocal, Enum.Material.Wood)
+			rod.Orientation = Vector3.new(0, 0, -15)
+		end
+
+		shopPart(propFolder, "AnchorStem", Vector3.new(0.8, 6, 0.8), Vector3.new(11.5 * shopBlock, 5, -3 * shopBlock), darkMetal, Enum.Material.Metal)
+		shopPart(propFolder, "AnchorCross", Vector3.new(5, 0.8, 0.8), Vector3.new(11.5 * shopBlock, 2.5, -3 * shopBlock), darkMetal, Enum.Material.Metal)
+		shopCylinder(propFolder, "AnchorRing", Vector3.new(0.8, 3, 3), Vector3.new(11.5 * shopBlock, 8.5, -3 * shopBlock), darkMetal, Enum.Material.Metal, Vector3.new(0, 0, 90))
+
+		for _, pos in ipairs({
+			Vector3.new(-9 * shopBlock, 3.5, -5 * shopBlock),
+			Vector3.new(11 * shopBlock, 3.5, 7 * shopBlock),
+		}) do
+			shopPart(propFolder, "PlantBox", Vector3.new(5, 2, 4), pos, wood, Enum.Material.WoodPlanks)
+			for i = -1, 1 do
+				shopPart(propFolder, "BeachGrass", Vector3.new(0.5, 4 + i, 0.5), pos + Vector3.new(i * 1.1, 2.8, 0), beachGrass, Enum.Material.Grass, 0, false)
+			end
+		end
+
+		shopPart(signFolder, "ChalkboardPostLeft", Vector3.new(0.5, 4, 0.5), Vector3.new(-9.5 * shopBlock, 4, -4.8 * shopBlock), woodDarkLocal, Enum.Material.Wood)
+		shopPart(signFolder, "ChalkboardPostRight", Vector3.new(0.5, 4, 0.5), Vector3.new(-7.5 * shopBlock, 4, -4.8 * shopBlock), woodDarkLocal, Enum.Material.Wood)
+		shopTextSign(signFolder, "FishMenuChalkboard", Vector3.new(-8.5 * shopBlock, 6, -4.9 * shopBlock), Vector3.new(8, 5, 0.5), "FISH\nSHOP", Color3.fromRGB(35, 55, 45), Color3.fromRGB(245, 245, 235), Enum.NormalId.Front)
+		shopTextSign(signFolder, "MainShopSign", Vector3.new(0, 23, -4.4 * shopBlock), Vector3.new(24, 4, 0.6), "SEASIDE SHOP", red, Color3.fromRGB(255, 255, 255), Enum.NormalId.Front)
+
+		shopLantern(Vector3.new(-5 * shopBlock, 15.5, -3.5 * shopBlock))
+		shopLantern(Vector3.new(0, 15.5, -3.5 * shopBlock))
+		shopLantern(Vector3.new(5 * shopBlock, 15.5, -3.5 * shopBlock))
+		shopLantern(Vector3.new(8.7 * shopBlock, 15.5, 3 * shopBlock))
+		makeFishmongerNPC()
+
+		local trigger = shopPart(structureFolder, "ShopTrigger", Vector3.new(60, 10, 18), Vector3.new(0, 7, -4 * shopBlock), Color3.fromRGB(0, 255, 255), Enum.Material.ForceField, 1, false)
+		trigger:SetAttribute("ShopType", "SeasideShop")
+		trigger:SetAttribute("InteractText", "Open Shop")
+
+		local primary = shopPart(structureFolder, "ShopPrimaryPart", Vector3.new(2, 2, 2), Vector3.new(0, 4, 0), Color3.fromRGB(255, 0, 255), Enum.Material.ForceField, 1, false)
+		shopModel.PrimaryPart = primary
+	end
+
+	local function makeSeasideRodShop(gridX, gridZ, yawDegrees)
+		local shopModel = makeStructureModel("SeasideRodShop")
+		shopModel:SetAttribute("FishyFishMirroredRodShop", true)
+		local shopBlock = block
+		local origin = Vector3.new(gridX * shopBlock, 0, gridZ * shopBlock)
+		local yaw = CFrame.Angles(0, math.rad(yawDegrees or 0), 0)
+
+		local function makeFolder(name)
+			local folder = Instance.new("Folder")
+			folder.Name = name
+			folder.Parent = shopModel
+			return folder
+		end
+
+		local structureFolder = makeFolder("Structure")
+		local awningFolder = makeFolder("BlueWhiteAwning")
+		local counterFolder = makeFolder("Counters")
+		local shelfFolder = makeFolder("Shelves")
+		local decorFolder = makeFolder("Decorations")
+		local propFolder = makeFolder("RodProps")
+		local lightFolder = makeFolder("Lights")
+		local signFolder = makeFolder("Signs")
+
+		local stone = Color3.fromRGB(170, 165, 150)
+		local stoneDarkLocal = Color3.fromRGB(110, 110, 105)
+		local stoneLight = Color3.fromRGB(205, 200, 185)
+		local wood = Color3.fromRGB(135, 85, 45)
+		local woodDarkLocal = Color3.fromRGB(85, 50, 28)
+		local woodLight = Color3.fromRGB(185, 145, 95)
+		local blue = Color3.fromRGB(45, 110, 220)
+		local white = Color3.fromRGB(235, 235, 225)
+		local sand = Color3.fromRGB(224, 196, 128)
+		local grass = Color3.fromRGB(75, 155, 65)
+		local darkMetal = Color3.fromRGB(45, 45, 52)
+		local lanternYellow = Color3.fromRGB(255, 220, 120)
+		local accentBlue = Color3.fromRGB(75, 150, 255)
+		local accentRed = Color3.fromRGB(220, 80, 70)
+		local accentGreen = Color3.fromRGB(70, 190, 110)
+		local accentYellow = Color3.fromRGB(240, 200, 70)
+		local chalkboardGreen = Color3.fromRGB(40, 60, 50)
+		local chalkWhite = Color3.fromRGB(245, 245, 235)
+
+		local function shopCFrame(position, orientation)
+			local rotation = orientation or CFrame.identity
+			local mirroredPosition = Vector3.new(-position.X, position.Y, position.Z)
+			return CFrame.new(localPosition(origin)) * yaw * CFrame.new(mirroredPosition) * rotation
+		end
+
+		local function shopPart(parent, name, size, position, color, material, transparency, canCollide, rotation)
+			local part = makePart(parent, name, size, localPosition(origin), color, material)
+			part.CFrame = shopCFrame(position, rotation)
+			part.Transparency = transparency or 0
+			part.CanCollide = canCollide ~= false
+			part.TopSurface = Enum.SurfaceType.Smooth
+			part.BottomSurface = Enum.SurfaceType.Smooth
+			return part
+		end
+
+		local function shopBlockPart(parent, name, x, y, z, color, material)
+			return shopPart(parent, name, Vector3.new(shopBlock, shopBlock, shopBlock), Vector3.new(x * shopBlock, y * shopBlock, z * shopBlock), color, material)
+		end
+
+		local function angles(orientation)
+			return CFrame.Angles(math.rad(orientation.X), math.rad(orientation.Y), math.rad(orientation.Z))
+		end
+
+		local function shopCylinder(parent, name, size, position, color, material, orientation)
+			local part = shopPart(parent, name, size, position, color, material, 0, true, angles(orientation or Vector3.new(0, 0, 90)))
+			part.Shape = Enum.PartType.Cylinder
+			return part
+		end
+
+		local function shopTextSign(parent, name, position, size, textValue, boardColor, textColor, face)
+			local board = shopPart(parent, name, size, position, boardColor, Enum.Material.Wood)
+			local gui = Instance.new("SurfaceGui")
+			gui.Name = name .. "_SurfaceGui"
+			gui.Face = face or Enum.NormalId.Front
+			gui.CanvasSize = Vector2.new(800, 300)
+			gui.Parent = board
+
+			local text = Instance.new("TextLabel")
+			text.Size = UDim2.fromScale(1, 1)
+			text.BackgroundTransparency = 1
+			text.Text = textValue
+			text.TextScaled = true
+			text.TextColor3 = textColor or Color3.fromRGB(255, 255, 255)
+			text.TextStrokeTransparency = 0
+			text.TextStrokeColor3 = Color3.fromRGB(35, 25, 15)
+			text.Font = Enum.Font.FredokaOne
+			text.Parent = gui
+			return board
+		end
+
+		local function makeRod(parent, name, position, height, rodColor, handleColor)
+			local model = Instance.new("Model")
+			model.Name = name
+			model.Parent = parent
+
+			local pole = shopPart(model, "Pole", Vector3.new(0.25, height, 0.25), position + Vector3.new(0, height / 2, 0), rodColor, Enum.Material.Wood, 0, false, angles(Vector3.new(0, 0, -6)))
+			local handle = shopPart(model, "Handle", Vector3.new(0.4, 2.2, 0.4), position + Vector3.new(-0.12, 1.1, 0), handleColor, Enum.Material.Wood, 0, false, angles(Vector3.new(0, 0, -6)))
+			shopCylinder(model, "Reel", Vector3.new(0.75, 0.55, 0.75), position + Vector3.new(0.3, 1.8, 0), darkMetal, Enum.Material.Metal, Vector3.new(0, 0, 90))
+			shopPart(model, "Line", Vector3.new(0.06, height * 0.45, 0.06), position + Vector3.new(0.42, height * 0.62, 0), white, Enum.Material.SmoothPlastic, 0, false)
+			model.PrimaryPart = pole
+			return model
+		end
+
+		local function makeLureRow(parent, basePosition)
+			local colors = { accentRed, accentBlue, accentGreen, accentYellow, white }
+			for i = 0, 4 do
+				shopPart(parent, "Lure_" .. tostring(i), Vector3.new(0.45, 1.5, 0.35), basePosition + Vector3.new(i * 1.1, 0, 0), colors[(i % #colors) + 1], Enum.Material.SmoothPlastic, 0, false)
+			end
+		end
+
+		local function shopLantern(position)
+			shopPart(lightFolder, "LanternChain", Vector3.new(0.25, 2.2, 0.25), position + Vector3.new(0, 2, 0), darkMetal, Enum.Material.Metal, 0, false)
+			local lantern = shopPart(lightFolder, "HangingLantern", Vector3.new(1.4, 1.4, 1.4), position, lanternYellow, Enum.Material.Neon, 0.05, false)
+			shopPart(lightFolder, "LanternTopFrame", Vector3.new(1.7, 0.25, 1.7), position + Vector3.new(0, 0.82, 0), darkMetal, Enum.Material.Metal, 0, false)
+			shopPart(lightFolder, "LanternBottomFrame", Vector3.new(1.7, 0.25, 1.7), position + Vector3.new(0, -0.82, 0), darkMetal, Enum.Material.Metal, 0, false)
+
+			local light = Instance.new("PointLight")
+			light.Brightness = 1.4
+			light.Range = 18
+			light.Color = Color3.fromRGB(255, 225, 155)
+			light.Parent = lantern
+		end
+
+		for x = -10, 12 do
+			for z = -8, 10 do
+				shopBlockPart(structureFolder, "BeachSandBlock", x, -1, z, sand, Enum.Material.Sand)
+			end
+		end
+
+		for x = -7, 8 do
+			for z = -5, -2 do
+				shopPart(structureFolder, "FrontDeck", Vector3.new(shopBlock, 0.55, shopBlock), Vector3.new(x * shopBlock, 2.15, z * shopBlock), woodLight, Enum.Material.WoodPlanks)
+			end
+		end
+
+		local floorCells = {}
+		for x = -7, 8 do
+			for z = -1, 2 do
+				table.insert(floorCells, { x, z })
+			end
+		end
+		for x = 5, 8 do
+			for z = -1, 7 do
+				table.insert(floorCells, { x, z })
+			end
+		end
+		for _, cell in ipairs(floorCells) do
+			shopPart(structureFolder, "ShopFloor", Vector3.new(shopBlock, 0.65, shopBlock), Vector3.new(cell[1] * shopBlock, 2.25, cell[2] * shopBlock), woodLight, Enum.Material.WoodPlanks)
+		end
+
+		for x = -8, 9 do
+			for y = 0, 3 do
+				local color = ((x + y) % 2 == 0) and stoneLight or stone
+				shopBlockPart(structureFolder, "BackStoneWall", x, y, 3, color, Enum.Material.Cobblestone)
+			end
+		end
+		for z = 3, 8 do
+			for y = 0, 3 do
+				local color = ((z + y) % 2 == 0) and stoneLight or stone
+				shopBlockPart(structureFolder, "RightStoneWall", 9, y, z, color, Enum.Material.Cobblestone)
+			end
+		end
+		for _, column in ipairs({
+			{ name = "LeftFrontColumn", x = -8, z = -1 },
+			{ name = "InnerCornerColumn", x = 9, z = -1 },
+			{ name = "RightFrontColumn", x = 9, z = 8 },
+		}) do
+			for y = 0, 4 do
+				shopBlockPart(structureFolder, column.name, column.x, y, column.z, stoneLight, Enum.Material.Cobblestone)
+			end
+		end
+
+		for x = -8, 9 do
+			shopPart(structureFolder, "FrontTopTrim", Vector3.new(shopBlock, 1, shopBlock), Vector3.new(x * shopBlock, 18.5, -shopBlock), stoneLight, Enum.Material.Cobblestone)
+		end
+		for z = -1, 8 do
+			shopPart(structureFolder, "RightTopTrim", Vector3.new(shopBlock, 1, shopBlock), Vector3.new(9 * shopBlock, 18.5, z * shopBlock), stoneLight, Enum.Material.Cobblestone)
+		end
+		shopPart(structureFolder, "BackWindowFrameTop", Vector3.new(12, 1, 1), Vector3.new(0, 13.8, 2.52 * shopBlock), stoneDarkLocal, Enum.Material.Cobblestone)
+
+		for x = -7, 8 do
+			for y = 0, 1 do
+				shopPart(counterFolder, "FrontCounterBase", Vector3.new(shopBlock, shopBlock, shopBlock), Vector3.new(x * shopBlock, y * shopBlock + 4, -2 * shopBlock), wood, Enum.Material.WoodPlanks)
+			end
+			shopPart(counterFolder, "FrontCounterTop", Vector3.new(shopBlock, 0.65, shopBlock), Vector3.new(x * shopBlock, 10.45, -2 * shopBlock), woodLight, Enum.Material.WoodPlanks)
+		end
+		for z = -1, 6 do
+			for y = 0, 1 do
+				shopPart(counterFolder, "RightCounterBase", Vector3.new(shopBlock, shopBlock, shopBlock), Vector3.new(8 * shopBlock, y * shopBlock + 4, z * shopBlock), wood, Enum.Material.WoodPlanks)
+			end
+			shopPart(counterFolder, "RightCounterTop", Vector3.new(shopBlock, 0.65, shopBlock), Vector3.new(8 * shopBlock, 10.45, z * shopBlock), woodLight, Enum.Material.WoodPlanks)
+		end
+		shopPart(counterFolder, "FrontCounterTrim", Vector3.new(68, 1, 0.7), Vector3.new(0.5 * shopBlock, 8.5, -2.55 * shopBlock), woodDarkLocal, Enum.Material.Wood)
+		shopPart(counterFolder, "RightCounterTrim", Vector3.new(0.7, 1, 32), Vector3.new(8.55 * shopBlock, 8.5, 2.5 * shopBlock), woodDarkLocal, Enum.Material.Wood)
+		shopPart(decorFolder, "RegisterBase", Vector3.new(2.1, 0.8, 1.4), Vector3.new(0, 11.1, -2 * shopBlock), darkMetal, Enum.Material.Metal)
+		shopPart(decorFolder, "RegisterScreen", Vector3.new(1.4, 0.7, 0.25), Vector3.new(0.15, 11.7, -2.25 * shopBlock), accentBlue, Enum.Material.Glass)
+
+		for i = 0, 17 do
+			local x = -8 + i
+			local stripeColor = (i % 2 == 1) and white or blue
+			shopPart(awningFolder, "FrontAwningStripe", Vector3.new(shopBlock, 3.2, 7), Vector3.new(x * shopBlock, 20.5, -2.5 * shopBlock), stripeColor, Enum.Material.Fabric)
+		end
+		for i = 0, 9 do
+			local z = -1 + i
+			local stripeColor = (i % 2 == 1) and white or blue
+			shopPart(awningFolder, "RightAwningStripe", Vector3.new(7, 3.2, shopBlock), Vector3.new(9.5 * shopBlock, 20.5, z * shopBlock), stripeColor, Enum.Material.Fabric)
+		end
+		shopPart(awningFolder, "FrontAwningUnderside", Vector3.new(72, 0.6, 8), Vector3.new(0.5 * shopBlock, 18.6, -2.5 * shopBlock), Color3.fromRGB(55, 75, 125), Enum.Material.Fabric)
+		shopPart(awningFolder, "RightAwningUnderside", Vector3.new(8, 0.6, 42), Vector3.new(9.5 * shopBlock, 18.6, 3.5 * shopBlock), Color3.fromRGB(55, 75, 125), Enum.Material.Fabric)
+		for x = -8, 9 do
+			for z = -1, 8 do
+				shopPart(awningFolder, "RoofDeck", Vector3.new(shopBlock, 0.5, shopBlock), Vector3.new(x * shopBlock, 23.15, z * shopBlock), wood, Enum.Material.WoodPlanks)
+			end
+			shopPart(awningFolder, "RoofFrontRail", Vector3.new(shopBlock, 1, 0.8), Vector3.new(x * shopBlock, 24, -4 * shopBlock), woodDarkLocal, Enum.Material.Wood)
+		end
+		for z = -4, 8 do
+			shopPart(awningFolder, "RoofRightRail", Vector3.new(0.8, 1, shopBlock), Vector3.new(11 * shopBlock, 24, z * shopBlock), woodDarkLocal, Enum.Material.Wood)
+		end
+
+		for y = 0, 1 do
+			shopPart(shelfFolder, "LeftShelfBoard", Vector3.new(6, 0.7, 1.2), Vector3.new(-7 * shopBlock, 5.5 + y * 3, -3.5 * shopBlock), woodDarkLocal, Enum.Material.Wood)
+		end
+		for i = 0, 3 do
+			shopPart(shelfFolder, "LeftShelfBox", Vector3.new(1.2, 1.4, 1), Vector3.new((-7.7 + i * 0.75) * shopBlock, 6.3, -3.4 * shopBlock), ({ accentBlue, accentGreen, accentYellow, accentRed })[i + 1], Enum.Material.SmoothPlastic)
+		end
+		shopPart(shelfFolder, "RightShelfBack", Vector3.new(12, 7, 1), Vector3.new(6.5 * shopBlock, 8, 5.5 * shopBlock), woodDarkLocal, Enum.Material.Wood)
+		for y = 0, 2 do
+			shopPart(shelfFolder, "RightShelfLevel", Vector3.new(12, 0.6, 1.2), Vector3.new(6.5 * shopBlock, 5 + y * 2.5, 5 * shopBlock), woodLight, Enum.Material.Wood)
+		end
+		makeLureRow(shelfFolder, Vector3.new(5 * shopBlock, 5.9, 4.65 * shopBlock))
+		makeLureRow(shelfFolder, Vector3.new(5 * shopBlock, 8.4, 4.65 * shopBlock))
+
+		for x = -3, 3 do
+			shopPart(propFolder, "BackRodRackBase", Vector3.new(0.4, 9, 0.4), Vector3.new(x * 1.8, 9.5, 2 * shopBlock), woodDarkLocal, Enum.Material.Wood)
+		end
+		for i, rodX in ipairs({ -10, -6, -2, 2, 6, 10 }) do
+			makeRod(propFolder, "BackRod_" .. tostring(i), Vector3.new(rodX, 4.2, 7.6), 8.8 + (i * 0.25), woodDarkLocal, wood)
+		end
+
+		shopPart(propFolder, "StandingRodCrate", Vector3.new(6, 4, 6), Vector3.new(12.3 * shopBlock, 4.1, 6.5 * shopBlock), wood, Enum.Material.WoodPlanks)
+		for i = 0, 4 do
+			makeRod(propFolder, "StandingRod_" .. tostring(i), Vector3.new((11.3 + i * 0.4) * shopBlock, 4.2, 6.5 * shopBlock), 10 + i * 0.4, woodDarkLocal, wood)
+		end
+		shopPart(decorFolder, "TackleCrate", Vector3.new(3.5, 2.2, 2.6), Vector3.new(7.7 * shopBlock, 11.3, 1.5 * shopBlock), wood, Enum.Material.WoodPlanks)
+		shopPart(decorFolder, "TackleBoxBlue", Vector3.new(0.9, 0.7, 1.3), Vector3.new(7.1 * shopBlock, 12.2, 1.4 * shopBlock), accentBlue, Enum.Material.SmoothPlastic)
+		shopPart(decorFolder, "TackleBoxRed", Vector3.new(0.9, 0.7, 1.3), Vector3.new(7.8 * shopBlock, 12.2, 1.4 * shopBlock), accentRed, Enum.Material.SmoothPlastic)
+		shopPart(decorFolder, "TackleBoxGreen", Vector3.new(0.9, 0.7, 1.3), Vector3.new(8.5 * shopBlock, 12.2, 1.4 * shopBlock), accentGreen, Enum.Material.SmoothPlastic)
+		shopPart(decorFolder, "PlantPot", Vector3.new(2, 1.6, 2), Vector3.new(-4.3 * shopBlock, 10.9, -1.6 * shopBlock), wood, Enum.Material.WoodPlanks)
+		for i = -1, 1 do
+			shopPart(decorFolder, "PlantLeaf", Vector3.new(0.35, 3 + i, 0.35), Vector3.new(-4.3 * shopBlock + i * 0.6, 12.2, -1.6 * shopBlock), grass, Enum.Material.Grass, 0, false)
+		end
+
+		shopTextSign(signFolder, "MainRodShopSign", Vector3.new(0, 23, -4.4 * shopBlock), Vector3.new(24, 4, 0.6), "ROD SHOP", blue, Color3.fromRGB(255, 255, 255), Enum.NormalId.Front)
+		shopTextSign(signFolder, "LeftChalkboard", Vector3.new(-7.7 * shopBlock, 8.3, -4.8 * shopBlock), Vector3.new(7.5, 10, 0.5), "CAST IT.\nREEL IT.\nCATCH IT.", chalkboardGreen, chalkWhite, Enum.NormalId.Front)
+		shopTextSign(signFolder, "RightBoard", Vector3.new(7.9 * shopBlock, 10, 2.2 * shopBlock), Vector3.new(8, 9, 0.5), "RODS\nBAIT\nTACKLE", chalkboardGreen, chalkWhite, Enum.NormalId.Front)
+		shopPart(signFolder, "SmallDisplayFrame", Vector3.new(6, 4, 0.5), Vector3.new(7.5 * shopBlock, 5.2, -2.7 * shopBlock), woodDarkLocal, Enum.Material.Wood)
+		makeLureRow(signFolder, Vector3.new(6.7 * shopBlock, 5.3, -2.42 * shopBlock))
+
+		shopLantern(Vector3.new(-5 * shopBlock, 15.5, -3.5 * shopBlock))
+		shopLantern(Vector3.new(0, 15.5, -3.5 * shopBlock))
+		shopLantern(Vector3.new(5 * shopBlock, 15.5, -3.5 * shopBlock))
+		shopLantern(Vector3.new(8.7 * shopBlock, 15.5, 3 * shopBlock))
+		shopLantern(Vector3.new(11.2 * shopBlock, 10.5, 6.8 * shopBlock))
+
+		local trigger = shopPart(structureFolder, "ShopTrigger", Vector3.new(60, 10, 18), Vector3.new(0, 7, -4 * shopBlock), Color3.fromRGB(0, 255, 255), Enum.Material.ForceField, 1, false)
+		trigger:SetAttribute("ShopType", "RodShop")
+		trigger:SetAttribute("InteractText", "Open Rod Shop")
+
+		local primary = shopPart(structureFolder, "ShopPrimaryPart", Vector3.new(2, 2, 2), Vector3.new(0, 4, 0), Color3.fromRGB(255, 0, 255), Enum.Material.ForceField, 1, false)
+		shopModel.PrimaryPart = primary
+	end
+
+	local onlyGenerateSeasideShop = true
+	if onlyGenerateSeasideShop then
+		lobby:Destroy()
+		return nil
+	else
 
 	local function connectPortal(trigger, targetArea)
 		trigger.Touched:Connect(function(hit)
@@ -1899,7 +2934,7 @@ local function buildCleanLobby(world)
 
 			local root = character:FindFirstChild("HumanoidRootPart")
 			if targetArea == "BiomeWarp" then
-				OpenBiomeWarp:FireClient(player)
+				OpenBiomeWarp:FireClient(player, getPlayerFishingBiome and getPlayerFishingBiome(player) or nil)
 				return
 			end
 
@@ -1919,24 +2954,24 @@ local function buildCleanLobby(world)
 			local target = GameConfig.Biomes[targetArea]
 			if root and target then
 				data.CurrentBiome = targetArea
-				sendState(player)
 				root.CFrame = CFrame.new(target.position)
+				sendState(player)
 			end
 		end)
 	end
 
 	local function makeWarpPad(name, position, color, textValue, targetArea, requiredLevel)
-		makeLobbyPart(warpFolder, name .. "_Base", Vector3.new(20, 1, 14), position - Vector3.new(0, 0.45, 0), Color3.fromRGB(75, 75, 75), Enum.Material.Cobblestone)
-		makeLobbyPart(warpFolder, name .. "_Pad", Vector3.new(17, 0.5, 11), position, color, Enum.Material.Neon, 0.08, false)
+		makeLobbyPart(aquariumWarpModel, name .. "_Base", Vector3.new(20, 1, 14), position - Vector3.new(0, 0.45, 0), Color3.fromRGB(75, 75, 75), Enum.Material.Cobblestone)
+		makeLobbyPart(aquariumWarpModel, name .. "_Pad", Vector3.new(17, 0.5, 11), position, color, Enum.Material.Neon, 0.08, false)
 
-		local trigger = makeLobbyPart(warpFolder, name .. "_Trigger", Vector3.new(17, 9, 11), position + Vector3.new(0, 4.5, 0), color, Enum.Material.ForceField, 1, false)
+		local trigger = makeLobbyPart(aquariumWarpModel, name .. "_Trigger", Vector3.new(17, 9, 11), position + Vector3.new(0, 4.5, 0), color, Enum.Material.ForceField, 1, false)
 		trigger:SetAttribute("TargetArea", targetArea)
 		trigger:SetAttribute("RequiredLevel", requiredLevel)
 		trigger:SetAttribute("PortalName", textValue)
 		CollectionService:AddTag(trigger, "AreaPortal")
 		connectPortal(trigger, targetArea)
 
-		makeSign(warpFolder, name .. "_SmallSign", position + Vector3.new(0, 5.2, -7.3), Vector3.new(15, 3.6, 0.5), textValue .. "\nLv. " .. tostring(requiredLevel) .. "+", color, Enum.NormalId.Front)
+		makeSign(aquariumWarpModel, name .. "_SmallSign", position + Vector3.new(0, 5.2, -7.3), Vector3.new(15, 3.6, 0.5), textValue .. "\nLv. " .. tostring(requiredLevel) .. "+", color, Enum.NormalId.Front)
 		return trigger
 	end
 
@@ -1960,39 +2995,36 @@ local function buildCleanLobby(world)
 	for x = -12, 12 do
 		for z = -10, 10 do
 			if not (math.abs(x) <= 4 and math.abs(z) <= 4) then
-				local color = stoneColor
-				if (x + z) % 2 == 0 then
-					color = stoneDark
-				end
-				makeLobbyPart(pathsFolder, "FountainPlazaTile", Vector3.new(block, 0.45, block), Vector3.new(x * block, 2.45, z * block), color, Enum.Material.Cobblestone)
+				makeLobbyPart(pathsFolder, "FountainPlazaTile", Vector3.new(block, 0.45, block), Vector3.new(x * block, 2.45, z * block), Color3.fromRGB(150, 78, 58), Enum.Material.Brick)
 			end
 		end
 	end
 
 	for x = -4, 4 do
 		for z = -4, 4 do
-			makeLobbyPart(decorFolder, "FountainWater", Vector3.new(block, 0.55, block), Vector3.new(x * block, 2.8, z * block), waterColor, Enum.Material.Glass, 0.35, false)
+			makeLobbyPart(fountainModel, "FountainWater", Vector3.new(block, 0.55, block), Vector3.new(x * block, 2.8, z * block), waterColor, Enum.Material.Glass, 0.35, false)
 		end
 	end
 
 	for x = -5, 5 do
 		for z = -5, 5 do
 			if math.abs(x) == 5 or math.abs(z) == 5 then
-				makeLobbyPart(decorFolder, "FountainBorder", Vector3.new(block, 1.2, block), Vector3.new(x * block, 3.1, z * block), stoneColor, Enum.Material.Cobblestone)
+				makeLobbyPart(fountainModel, "FountainBorder", Vector3.new(block, 1.2, block), Vector3.new(x * block, 3.1, z * block), stoneColor, Enum.Material.Cobblestone)
 			end
 		end
 	end
 
-	makeLobbyPart(decorFolder, "FountainCore", Vector3.new(7, 9, 7), Vector3.new(0, 7, 0), stoneDark, Enum.Material.Cobblestone)
-	local fountainTop = makeLobbyPart(decorFolder, "FountainTopWater", Vector3.new(4, 4, 4), Vector3.new(0, 13, 0), waterColor, Enum.Material.Neon, 0.15, false)
+	local fountainCore = makeLobbyPart(fountainModel, "FountainCore", Vector3.new(7, 9, 7), Vector3.new(0, 7, 0), stoneDark, Enum.Material.Cobblestone)
+	local fountainTop = makeLobbyPart(fountainModel, "FountainTopWater", Vector3.new(4, 4, 4), Vector3.new(0, 13, 0), waterColor, Enum.Material.Neon, 0.15, false)
 	local fountainLight = Instance.new("PointLight")
 	fountainLight.Brightness = 1.2
 	fountainLight.Range = 24
 	fountainLight.Color = Color3.fromRGB(80, 190, 255)
 	fountainLight.Parent = fountainTop
+	fountainModel.PrimaryPart = fountainCore
 
 	local fountainWarpTrigger = makeLobbyPart(
-		warpFolder,
+		fountainModel,
 		"FountainBiomeWarpTrigger",
 		Vector3.new(42, 12, 42),
 		Vector3.new(0, 7, 0),
@@ -2050,27 +3082,29 @@ local function buildCleanLobby(world)
 		end
 	end
 
-	makeLobbyPart(decorFolder, "LeaderboardLeftPost", Vector3.new(1.4, 22, 1.4), Vector3.new(-7 * block, 12, 27 * block), woodDark, Enum.Material.Wood)
-	makeLobbyPart(decorFolder, "LeaderboardRightPost", Vector3.new(1.4, 22, 1.4), Vector3.new(7 * block, 12, 27 * block), woodDark, Enum.Material.Wood)
-	makeSign(decorFolder, "LeaderboardBoard", Vector3.new(0, 13.5, 27 * block), Vector3.new(56, 25, 0.8), "Leaderboard\n\n1. ---\n2. ---\n3. ---\n4. ---\n5. ---", blueUI, Enum.NormalId.Front)
+	local leaderboardBoard = makeSign(leaderboardModel, "LeaderboardBoard", Vector3.new(0, 13.5, 27 * block), Vector3.new(56, 25, 0.8), "Leaderboard\n\n1. ---\n2. ---\n3. ---\n4. ---\n5. ---", blueUI, Enum.NormalId.Front)
+	makeLobbyPart(leaderboardModel, "LeaderboardLeftPost", Vector3.new(1.4, 22, 1.4), Vector3.new(-7 * block, 12, 27 * block), woodDark, Enum.Material.Wood)
+	makeLobbyPart(leaderboardModel, "LeaderboardRightPost", Vector3.new(1.4, 22, 1.4), Vector3.new(7 * block, 12, 27 * block), woodDark, Enum.Material.Wood)
+	leaderboardModel.PrimaryPart = leaderboardBoard
 
-	makeSign(warpFolder, "AquariumWarpSign", Vector3.new(31 * block, 11, 10 * block), Vector3.new(22, 15, 0.7), "Aquarium\nWarp", aquariumColor, Enum.NormalId.Front)
+	makeSign(aquariumWarpModel, "AquariumWarpSign", Vector3.new(31 * block, 11, 10 * block), Vector3.new(22, 15, 0.7), "Aquarium\nWarp", aquariumColor, Enum.NormalId.Front)
 	makeWarpPad("AquariumWarp", Vector3.new(31 * block, 3.2, 10 * block), aquariumColor, "Aquarium", "Home", 1)
 
 	makeShopBuilding("FishShop", -24, -24, "FISH SHOP", blueUI)
 	makeShopBuilding("RodShop", 24, -24, "ROD SHOP", goldUI)
 
-	makeLobbyPart(spawnFolder, "SpawnPointPad", Vector3.new(64, 0.5, 24), Vector3.new(0, 3, -28 * block), Color3.fromRGB(145, 95, 50), Enum.Material.WoodPlanks)
-	makeSign(spawnFolder, "SpawnPointSign", Vector3.new(0, 7, -31 * block), Vector3.new(24, 4, 0.5), "Spawn Point", greenUI, Enum.NormalId.Back)
+	local spawnPad = makeLobbyPart(spawnAreaModel, "SpawnPointPad", Vector3.new(64, 0.5, 24), Vector3.new(0, 3, -28 * block), Color3.fromRGB(145, 95, 50), Enum.Material.WoodPlanks)
+	makeSign(spawnAreaModel, "SpawnPointSign", Vector3.new(0, 7, -31 * block), Vector3.new(24, 4, 0.5), "Spawn Point", greenUI, Enum.NormalId.Back)
+	spawnAreaModel.PrimaryPart = spawnPad
 
-	for _, pos in ipairs({
+	for index, pos in ipairs({
 		Vector3.new(-12 * block, 5, -12 * block), Vector3.new(12 * block, 5, -12 * block),
 		Vector3.new(-12 * block, 5, 12 * block), Vector3.new(12 * block, 5, 12 * block),
 		Vector3.new(-31 * block, 5, 3 * block), Vector3.new(31 * block, 5, 3 * block),
 		Vector3.new(-18 * block, 5, -29 * block), Vector3.new(18 * block, 5, -29 * block),
 		Vector3.new(-22 * block, 5, 26 * block), Vector3.new(22 * block, 5, 26 * block),
 	}) do
-		makeLantern(pos)
+		makeLantern(pos, index)
 	end
 
 	local spawn = Instance.new("SpawnLocation")
@@ -2083,7 +3117,7 @@ local function buildCleanLobby(world)
 	spawn.Transparency = 1
 	spawn.CanCollide = false
 	spawn.Neutral = true
-	spawn.Parent = spawnFolder
+	spawn.Parent = spawnAreaModel
 	for _, descendant in ipairs(spawn:GetDescendants()) do
 		if descendant:IsA("Decal") or descendant:IsA("Texture") then
 			descendant:Destroy()
@@ -2092,6 +3126,7 @@ local function buildCleanLobby(world)
 
 	lobby.PrimaryPart = lobbyZone
 	return lobby
+	end
 end
 
 local function makeRotatedPart(parent, name, size, cframe, color, material)
@@ -2688,8 +3723,532 @@ local function buildExtraLargeBeginnerPond(parent, biome)
 	pond.PrimaryPart = fishZone
 end
 
+local function hasAncestorNamed(instance, ancestorName)
+	local current = instance.Parent
+	while current do
+		if current.Name == ancestorName then
+			return true
+		end
+		current = current.Parent
+	end
+
+	return false
+end
+
+local function shouldUsePartForFountainAnimation(part)
+	local lowerName = string.lower(part.Name)
+	return string.find(lowerName, "fountain")
+		and not string.find(lowerName, "path")
+		and not string.find(lowerName, "plaza")
+		and not string.find(lowerName, "trigger")
+		and not hasAncestorNamed(part, "AnimatedFountainEffects")
+end
+
+local function getFountainAnimationRoot(part)
+	local current = part
+	local lobbyRoot = nil
+
+	while current and current ~= workspace do
+		if current:IsA("Model") and string.find(string.lower(current.Name), "fountain") then
+			return current
+		end
+
+		if current:IsA("Model") and current.Name == "LobbyArea" then
+			lobbyRoot = current
+		end
+
+		current = current.Parent
+	end
+
+	return lobbyRoot or part
+end
+
+local function makeFountainEffectPart(parent, name, position)
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Size = Vector3.new(0.4, 0.4, 0.4)
+	part.Position = position
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanTouch = false
+	part.CanQuery = false
+	part.Transparency = 1
+	part.Parent = parent
+	return part
+end
+
+local function addAnimatedFountainEffects(root, fountainParts)
+	if #fountainParts == 0 then
+		return
+	end
+
+	local existing = root:FindFirstChild("AnimatedFountainEffects")
+	if existing then
+		existing:Destroy()
+	end
+
+	local minX, minY, minZ = math.huge, math.huge, math.huge
+	local maxX, maxY, maxZ = -math.huge, -math.huge, -math.huge
+	local topPart = nil
+
+	for _, part in ipairs(fountainParts) do
+		local halfSize = part.Size / 2
+		minX = math.min(minX, part.Position.X - halfSize.X)
+		minY = math.min(minY, part.Position.Y - halfSize.Y)
+		minZ = math.min(minZ, part.Position.Z - halfSize.Z)
+		maxX = math.max(maxX, part.Position.X + halfSize.X)
+		maxY = math.max(maxY, part.Position.Y + halfSize.Y)
+		maxZ = math.max(maxZ, part.Position.Z + halfSize.Z)
+
+		local lowerName = string.lower(part.Name)
+		if string.find(lowerName, "topwater") then
+			topPart = part
+		elseif not topPart or part.Position.Y > topPart.Position.Y then
+			topPart = part
+		end
+	end
+
+	local center = Vector3.new((minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2)
+	local width = maxX - minX
+	local depth = maxZ - minZ
+	local basinY = minY + math.max(1.6, (maxY - minY) * 0.18)
+	local radius = math.max(8, math.min(width, depth) * 0.38)
+	local nozzlePosition = topPart.Position + Vector3.new(0, (topPart.Size.Y / 2) + 0.3, 0)
+
+	local effects = Instance.new("Folder")
+	effects.Name = "AnimatedFountainEffects"
+	effects.Parent = root
+
+	local nozzle = makeFountainEffectPart(effects, "SprayNozzle", nozzlePosition)
+	local nozzleAttachment = Instance.new("Attachment")
+	nozzleAttachment.Name = "SprayAttachment"
+	nozzleAttachment.Parent = nozzle
+
+	local spray = Instance.new("ParticleEmitter")
+	spray.Name = "WaterSpray"
+	spray.Color = ColorSequence.new(Color3.fromRGB(120, 220, 255), Color3.fromRGB(235, 250, 255))
+	spray.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.1),
+		NumberSequenceKeypoint.new(0.75, 0.3),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	spray.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.45),
+		NumberSequenceKeypoint.new(1, 0.08),
+	})
+	spray.Rate = 28
+	spray.Lifetime = NumberRange.new(0.55, 1.0)
+	spray.Speed = NumberRange.new(7, 12)
+	spray.SpreadAngle = Vector2.new(18, 18)
+	spray.Acceleration = Vector3.new(0, -34, 0)
+	spray.Drag = 2.5
+	spray.LightEmission = 0.45
+	spray.EmissionDirection = Enum.NormalId.Top
+	spray.Parent = nozzleAttachment
+
+	local mistPart = makeFountainEffectPart(effects, "BasinMistEmitter", Vector3.new(center.X, basinY + 0.6, center.Z))
+	local mistAttachment = Instance.new("Attachment")
+	mistAttachment.Name = "BasinMistAttachment"
+	mistAttachment.Parent = mistPart
+
+	local mist = Instance.new("ParticleEmitter")
+	mist.Name = "BasinMist"
+	mist.Color = ColorSequence.new(Color3.fromRGB(150, 225, 255))
+	mist.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.7),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	mist.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1.8),
+		NumberSequenceKeypoint.new(1, 3.2),
+	})
+	mist.Rate = 26
+	mist.Lifetime = NumberRange.new(1.2, 2.2)
+	mist.Speed = NumberRange.new(0.6, 1.8)
+	mist.SpreadAngle = Vector2.new(180, 15)
+	mist.LightEmission = 0.2
+	mist.Parent = mistAttachment
+
+	local sheetDrop = math.max(4, nozzlePosition.Y - (basinY + 0.6))
+	local sheetCenterY = (nozzlePosition.Y + basinY + 0.6) / 2
+	local function makeWaterSheet(name, size, position)
+		local sheet = Instance.new("Part")
+		sheet.Name = name
+		sheet.Size = size
+		sheet.Position = position
+		sheet.Anchored = true
+		sheet.CanCollide = false
+		sheet.CanTouch = false
+		sheet.CanQuery = false
+		sheet.Material = Enum.Material.Glass
+		sheet.Color = Color3.fromRGB(90, 205, 255)
+		sheet.Transparency = 0.38
+		sheet.TopSurface = Enum.SurfaceType.Smooth
+		sheet.BottomSurface = Enum.SurfaceType.Smooth
+		sheet.Parent = effects
+		return sheet
+	end
+
+	makeWaterSheet(
+		"FallingWaterSheet_North",
+		Vector3.new(topPart.Size.X + 2.4, sheetDrop, 0.28),
+		Vector3.new(topPart.Position.X, sheetCenterY, topPart.Position.Z - (topPart.Size.Z / 2) - 0.25)
+	)
+	makeWaterSheet(
+		"FallingWaterSheet_South",
+		Vector3.new(topPart.Size.X + 2.4, sheetDrop, 0.28),
+		Vector3.new(topPart.Position.X, sheetCenterY, topPart.Position.Z + (topPart.Size.Z / 2) + 0.25)
+	)
+	makeWaterSheet(
+		"FallingWaterSheet_West",
+		Vector3.new(0.28, sheetDrop, topPart.Size.Z + 2.4),
+		Vector3.new(topPart.Position.X - (topPart.Size.X / 2) - 0.25, sheetCenterY, topPart.Position.Z)
+	)
+	makeWaterSheet(
+		"FallingWaterSheet_East",
+		Vector3.new(0.28, sheetDrop, topPart.Size.Z + 2.4),
+		Vector3.new(topPart.Position.X + (topPart.Size.X / 2) + 0.25, sheetCenterY, topPart.Position.Z)
+	)
+
+	local cascadeDirections = {
+		{ name = "North", direction = Vector3.new(0, 0, -1) },
+		{ name = "South", direction = Vector3.new(0, 0, 1) },
+		{ name = "West", direction = Vector3.new(-1, 0, 0) },
+		{ name = "East", direction = Vector3.new(1, 0, 0) },
+	}
+
+	for _, stream in ipairs(cascadeDirections) do
+		local sideOffset = Vector3.new(stream.direction.X * ((topPart.Size.X / 2) + 0.15), 0, stream.direction.Z * ((topPart.Size.Z / 2) + 0.15))
+		local startPart = makeFountainEffectPart(effects, "CascadeStart_" .. stream.name, topPart.Position + sideOffset + Vector3.new(0, topPart.Size.Y * 0.18, 0))
+		local startAttachment = Instance.new("Attachment")
+		startAttachment.Name = "CascadeStartAttachment_" .. stream.name
+		startAttachment.Parent = startPart
+
+		local endPosition = Vector3.new(center.X, basinY + 0.55, center.Z) + (stream.direction * math.max(5, radius * 0.55))
+		local endPart = makeFountainEffectPart(effects, "CascadeEnd_" .. stream.name, endPosition)
+		local endAttachment = Instance.new("Attachment")
+		endAttachment.Name = "CascadeEndAttachment_" .. stream.name
+		endAttachment.Parent = endPart
+
+		local cascade = Instance.new("Beam")
+		cascade.Name = "FallingWater_" .. stream.name
+		cascade.Attachment0 = startAttachment
+		cascade.Attachment1 = endAttachment
+		cascade.Color = ColorSequence.new(Color3.fromRGB(90, 205, 255), Color3.fromRGB(230, 250, 255))
+		cascade.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.05),
+			NumberSequenceKeypoint.new(0.8, 0.18),
+			NumberSequenceKeypoint.new(1, 0.52),
+		})
+		cascade.Width0 = 2.4
+		cascade.Width1 = 1.25
+		cascade.CurveSize0 = -1.4
+		cascade.CurveSize1 = 1.6
+		cascade.Segments = 16
+		cascade.Texture = "rbxasset://textures/particles/smoke_main.dds"
+		cascade.TextureLength = 1.4
+		cascade.TextureSpeed = -1.8
+		cascade.LightEmission = 0.25
+		cascade.FaceCamera = true
+		cascade.Parent = startAttachment
+	end
+
+	local streamDirections = {
+		{ name = "North", direction = Vector3.new(0, 0, -1) },
+		{ name = "South", direction = Vector3.new(0, 0, 1) },
+		{ name = "West", direction = Vector3.new(-1, 0, 0) },
+		{ name = "East", direction = Vector3.new(1, 0, 0) },
+	}
+
+	for _, stream in ipairs(streamDirections) do
+		local endPosition = Vector3.new(center.X, basinY + 0.4, center.Z) + (stream.direction * radius)
+		local endPart = makeFountainEffectPart(effects, "WaterStreamEnd_" .. stream.name, endPosition)
+		local endAttachment = Instance.new("Attachment")
+		endAttachment.Name = "WaterStreamAttachment_" .. stream.name
+		endAttachment.Parent = endPart
+
+		local beam = Instance.new("Beam")
+		beam.Name = "FlowingWater_" .. stream.name
+		beam.Attachment0 = nozzleAttachment
+		beam.Attachment1 = endAttachment
+		beam.Color = ColorSequence.new(Color3.fromRGB(95, 210, 255), Color3.fromRGB(210, 245, 255))
+		beam.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.12),
+			NumberSequenceKeypoint.new(0.82, 0.28),
+			NumberSequenceKeypoint.new(1, 0.75),
+		})
+		beam.Width0 = 0.7
+		beam.Width1 = 1.8
+		beam.CurveSize0 = 7
+		beam.CurveSize1 = -2
+		beam.Segments = 18
+		beam.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		beam.TextureLength = 2
+		beam.TextureSpeed = 1.6
+		beam.LightEmission = 0.35
+		beam.FaceCamera = true
+		beam.Parent = nozzleAttachment
+	end
+end
+
+local function ensureFountainAnimations()
+	local groupedParts = {}
+
+	for _, descendant in ipairs(workspace:GetDescendants()) do
+		if descendant:IsA("BasePart") and shouldUsePartForFountainAnimation(descendant) then
+			local root = getFountainAnimationRoot(descendant)
+			if not groupedParts[root] then
+				groupedParts[root] = {}
+			end
+			table.insert(groupedParts[root], descendant)
+		end
+	end
+
+	for root, fountainParts in pairs(groupedParts) do
+		addAnimatedFountainEffects(root, fountainParts)
+	end
+end
+
+local function ensureFountainPlazaBrickStyle()
+	local brickColors = {
+		Color3.fromRGB(150, 78, 58),
+		Color3.fromRGB(172, 88, 64),
+		Color3.fromRGB(122, 61, 49),
+	}
+
+	for _, descendant in ipairs(workspace:GetDescendants()) do
+		if descendant:IsA("BasePart") and descendant.Name == "FountainPlazaTile" then
+			local colorIndex = (math.floor(descendant.Position.X / 4) + (math.floor(descendant.Position.Z / 4) * 2)) % #brickColors
+			descendant.Material = Enum.Material.Brick
+			descendant.Color = brickColors[colorIndex + 1]
+			descendant.TopSurface = Enum.SurfaceType.Smooth
+			descendant.BottomSurface = Enum.SurfaceType.Smooth
+		end
+	end
+end
+
+local function ensureShopWoodPartSpacing()
+	local topNames = {
+		FrontWoodCounterTop = true,
+		RightWoodCounterTop = true,
+		FrontCounterTop = true,
+		RightCounterTop = true,
+	}
+
+	local roofDeckNames = {
+		RooftopDeck = true,
+		RoofDeck = true,
+	}
+
+	for _, shop in ipairs(workspace:GetDescendants()) do
+		if shop:IsA("Model") and (shop.Name == "SeasideLShop" or shop.Name == "SeasideRodShop") then
+			local seenParts = {}
+			for _, descendant in ipairs(shop:GetDescendants()) do
+				if descendant:IsA("BasePart") then
+					local positionKey = string.format(
+						"%s|%s|%.1f|%.1f|%.1f|%.1f|%.1f|%.1f",
+						descendant.Name,
+						descendant.Material.Name,
+						descendant.Position.X,
+						descendant.Position.Y,
+						descendant.Position.Z,
+						descendant.Size.X,
+						descendant.Size.Y,
+						descendant.Size.Z
+					)
+					if seenParts[positionKey] then
+						descendant:Destroy()
+						continue
+					end
+					seenParts[positionKey] = true
+
+					if topNames[descendant.Name] then
+						if descendant.Position.Y < 10.55 then
+							descendant.Position = Vector3.new(descendant.Position.X, 10.55, descendant.Position.Z)
+						end
+						descendant:SetAttribute("FishyFishWoodSpacingFixed", true)
+					elseif roofDeckNames[descendant.Name] then
+						if descendant.Position.Y > 23.05 then
+							descendant.Position = Vector3.new(descendant.Position.X, 22.95, descendant.Position.Z)
+						end
+						descendant:SetAttribute("FishyFishWoodSpacingFixed", true)
+					end
+				end
+			end
+		end
+	end
+end
+
+local function isInFishyFishWorld(instance)
+	local current = instance.Parent
+	while current do
+		if current.Name == "FishyFishWorld" then
+			return true
+		end
+		current = current.Parent
+	end
+
+	return false
+end
+
+local function findSeasideShop()
+	for _, descendant in ipairs(workspace:GetDescendants()) do
+		if descendant:IsA("Model") and descendant.Name == "SeasideLShop" and not isInFishyFishWorld(descendant) then
+			return descendant
+		end
+	end
+
+	for _, descendant in ipairs(workspace:GetDescendants()) do
+		if descendant:IsA("Model") and descendant.Name == "SeasideLShop" then
+			return descendant
+		end
+	end
+
+	return nil
+end
+
+local function findSeasideRodShop()
+	for _, descendant in ipairs(workspace:GetDescendants()) do
+		if descendant:IsA("Model") and descendant.Name == "SeasideRodShop" and not isInFishyFishWorld(descendant) then
+			return descendant
+		end
+	end
+
+	for _, descendant in ipairs(workspace:GetDescendants()) do
+		if descendant:IsA("Model") and descendant.Name == "SeasideRodShop" then
+			return descendant
+		end
+	end
+
+	return nil
+end
+
+local function ensureSeasideRodShopMirrored()
+	local shop = findSeasideRodShop()
+	if not shop or shop:GetAttribute("FishyFishMirroredRodShop") then
+		return
+	end
+
+	local primary = shop.PrimaryPart or shop:FindFirstChild("ShopPrimaryPart", true)
+	local pivot = nil
+	if primary and primary:IsA("BasePart") then
+		pivot = primary.CFrame
+	else
+		local success, result = pcall(function()
+			return shop:GetPivot()
+		end)
+		if not success then
+			return
+		end
+		pivot = result
+	end
+
+	for _, descendant in ipairs(shop:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			local localCFrame = pivot:ToObjectSpace(descendant.CFrame)
+			local localPosition = localCFrame.Position
+			local localRotation = localCFrame - localPosition
+			descendant.CFrame = pivot * CFrame.new(-localPosition.X, localPosition.Y, localPosition.Z) * localRotation
+		end
+	end
+
+	shop:SetAttribute("FishyFishMirroredRodShop", true)
+end
+
+local function ensureSeasideShopFishmonger()
+	local shop = findSeasideShop()
+	if not shop then
+		return
+	end
+
+	local primary = shop.PrimaryPart or shop:FindFirstChild("ShopPrimaryPart", true)
+	local baseCFrame = nil
+	if primary and primary:IsA("BasePart") then
+		baseCFrame = primary.CFrame * CFrame.new(0, -4, 0)
+	else
+		local success, pivot = pcall(function()
+			return shop:GetPivot()
+		end)
+		if not success then
+			return
+		end
+		baseCFrame = pivot * CFrame.new(0, -4, 0)
+	end
+
+	local existing = shop:FindFirstChild("FishmongerNPC")
+	if existing then
+		existing:Destroy()
+	end
+
+	local npc = Instance.new("Model")
+	npc.Name = "FishmongerNPC"
+	npc.Parent = shop
+
+	local folder = Instance.new("Folder")
+	folder.Name = "EditableParts"
+	folder.Parent = npc
+
+	local function makeNpcPart(name, size, localPosition, color, material, transparency, canCollide)
+		local part = Instance.new("Part")
+		part.Name = name
+		part.Size = size
+		part.CFrame = baseCFrame * CFrame.new(localPosition)
+		part.Anchored = true
+		part.Color = color
+		part.Material = material or Enum.Material.SmoothPlastic
+		part.Transparency = transparency or 0
+		part.CanCollide = canCollide == true
+		part.TopSurface = Enum.SurfaceType.Smooth
+		part.BottomSurface = Enum.SurfaceType.Smooth
+		part.Parent = folder
+		return part
+	end
+
+	local apronBlue = Color3.fromRGB(45, 105, 150)
+	local shirtWhite = Color3.fromRGB(235, 238, 232)
+	local skin = Color3.fromRGB(226, 178, 132)
+	local pants = Color3.fromRGB(42, 62, 82)
+	local capRed = Color3.fromRGB(190, 45, 38)
+	local bootDark = Color3.fromRGB(35, 28, 22)
+	local wood = Color3.fromRGB(135, 85, 45)
+	local bottleBlue = Color3.fromRGB(50, 125, 210)
+	local npcBase = Vector3.new(0, 0, -3.4)
+
+	local body = makeNpcPart("FishmongerBody", Vector3.new(3.2, 4.2, 1.6), npcBase + Vector3.new(0, 10.8, 0), apronBlue)
+	makeNpcPart("FishmongerShirt", Vector3.new(3.45, 1.2, 1.7), npcBase + Vector3.new(0, 12.25, -0.05), shirtWhite)
+	makeNpcPart("FishmongerHead", Vector3.new(2.4, 2.4, 2.4), npcBase + Vector3.new(0, 14.3, 0), skin)
+	makeNpcPart("FishmongerCap", Vector3.new(2.7, 0.7, 2.7), npcBase + Vector3.new(0, 15.75, 0), capRed)
+	makeNpcPart("FishmongerCapBill", Vector3.new(2.1, 0.3, 1.2), npcBase + Vector3.new(0, 15.45, -1.1), capRed)
+	makeNpcPart("FishmongerLeftArm", Vector3.new(0.9, 3.4, 0.9), npcBase + Vector3.new(-2.2, 10.8, 0), skin)
+	makeNpcPart("FishmongerRightArm", Vector3.new(0.9, 3.4, 0.9), npcBase + Vector3.new(2.2, 10.8, 0), skin)
+	makeNpcPart("FishmongerLeftLeg", Vector3.new(1.1, 2.6, 1), npcBase + Vector3.new(-0.9, 7.4, 0), pants)
+	makeNpcPart("FishmongerRightLeg", Vector3.new(1.1, 2.6, 1), npcBase + Vector3.new(0.9, 7.4, 0), pants)
+	makeNpcPart("FishmongerLeftBoot", Vector3.new(1.2, 0.6, 1.2), npcBase + Vector3.new(-0.9, 5.9, -0.1), bootDark)
+	makeNpcPart("FishmongerRightBoot", Vector3.new(1.2, 0.6, 1.2), npcBase + Vector3.new(0.9, 5.9, -0.1), bootDark)
+	makeNpcPart("FishmongerLeftEye", Vector3.new(0.3, 0.3, 0.12), npcBase + Vector3.new(-0.45, 14.55, -1.22), Color3.fromRGB(20, 20, 20))
+	makeNpcPart("FishmongerRightEye", Vector3.new(0.3, 0.3, 0.12), npcBase + Vector3.new(0.45, 14.55, -1.22), Color3.fromRGB(20, 20, 20))
+	makeNpcPart("FishmongerFishCrate", Vector3.new(5, 2, 3), npcBase + Vector3.new(-5.2, 6.2, 0.6), wood, Enum.Material.WoodPlanks, 0, true)
+	makeNpcPart("CrateFishBlue", Vector3.new(2.8, 0.7, 0.9), npcBase + Vector3.new(-5.3, 7.55, 0.35), bottleBlue)
+	makeNpcPart("CrateFishTail", Vector3.new(0.8, 1.2, 0.8), npcBase + Vector3.new(-6.1, 7.55, 0.35), bottleBlue)
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "SellFishPrompt"
+	prompt.ActionText = "Choose Fish"
+	prompt.ObjectText = "Fishmonger"
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.HoldDuration = 0.25
+	prompt.MaxActivationDistance = 12
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = body
+
+	npc.PrimaryPart = body
+	connectSellFishPrompt(prompt)
+end
+
 local function buildWorld()
 	removeNonLobbySpawnLocations()
+	removeGeneratedGrassLobby()
+	removeGeneratedOldLobbyShops()
 
 	local existing = workspace:FindFirstChild("FishyFishWorld")
 	if existing then
@@ -2706,6 +4265,8 @@ local function buildWorld()
 	makePart(world, "WorldGroundBeginnerSouth", Vector3.new(196, 2, 30), Vector3.new(0, -1, 105), Color3.fromRGB(74, 126, 66), Enum.Material.Grass)
 
 	buildCleanLobby(world)
+	removeGeneratedGrassLobby()
+	removeGeneratedOldLobbyShops()
 	removeNonLobbySpawnLocations()
 
 	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
@@ -2728,11 +4289,32 @@ local function buildWorld()
 		local sign = makePart(world, biome.displayName .. " Sign", Vector3.new(22, 8, 1), Vector3.new(pos.X, 6, pos.Z - 42), Color3.fromRGB(35, 45, 55), Enum.Material.SmoothPlastic)
 		createLabel(sign, biome.displayName)
 	end
+
+	ensurePrebuiltAquariumSlots()
+	ensureFountainPlazaBrickStyle()
+	ensureFountainAnimations()
+	ensureFountainBiomeWarpTrigger()
+	connectBiomeWarpFountainTouches()
+	ensureShopWoodPartSpacing()
+	ensureSeasideRodShopMirrored()
+	ensureSeasideShopFishmonger()
+	connectSellFishPrompts()
 end
 
 local function ensureWorld()
 	if not workspace:FindFirstChild("FishyFishWorld") then
 		buildWorld()
+	else
+		removeGeneratedGrassLobby()
+		removeGeneratedOldLobbyShops()
+		ensureFountainPlazaBrickStyle()
+		ensureFountainAnimations()
+		ensureFountainBiomeWarpTrigger()
+		connectBiomeWarpFountainTouches()
+		ensureShopWoodPartSpacing()
+		ensureSeasideRodShopMirrored()
+		ensureSeasideShopFishmonger()
+		connectSellFishPrompts()
 	end
 end
 
@@ -2852,13 +4434,112 @@ local function getBiomeAtPosition(position)
 	return nil
 end
 
-local function getPlayerFishingBiome(player)
+local function getLobbyTeleportPosition()
+	local generatedWorld = workspace:FindFirstChild("FishyFishWorld")
+	local exactNames = {
+		"LimestoneLobbySpawn",
+		"LimestoneSpawn",
+		"LobbyTeleport",
+		"LobbyTeleportPoint",
+		"LobbySpawnPoint",
+		"LobbySpawn",
+	}
+
+	local function getTeleportPositionFromInstance(instance, lift)
+		if instance:IsA("BasePart") then
+			return instance.Position + Vector3.new(0, (instance.Size.Y / 2) + lift, 0)
+		end
+
+		if instance:IsA("Model") then
+			local primary = instance.PrimaryPart or instance:FindFirstChildWhichIsA("BasePart", true)
+			if primary then
+				return primary.Position + Vector3.new(0, (primary.Size.Y / 2) + lift, 0)
+			end
+		end
+
+		return nil
+	end
+
+	local fishingAreas = workspace:FindFirstChild("FishingAreas")
+	local savedLobby = fishingAreas and fishingAreas:FindFirstChild("LobbyArea")
+	if savedLobby then
+		for _, name in ipairs(exactNames) do
+			local marker = savedLobby:FindFirstChild(name, true)
+			if marker then
+				local position = getTeleportPositionFromInstance(marker, 4)
+				if position then
+					return position
+				end
+			end
+		end
+	end
+
+	for _, name in ipairs(exactNames) do
+		local marker = workspace:FindFirstChild(name, true)
+		if marker then
+			local lowerName = string.lower(marker.Name)
+			local isGenerated = generatedWorld and marker:IsDescendantOf(generatedWorld)
+			if not isGenerated or string.find(lowerName, "limestone") then
+				local position = getTeleportPositionFromInstance(marker, 4)
+				if position then
+					return position
+				end
+			end
+		end
+	end
+
+	for _, descendant in ipairs(workspace:GetDescendants()) do
+		if descendant:IsA("SpawnLocation") and (not generatedWorld or not descendant:IsDescendantOf(generatedWorld)) then
+			return getTeleportPositionFromInstance(descendant, 4)
+		end
+	end
+
+	for _, descendant in ipairs(workspace:GetDescendants()) do
+		local lowerName = string.lower(descendant.Name)
+		if string.find(lowerName, "limestone") and string.find(lowerName, "lobby") then
+			local position = getTeleportPositionFromInstance(descendant, 5)
+			if position then
+				return position
+			end
+		end
+	end
+
+	return Vector3.new(0, 8, 0)
+end
+
+getPlayerFishingBiome = function(player)
 	local root = getPlayerRoot(player)
 	if not root then
 		return nil
 	end
 
 	return getBiomeAtPosition(root.Position)
+end
+
+getPlayerTravelLocation = function(player)
+	local root = getPlayerRoot(player)
+	if not root then
+		return nil
+	end
+
+	local biomeId = getBiomeAtPosition(root.Position)
+	if biomeId then
+		return biomeId
+	end
+
+	local lobbyPosition = getLobbyTeleportPosition()
+	local rootFlat = Vector3.new(root.Position.X, 0, root.Position.Z)
+	local lobbyFlat = Vector3.new(lobbyPosition.X, 0, lobbyPosition.Z)
+	if (rootFlat - lobbyFlat).Magnitude <= 180 then
+		return "Lobby"
+	end
+
+	local aquariumPosition = getPlayerAquariumTeleportPosition(player)
+	if (root.Position - aquariumPosition).Magnitude <= 70 then
+		return "Home"
+	end
+
+	return nil
 end
 
 local function startAutoFish(player)
@@ -2987,7 +4668,7 @@ local function teleportPlayer(player, target)
 	local position
 
 	if target == "Lobby" then
-		position = Vector3.new(-420, 5, -112)
+		position = getLobbyTeleportPosition()
 	elseif target == "Home" then
 		refreshPlayerAquarium(player)
 		position = getPlayerAquariumTeleportPosition(player)
@@ -2996,7 +4677,11 @@ local function teleportPlayer(player, target)
 	end
 
 	if position then
-		root.CFrame = CFrame.new(position)
+		if target == "Home" then
+			root.CFrame = CFrame.lookAt(position, getPlayerAquariumOrigin(player) + Vector3.new(0, 5, 0))
+		else
+			root.CFrame = CFrame.new(position)
+		end
 	end
 end
 
@@ -3024,11 +4709,11 @@ local function setupPlayer(player)
 		if data then
 			refreshPlayerAquarium(player)
 		end
+		teleportPlayer(player, "Lobby")
 		sendState(player)
 		if addedStudioFish then
 			notify(player, "Added beginner pond fish to your Bag for testing.")
 		end
-		teleportPlayer(player, "Lobby")
 		if data then
 			refreshFishingRodForPlayer(player, data)
 		end
@@ -3044,7 +4729,7 @@ GetState.OnServerInvoke = function(player)
 		return nil
 	end
 
-	return makeClientState(data)
+	return makeClientState(player, data)
 end
 
 StartFishing.OnServerEvent:Connect(function(player, requestedBiome)
@@ -3159,18 +4844,7 @@ SellFish.OnServerEvent:Connect(function(player, action, fishSerialToSell, fishIn
 		return
 	end
 
-	local total = getInventoryValue(data)
-	if total <= 0 then
-		notify(player, "No fish to sell.")
-		return
-	end
-
-	data.Inventory = {}
-	data.Coins += total
-
-	updateLeaderstats(player)
-	sendState(player)
-	notify(player, "Sold fish for " .. total .. " coins.")
+	sellAllFishForPlayer(player)
 end)
 
 BuyRod.OnServerEvent:Connect(function(player, rodId)
@@ -3248,15 +4922,22 @@ TeleportTo.OnServerEvent:Connect(function(player, target)
 
 	if GameConfig.Biomes[target] then
 		data.CurrentBiome = target
-		sendState(player)
 	end
 
 	teleportPlayer(player, target)
+	sendState(player)
 end)
 
 AquariumAction.OnServerEvent:Connect(function(player, action, fishSerial, fishIndex)
 	local data = playerData[player]
 	if not data then
+		return
+	end
+
+	if not playerOwnsAssignedAquarium(player) then
+		refreshPlayerAquarium(player)
+		notify(player, "Use your own aquarium.")
+		sendState(player)
 		return
 	end
 
@@ -3397,15 +5078,13 @@ Players.PlayerAdded:Connect(setupPlayer)
 
 Players.PlayerRemoving:Connect(function(player)
 	saveData(player)
-	local folder = getAquariumsFolder()
-	if folder then
-		local aquarium = folder:FindFirstChild("Aquarium_" .. tostring(player.UserId))
-		if aquarium then
-			aquarium:Destroy()
-		end
+	local slot = playerAquariumSlots[player]
+	if slot then
+		buildAquariumSlotModel(slot, nil, nil)
 	end
 	playerData[player] = nil
 	pendingFishing[player] = nil
+	playerAquariumSlots[player] = nil
 end)
 
 game:BindToClose(function()

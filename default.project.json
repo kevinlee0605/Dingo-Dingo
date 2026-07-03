@@ -36,6 +36,9 @@
         "OpenBiomeWarp": {
           "$className": "RemoteEvent"
         },
+        "OpenSellFish": {
+          "$className": "RemoteEvent"
+        },
         "AquariumAction": {
           "$className": "RemoteEvent"
         },
