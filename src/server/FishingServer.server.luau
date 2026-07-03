@@ -1114,9 +1114,19 @@ local function makePart(parent, name, size, position, color, material)
 	return part
 end
 
+local function removeNonLobbySpawnLocations()
+	for _, descendant in ipairs(workspace:GetDescendants()) do
+		if descendant:IsA("SpawnLocation") and descendant.Name ~= "LobbySpawn" then
+			descendant:Destroy()
+		end
+	end
+end
+
 local function buildCleanLobby(world)
 	local block = 4
-	local center = Vector3.new(-180, 0, 0)
+	local center = Vector3.new(-180, -2, 0)
+	local groundRadiusX = 19
+	local groundRadiusZ = 26
 	local portalCooldowns = {}
 
 	local lobby = Instance.new("Model")
@@ -1299,17 +1309,19 @@ local function buildCleanLobby(world)
 		makeSign(shopFolder, name .. "_Sign", position + Vector3.new(0, 8.2, -4.3), Vector3.new(15, 3, 0.5), titleText, color, Enum.NormalId.Front)
 	end
 
-	for x = -18, 18 do
-		for z = -18, 18 do
+	for x = -groundRadiusX, groundRadiusX do
+		for z = -groundRadiusZ, groundRadiusZ do
 			makeBlock(blocksFolder, "GrassBlock", x, 0, z, grassColor, Enum.Material.Grass)
 			makeBlock(blocksFolder, "DirtBlock", x, -1, z, dirtColor, Enum.Material.Ground)
 		end
 	end
 
 	for _, p in ipairs({
-		{ -18, -18 }, { -17, -18 }, { -18, -17 }, { 18, -18 }, { 17, -18 }, { 18, -17 },
-		{ -18, 18 }, { -17, 18 }, { -18, 17 }, { 18, 18 }, { 17, 18 }, { 18, 17 },
-		{ -10, 17 }, { 10, 17 }, { -10, -17 }, { 10, -17 },
+		{ -groundRadiusX, -groundRadiusZ }, { -groundRadiusX + 1, -groundRadiusZ }, { -groundRadiusX, -groundRadiusZ + 1 },
+		{ groundRadiusX, -groundRadiusZ }, { groundRadiusX - 1, -groundRadiusZ }, { groundRadiusX, -groundRadiusZ + 1 },
+		{ -groundRadiusX, groundRadiusZ }, { -groundRadiusX + 1, groundRadiusZ }, { -groundRadiusX, groundRadiusZ - 1 },
+		{ groundRadiusX, groundRadiusZ }, { groundRadiusX - 1, groundRadiusZ }, { groundRadiusX, groundRadiusZ - 1 },
+		{ -10, groundRadiusZ - 1 }, { 10, groundRadiusZ - 1 }, { -10, -groundRadiusZ + 1 }, { 10, -groundRadiusZ + 1 },
 	}) do
 		makeBlock(blocksFolder, "RaisedGrassBlock", p[1], 1, p[2], grassDark, Enum.Material.Grass)
 	end
@@ -1346,30 +1358,39 @@ local function buildCleanLobby(world)
 	fountainLight.Color = Color3.fromRGB(80, 190, 255)
 	fountainLight.Parent = fountainTop
 
-	local lobbyZone = makeLobbyPart(zonesFolder, "LobbyZone", Vector3.new(70, 20, 70), Vector3.new(0, 8, 0), Color3.fromRGB(0, 255, 255), Enum.Material.ForceField, 1, false)
+	local lobbyZone = makeLobbyPart(
+		zonesFolder,
+		"LobbyZone",
+		Vector3.new(groundRadiusX * block * 2, 20, groundRadiusZ * block * 2),
+		Vector3.new(0, 8, 0),
+		Color3.fromRGB(0, 255, 255),
+		Enum.Material.ForceField,
+		1,
+		false
+	)
 	lobbyZone:SetAttribute("AreaName", "Lobby")
 	CollectionService:AddTag(lobbyZone, "LobbyZone")
 
-	for x = -18, 18 do
+	for x = -groundRadiusX, groundRadiusX do
 		for z = -1, 1 do
 			makeLobbyPart(pathFolder, "MainPathEastWest", Vector3.new(block, 0.25, block), Vector3.new(x * block, 2.55, z * block), pathColor, Enum.Material.Ground)
 		end
 	end
 
-	for z = -18, 18 do
+	for z = -groundRadiusZ, groundRadiusZ do
 		for x = -1, 1 do
 			makeLobbyPart(pathFolder, "MainPathNorthSouth", Vector3.new(block, 0.25, block), Vector3.new(x * block, 2.55, z * block), pathColor, Enum.Material.Ground)
 		end
 	end
 
-	for x = -15, 15 do
-		makeLobbyPart(pathFolder, "OuterPathNorth", Vector3.new(block, 0.25, block), Vector3.new(x * block, 2.55, -15 * block), pathColor, Enum.Material.Ground)
-		makeLobbyPart(pathFolder, "OuterPathSouth", Vector3.new(block, 0.25, block), Vector3.new(x * block, 2.55, 15 * block), pathColor, Enum.Material.Ground)
+	for x = -groundRadiusX + 3, groundRadiusX - 3 do
+		makeLobbyPart(pathFolder, "OuterPathNorth", Vector3.new(block, 0.25, block), Vector3.new(x * block, 2.55, (-groundRadiusZ + 3) * block), pathColor, Enum.Material.Ground)
+		makeLobbyPart(pathFolder, "OuterPathSouth", Vector3.new(block, 0.25, block), Vector3.new(x * block, 2.55, (groundRadiusZ - 3) * block), pathColor, Enum.Material.Ground)
 	end
 
-	for z = -15, 15 do
-		makeLobbyPart(pathFolder, "OuterPathWest", Vector3.new(block, 0.25, block), Vector3.new(-15 * block, 2.55, z * block), pathColor, Enum.Material.Ground)
-		makeLobbyPart(pathFolder, "OuterPathEast", Vector3.new(block, 0.25, block), Vector3.new(15 * block, 2.55, z * block), pathColor, Enum.Material.Ground)
+	for z = -groundRadiusZ + 3, groundRadiusZ - 3 do
+		makeLobbyPart(pathFolder, "OuterPathWest", Vector3.new(block, 0.25, block), Vector3.new((-groundRadiusX + 3) * block, 2.55, z * block), pathColor, Enum.Material.Ground)
+		makeLobbyPart(pathFolder, "OuterPathEast", Vector3.new(block, 0.25, block), Vector3.new((groundRadiusX - 3) * block, 2.55, z * block), pathColor, Enum.Material.Ground)
 	end
 
 	makePortal("BeginnerPondPortal", Vector3.new(0, 3, -16 * block), greenUI, "Beginner Pond", "BeginnerPond", 1)
@@ -1432,12 +1453,19 @@ local function buildCleanLobby(world)
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "LobbySpawn"
 	spawn.Size = Vector3.new(6, 1, 6)
-	spawn.Position = localPosition(Vector3.new(0, 3.2, 8))
+	spawn.Position = localPosition(Vector3.new((groundRadiusX * block) - 8, 2.5, 0))
 	spawn.Anchored = true
 	spawn.Material = Enum.Material.WoodPlanks
 	spawn.Color = Color3.fromRGB(145, 95, 50)
+	spawn.Transparency = 1
+	spawn.CanCollide = false
 	spawn.Neutral = true
 	spawn.Parent = spawnFolder
+	for _, descendant in ipairs(spawn:GetDescendants()) do
+		if descendant:IsA("Decal") or descendant:IsA("Texture") then
+			descendant:Destroy()
+		end
+	end
 
 	makeLobbyPart(decorFolder, "MainSignPost", Vector3.new(1, 6, 1), Vector3.new(0, 5, -8 * block), woodDark, Enum.Material.Wood)
 	makeSign(decorFolder, "MainLobbySign", Vector3.new(0, 9, -8.2 * block), Vector3.new(22, 5, 0.5), "FISHING LOBBY", blueUI, Enum.NormalId.Front)
@@ -2036,30 +2064,12 @@ local function buildExtraLargeBeginnerPond(parent, biome)
 	fishZone:SetAttribute("MaxPlayersSuggested", 56)
 	CollectionService:AddTag(fishZone, "FishingZone")
 
-	for index, pos in ipairs({
-		Vector3.new(-24, 3.2, 90),
-		Vector3.new(-12, 3.2, 90),
-		Vector3.new(0, 3.2, 90),
-		Vector3.new(12, 3.2, 90),
-		Vector3.new(24, 3.2, 90),
-		Vector3.new(90, 3.2, 0),
-		Vector3.new(-90, 3.2, 0),
-		Vector3.new(0, 3.2, -90),
-	}) do
-		local spawn = Instance.new("SpawnLocation")
-		spawn.Name = "BeginnerPondSpawn_" .. index
-		spawn.Size = Vector3.new(6, 1, 6)
-		spawn.Position = localPosition(pos)
-		spawn.Anchored = true
-		spawn.Material = Enum.Material.WoodPlanks
-		spawn.Color = Color3.fromRGB(145, 95, 50)
-		spawn.Parent = pond
-	end
-
 	pond.PrimaryPart = fishZone
 end
 
 local function buildWorld()
+	removeNonLobbySpawnLocations()
+
 	local existing = workspace:FindFirstChild("FishyFishWorld")
 	if existing then
 		existing:Destroy()
@@ -2069,13 +2079,14 @@ local function buildWorld()
 	world.Name = "FishyFishWorld"
 	world.Parent = workspace
 
-	makePart(world, "WorldGroundLobbyToPond", Vector3.new(37, 2, 90), Vector3.new(-116.5, -1, 0), Color3.fromRGB(74, 126, 66), Enum.Material.Grass)
+	makePart(world, "WorldGroundLobbyToPond", Vector3.new(4, 2, 180), Vector3.new(-100, -1, 0), Color3.fromRGB(74, 126, 66), Enum.Material.Grass)
 	makePart(world, "WorldGroundPondToRiver", Vector3.new(29.5, 2, 95), Vector3.new(112.75, -1, 0), Color3.fromRGB(74, 126, 66), Enum.Material.Grass)
 	makePart(world, "WorldGroundRiverToOcean", Vector3.new(75, 2, 95), Vector3.new(270, -1, 0), Color3.fromRGB(74, 126, 66), Enum.Material.Grass)
 	makePart(world, "WorldGroundBeginnerNorth", Vector3.new(196, 2, 30), Vector3.new(0, -1, -105), Color3.fromRGB(74, 126, 66), Enum.Material.Grass)
 	makePart(world, "WorldGroundBeginnerSouth", Vector3.new(196, 2, 30), Vector3.new(0, -1, 105), Color3.fromRGB(74, 126, 66), Enum.Material.Grass)
 
 	buildCleanLobby(world)
+	removeNonLobbySpawnLocations()
 
 	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
 		local biome = GameConfig.Biomes[biomeId]
