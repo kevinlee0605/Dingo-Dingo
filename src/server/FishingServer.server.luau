@@ -1114,6 +1114,338 @@ local function makePart(parent, name, size, position, color, material)
 	return part
 end
 
+local function buildCleanLobby(world)
+	local block = 4
+	local center = Vector3.new(-180, 0, 0)
+	local portalCooldowns = {}
+
+	local lobby = Instance.new("Model")
+	lobby.Name = "CleanFishingLobby"
+	lobby.Parent = world
+
+	local blocksFolder = Instance.new("Folder")
+	blocksFolder.Name = "Blocks"
+	blocksFolder.Parent = lobby
+
+	local pathFolder = Instance.new("Folder")
+	pathFolder.Name = "Paths"
+	pathFolder.Parent = lobby
+
+	local decorFolder = Instance.new("Folder")
+	decorFolder.Name = "Decorations"
+	decorFolder.Parent = lobby
+
+	local portalFolder = Instance.new("Folder")
+	portalFolder.Name = "Portals"
+	portalFolder.Parent = lobby
+
+	local shopFolder = Instance.new("Folder")
+	shopFolder.Name = "Shops"
+	shopFolder.Parent = lobby
+
+	local spawnFolder = Instance.new("Folder")
+	spawnFolder.Name = "Spawn"
+	spawnFolder.Parent = lobby
+
+	local zonesFolder = Instance.new("Folder")
+	zonesFolder.Name = "Zones"
+	zonesFolder.Parent = lobby
+
+	local function localPosition(position)
+		return center + position
+	end
+
+	local function makeLobbyPart(parent, name, size, position, color, material, transparency, canCollide)
+		local part = makePart(parent, name, size, localPosition(position), color, material)
+		part.Transparency = transparency or 0
+		part.CanCollide = canCollide ~= false
+		part.TopSurface = Enum.SurfaceType.Smooth
+		part.BottomSurface = Enum.SurfaceType.Smooth
+		return part
+	end
+
+	local function makeBlock(parent, name, gridX, gridY, gridZ, color, material)
+		return makeLobbyPart(
+			parent,
+			name,
+			Vector3.new(block, block, block),
+			Vector3.new(gridX * block, gridY * block, gridZ * block),
+			color,
+			material
+		)
+	end
+
+	local function makeSign(parent, name, position, size, textValue, boardColor, face)
+		local sign = makeLobbyPart(parent, name, size, position, boardColor, Enum.Material.Wood)
+
+		local gui = Instance.new("SurfaceGui")
+		gui.Name = name .. "_Gui"
+		gui.Face = face or Enum.NormalId.Front
+		gui.CanvasSize = Vector2.new(600, 260)
+		gui.Parent = sign
+
+		local text = Instance.new("TextLabel")
+		text.Size = UDim2.fromScale(1, 1)
+		text.BackgroundTransparency = 1
+		text.Text = textValue
+		text.TextScaled = true
+		text.TextColor3 = Color3.fromRGB(255, 255, 255)
+		text.TextStrokeTransparency = 0
+		text.TextStrokeColor3 = Color3.fromRGB(20, 40, 90)
+		text.Font = Enum.Font.FredokaOne
+		text.Parent = gui
+
+		return sign
+	end
+
+	local grassColor = Color3.fromRGB(92, 172, 64)
+	local grassDark = Color3.fromRGB(65, 135, 50)
+	local dirtColor = Color3.fromRGB(105, 72, 42)
+	local pathColor = Color3.fromRGB(155, 108, 62)
+	local stoneColor = Color3.fromRGB(120, 120, 120)
+	local stoneDark = Color3.fromRGB(84, 84, 84)
+	local waterColor = Color3.fromRGB(45, 145, 225)
+	local woodColor = Color3.fromRGB(135, 85, 45)
+	local woodDark = Color3.fromRGB(90, 55, 28)
+	local blueUI = Color3.fromRGB(20, 130, 255)
+	local greenUI = Color3.fromRGB(35, 220, 75)
+	local goldUI = Color3.fromRGB(255, 190, 45)
+	local cyanUI = Color3.fromRGB(0, 220, 255)
+	local purpleUI = Color3.fromRGB(150, 95, 230)
+
+	local function makeLantern(position)
+		makeLobbyPart(decorFolder, "LanternPost", Vector3.new(0.8, 5, 0.8), position, woodDark, Enum.Material.Wood)
+
+		local lantern = makeLobbyPart(
+			decorFolder,
+			"Lantern",
+			Vector3.new(1.4, 1.4, 1.4),
+			position + Vector3.new(0, 3.2, 0),
+			Color3.fromRGB(255, 220, 120),
+			Enum.Material.Neon,
+			0.05,
+			false
+		)
+
+		local light = Instance.new("PointLight")
+		light.Brightness = 1.3
+		light.Range = 16
+		light.Color = Color3.fromRGB(255, 225, 160)
+		light.Parent = lantern
+	end
+
+	local function makeTree(x, z)
+		makeLobbyPart(decorFolder, "TreeTrunk", Vector3.new(3, 12, 3), Vector3.new(x, 8, z), Color3.fromRGB(105, 65, 35), Enum.Material.Wood)
+		makeLobbyPart(decorFolder, "TreeLeaves", Vector3.new(11, 8, 11), Vector3.new(x, 18, z), Color3.fromRGB(60, 150, 55), Enum.Material.Grass)
+		makeLobbyPart(decorFolder, "TreeLeavesTop", Vector3.new(7, 5, 7), Vector3.new(x, 24, z), Color3.fromRGB(60, 150, 55), Enum.Material.Grass)
+	end
+
+	local function connectPortal(trigger, targetArea)
+		trigger.Touched:Connect(function(hit)
+			local character = hit:FindFirstAncestorOfClass("Model")
+			local player = character and Players:GetPlayerFromCharacter(character)
+			if not player then
+				return
+			end
+
+			local now = os.clock()
+			if portalCooldowns[player] and now - portalCooldowns[player] < 1.5 then
+				return
+			end
+			portalCooldowns[player] = now
+
+			local data = playerData[player]
+			if not data then
+				return
+			end
+
+			if GameConfig.Biomes[targetArea] and not isBiomeUnlocked(data, targetArea) then
+				notify(player, "Unlock that area first.")
+				return
+			end
+
+			local root = character:FindFirstChild("HumanoidRootPart")
+			local target = GameConfig.Biomes[targetArea]
+			if root and target then
+				data.CurrentBiome = targetArea
+				sendState(player)
+				root.CFrame = CFrame.new(target.position)
+			end
+		end)
+	end
+
+	local function makePortal(name, position, color, textValue, targetArea, requiredLevel)
+		makeLobbyPart(portalFolder, name .. "_Base", Vector3.new(14, 1, 8), position, Color3.fromRGB(75, 75, 75), Enum.Material.Cobblestone)
+		makeLobbyPart(portalFolder, name .. "_Pad", Vector3.new(11, 0.35, 5), position + Vector3.new(0, 0.7, 0), color, Enum.Material.Neon, 0.1, false)
+		makeLobbyPart(portalFolder, name .. "_LeftPost", Vector3.new(1.2, 8, 1.2), position + Vector3.new(-6, 4.3, 0), Color3.fromRGB(25, 70, 150), Enum.Material.SmoothPlastic)
+		makeLobbyPart(portalFolder, name .. "_RightPost", Vector3.new(1.2, 8, 1.2), position + Vector3.new(6, 4.3, 0), Color3.fromRGB(25, 70, 150), Enum.Material.SmoothPlastic)
+		makeLobbyPart(portalFolder, name .. "_TopBeam", Vector3.new(14, 1.2, 1.2), position + Vector3.new(0, 8.4, 0), Color3.fromRGB(25, 70, 150), Enum.Material.SmoothPlastic)
+
+		local trigger = makeLobbyPart(portalFolder, name .. "_Trigger", Vector3.new(12, 8, 6), position + Vector3.new(0, 4, 0), color, Enum.Material.ForceField, 1, false)
+		trigger:SetAttribute("TargetArea", targetArea)
+		trigger:SetAttribute("RequiredLevel", requiredLevel)
+		trigger:SetAttribute("PortalName", textValue)
+		CollectionService:AddTag(trigger, "AreaPortal")
+		connectPortal(trigger, targetArea)
+
+		makeSign(portalFolder, name .. "_Sign", position + Vector3.new(0, 10.4, -0.8), Vector3.new(14, 4, 0.5), textValue .. "\nLv. " .. tostring(requiredLevel) .. "+", blueUI, Enum.NormalId.Front)
+		return trigger
+	end
+
+	local function makeShopStand(name, position, titleText, color)
+		makeLobbyPart(shopFolder, name .. "_Counter", Vector3.new(16, 4, 8), position, woodColor, Enum.Material.WoodPlanks)
+		makeLobbyPart(shopFolder, name .. "_BackWall", Vector3.new(18, 10, 1), position + Vector3.new(0, 5, 4.5), woodDark, Enum.Material.Wood)
+		makeLobbyPart(shopFolder, name .. "_Roof", Vector3.new(20, 1.5, 11), position + Vector3.new(0, 10.8, 0), color, Enum.Material.SmoothPlastic)
+		makeSign(shopFolder, name .. "_Sign", position + Vector3.new(0, 8.2, -4.3), Vector3.new(15, 3, 0.5), titleText, color, Enum.NormalId.Front)
+	end
+
+	for x = -18, 18 do
+		for z = -18, 18 do
+			makeBlock(blocksFolder, "GrassBlock", x, 0, z, grassColor, Enum.Material.Grass)
+			makeBlock(blocksFolder, "DirtBlock", x, -1, z, dirtColor, Enum.Material.Ground)
+		end
+	end
+
+	for _, p in ipairs({
+		{ -18, -18 }, { -17, -18 }, { -18, -17 }, { 18, -18 }, { 17, -18 }, { 18, -17 },
+		{ -18, 18 }, { -17, 18 }, { -18, 17 }, { 18, 18 }, { 17, 18 }, { 18, 17 },
+		{ -10, 17 }, { 10, 17 }, { -10, -17 }, { 10, -17 },
+	}) do
+		makeBlock(blocksFolder, "RaisedGrassBlock", p[1], 1, p[2], grassDark, Enum.Material.Grass)
+	end
+
+	for x = -6, 6 do
+		for z = -6, 6 do
+			local color = stoneColor
+			if (x + z) % 2 == 0 then
+				color = stoneDark
+			end
+			makeLobbyPart(blocksFolder, "SpawnPlazaTile", Vector3.new(block, 0.5, block), Vector3.new(x * block, 2.25, z * block), color, Enum.Material.Cobblestone)
+		end
+	end
+
+	for x = -2, 2 do
+		for z = -2, 2 do
+			makeLobbyPart(decorFolder, "LobbyFountainWater", Vector3.new(block, 0.5, block), Vector3.new(x * block, 2.75, z * block), waterColor, Enum.Material.Glass, 0.35, false)
+		end
+	end
+
+	for x = -3, 3 do
+		for z = -3, 3 do
+			if math.abs(x) == 3 or math.abs(z) == 3 then
+				makeLobbyPart(decorFolder, "FountainStoneBorder", Vector3.new(block, 1.2, block), Vector3.new(x * block, 3, z * block), stoneColor, Enum.Material.Cobblestone)
+			end
+		end
+	end
+
+	makeLobbyPart(decorFolder, "FountainCore", Vector3.new(4, 6, 4), Vector3.new(0, 5.5, 0), stoneDark, Enum.Material.Cobblestone)
+	local fountainTop = makeLobbyPart(decorFolder, "FountainTopWater", Vector3.new(2.5, 2.5, 2.5), Vector3.new(0, 9.8, 0), waterColor, Enum.Material.Neon, 0.2, false)
+	local fountainLight = Instance.new("PointLight")
+	fountainLight.Brightness = 1
+	fountainLight.Range = 20
+	fountainLight.Color = Color3.fromRGB(80, 190, 255)
+	fountainLight.Parent = fountainTop
+
+	local lobbyZone = makeLobbyPart(zonesFolder, "LobbyZone", Vector3.new(70, 20, 70), Vector3.new(0, 8, 0), Color3.fromRGB(0, 255, 255), Enum.Material.ForceField, 1, false)
+	lobbyZone:SetAttribute("AreaName", "Lobby")
+	CollectionService:AddTag(lobbyZone, "LobbyZone")
+
+	for x = -18, 18 do
+		for z = -1, 1 do
+			makeLobbyPart(pathFolder, "MainPathEastWest", Vector3.new(block, 0.25, block), Vector3.new(x * block, 2.55, z * block), pathColor, Enum.Material.Ground)
+		end
+	end
+
+	for z = -18, 18 do
+		for x = -1, 1 do
+			makeLobbyPart(pathFolder, "MainPathNorthSouth", Vector3.new(block, 0.25, block), Vector3.new(x * block, 2.55, z * block), pathColor, Enum.Material.Ground)
+		end
+	end
+
+	for x = -15, 15 do
+		makeLobbyPart(pathFolder, "OuterPathNorth", Vector3.new(block, 0.25, block), Vector3.new(x * block, 2.55, -15 * block), pathColor, Enum.Material.Ground)
+		makeLobbyPart(pathFolder, "OuterPathSouth", Vector3.new(block, 0.25, block), Vector3.new(x * block, 2.55, 15 * block), pathColor, Enum.Material.Ground)
+	end
+
+	for z = -15, 15 do
+		makeLobbyPart(pathFolder, "OuterPathWest", Vector3.new(block, 0.25, block), Vector3.new(-15 * block, 2.55, z * block), pathColor, Enum.Material.Ground)
+		makeLobbyPart(pathFolder, "OuterPathEast", Vector3.new(block, 0.25, block), Vector3.new(15 * block, 2.55, z * block), pathColor, Enum.Material.Ground)
+	end
+
+	makePortal("BeginnerPondPortal", Vector3.new(0, 3, -16 * block), greenUI, "Beginner Pond", "BeginnerPond", 1)
+	makePortal("RiverPortal", Vector3.new(16 * block, 3, 0), blueUI, "River", "River", GameConfig.Biomes.River.unlockLevel)
+	makePortal("OceanPortal", Vector3.new(0, 3, 16 * block), cyanUI, "Ocean", "Ocean", GameConfig.Biomes.Ocean.unlockLevel)
+	makePortal("ComingSoonPortal", Vector3.new(-16 * block, 3, 0), purpleUI, "Coming Soon", "ComingSoon", 999)
+
+	makeShopStand("RodShop", Vector3.new(-11 * block, 4, -10 * block), "ROD SHOP", goldUI)
+	makeShopStand("SellFishStand", Vector3.new(11 * block, 4, -10 * block), "SELL FISH", blueUI)
+
+	makeLobbyPart(decorFolder, "LeaderboardLeftPost", Vector3.new(1, 8, 1), Vector3.new(-9 * block, 6, 15.5 * block), woodDark, Enum.Material.Wood)
+	makeLobbyPart(decorFolder, "LeaderboardRightPost", Vector3.new(1, 8, 1), Vector3.new(-3 * block, 6, 15.5 * block), woodDark, Enum.Material.Wood)
+	makeSign(decorFolder, "LeaderboardBoard", Vector3.new(-6 * block, 8.5, 15.5 * block), Vector3.new(24, 10, 0.7), "TOP FISHERS\n1. ---\n2. ---\n3. ---", blueUI, Enum.NormalId.Front)
+
+	makeLobbyPart(decorFolder, "TutorialLeftPost", Vector3.new(1, 8, 1), Vector3.new(3 * block, 6, 15.5 * block), woodDark, Enum.Material.Wood)
+	makeLobbyPart(decorFolder, "TutorialRightPost", Vector3.new(1, 8, 1), Vector3.new(9 * block, 6, 15.5 * block), woodDark, Enum.Material.Wood)
+	makeSign(decorFolder, "TutorialBoard", Vector3.new(6 * block, 8.5, 15.5 * block), Vector3.new(24, 10, 0.7), "HOW TO FISH\n1. Equip Rod\n2. Cast Rod\n3. Click Catch!", greenUI, Enum.NormalId.Front)
+
+	for _, pos in ipairs({
+		Vector3.new(-7 * block, 5, -7 * block), Vector3.new(7 * block, 5, -7 * block),
+		Vector3.new(-7 * block, 5, 7 * block), Vector3.new(7 * block, 5, 7 * block),
+		Vector3.new(0, 5, -12 * block), Vector3.new(12 * block, 5, 0),
+		Vector3.new(0, 5, 12 * block), Vector3.new(-12 * block, 5, 0),
+	}) do
+		makeLantern(pos)
+	end
+
+	makeTree(-68, -68)
+	makeTree(68, -68)
+	makeTree(-68, 68)
+	makeTree(68, 68)
+	makeTree(-36, -70)
+	makeTree(36, -70)
+	makeTree(-36, 70)
+	makeTree(36, 70)
+
+	for _, flower in ipairs({
+		{ -13, -5, Color3.fromRGB(245, 245, 230) }, { -12, -5, Color3.fromRGB(245, 210, 65) },
+		{ 13, -5, Color3.fromRGB(245, 245, 230) }, { 12, -5, Color3.fromRGB(245, 210, 65) },
+		{ -13, 5, Color3.fromRGB(245, 210, 65) }, { -12, 5, Color3.fromRGB(245, 245, 230) },
+		{ 13, 5, Color3.fromRGB(245, 210, 65) }, { 12, 5, Color3.fromRGB(245, 245, 230) },
+		{ -5, -13, Color3.fromRGB(245, 245, 230) }, { 5, -13, Color3.fromRGB(245, 210, 65) },
+		{ -5, 13, Color3.fromRGB(245, 210, 65) }, { 5, 13, Color3.fromRGB(245, 245, 230) },
+	}) do
+		local x, z, color = flower[1], flower[2], flower[3]
+		makeLobbyPart(decorFolder, "FlowerStem", Vector3.new(0.35, 1.2, 0.35), Vector3.new(x * block, 3.25, z * block), grassDark, Enum.Material.Grass, 0, false)
+		makeLobbyPart(decorFolder, "FlowerTop", Vector3.new(1, 0.35, 1), Vector3.new(x * block, 4, z * block), color, Enum.Material.SmoothPlastic, 0, false)
+	end
+
+	for _, bench in ipairs({
+		{ 0, -10, 0 }, { 0, 10, 180 }, { -10, 0, 90 }, { 10, 0, -90 },
+	}) do
+		local x, z, rotY = bench[1], bench[2], bench[3]
+		local seat = makeLobbyPart(decorFolder, "BenchSeat", Vector3.new(10, 1, 2), Vector3.new(x * block, 3.4, z * block), woodColor, Enum.Material.Wood)
+		seat.Orientation = Vector3.new(0, rotY, 0)
+		local back = makeLobbyPart(decorFolder, "BenchBack", Vector3.new(10, 3, 1), Vector3.new(x * block, 5, z * block + 1.6), woodDark, Enum.Material.Wood)
+		back.Orientation = Vector3.new(0, rotY, 0)
+	end
+
+	local spawn = Instance.new("SpawnLocation")
+	spawn.Name = "LobbySpawn"
+	spawn.Size = Vector3.new(6, 1, 6)
+	spawn.Position = localPosition(Vector3.new(0, 3.2, 8))
+	spawn.Anchored = true
+	spawn.Material = Enum.Material.WoodPlanks
+	spawn.Color = Color3.fromRGB(145, 95, 50)
+	spawn.Neutral = true
+	spawn.Parent = spawnFolder
+
+	makeLobbyPart(decorFolder, "MainSignPost", Vector3.new(1, 6, 1), Vector3.new(0, 5, -8 * block), woodDark, Enum.Material.Wood)
+	makeSign(decorFolder, "MainLobbySign", Vector3.new(0, 9, -8.2 * block), Vector3.new(22, 5, 0.5), "FISHING LOBBY", blueUI, Enum.NormalId.Front)
+
+	lobby.PrimaryPart = lobbyZone
+	return lobby
+end
+
 local function makeRotatedPart(parent, name, size, cframe, color, material)
 	local part = makePart(parent, name, size, cframe.Position, color, material)
 	part.CFrame = cframe
@@ -1743,19 +2075,7 @@ local function buildWorld()
 	makePart(world, "WorldGroundBeginnerNorth", Vector3.new(196, 2, 30), Vector3.new(0, -1, -105), Color3.fromRGB(74, 126, 66), Enum.Material.Grass)
 	makePart(world, "WorldGroundBeginnerSouth", Vector3.new(196, 2, 30), Vector3.new(0, -1, 105), Color3.fromRGB(74, 126, 66), Enum.Material.Grass)
 
-	makePart(world, "LobbyFloor", Vector3.new(90, 2, 90), Vector3.new(-180, -1, 0), Color3.fromRGB(89, 122, 88), Enum.Material.Grass)
-	local lobbySign = makePart(world, "LobbySign", Vector3.new(22, 10, 1), Vector3.new(-180, 8, -38), Color3.fromRGB(34, 40, 46), Enum.Material.SmoothPlastic)
-	createLabel(lobbySign, "Fishy Fish Lobby")
-
-	local sellStand = makePart(world, "SellStand", Vector3.new(18, 8, 8), Vector3.new(-180, 4, 26), Color3.fromRGB(235, 180, 75), Enum.Material.WoodPlanks)
-	createLabel(sellStand, "Sell Fish")
-
-	local shopStand = makePart(world, "RodShop", Vector3.new(18, 8, 8), Vector3.new(-155, 4, 26), Color3.fromRGB(86, 126, 190), Enum.Material.WoodPlanks)
-	createLabel(shopStand, "Rod Shop")
-
-	local aquarium = makePart(world, "HomeAquarium", Vector3.new(24, 12, 8), Vector3.new(-205, 6, 25), Color3.fromRGB(70, 150, 210), Enum.Material.Glass)
-	aquarium.Transparency = 0.35
-	createLabel(aquarium, "Home Aquarium")
+	buildCleanLobby(world)
 
 	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
 		local biome = GameConfig.Biomes[biomeId]
