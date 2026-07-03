@@ -60,10 +60,10 @@ GameConfig.RodImageFiles = {
 }
 
 GameConfig.AquariumCapacities = {
-	[1] = 10,
-	[2] = 25,
-	[3] = 50,
-	[4] = 100,
+	[1] = 18,
+	[2] = 40,
+	[3] = 80,
+	[4] = 140,
 }
 
 GameConfig.AquariumUpgradeCosts = {
@@ -71,6 +71,50 @@ GameConfig.AquariumUpgradeCosts = {
 	[3] = 15000,
 	[4] = 60000,
 }
+
+GameConfig.FishAquariumSpace = {
+	SmallFish = 1,
+	Carp = 2,
+	Bluegill = 2,
+	Bass = 3,
+	Catfish = 4,
+	GoldenCarp = 5,
+	Koi = 5,
+	PondGuardian = 10,
+}
+
+function GameConfig.getAquariumFishSpace(fishOrId)
+	local fishId = fishOrId
+	local rarity = nil
+
+	if type(fishOrId) == "table" then
+		fishId = fishOrId.id or fishOrId.imageKey
+		rarity = fishOrId.rarity
+	end
+
+	if fishId and GameConfig.FishAquariumSpace[fishId] then
+		return GameConfig.FishAquariumSpace[fishId]
+	end
+
+	local raritySpace = {
+		Common = 1,
+		Uncommon = 3,
+		Rare = 5,
+		Epic = 5,
+		Legendary = 10,
+		Mythic = 14,
+	}
+
+	return raritySpace[rarity] or 2
+end
+
+function GameConfig.getAquariumUsedSpace(fishList)
+	local total = 0
+	for _, fish in ipairs(fishList or {}) do
+		total += GameConfig.getAquariumFishSpace(fish)
+	end
+	return total
+end
 
 GameConfig.Rods = {
 	WoodenRod = {

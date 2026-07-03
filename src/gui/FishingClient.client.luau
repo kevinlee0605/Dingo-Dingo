@@ -14,6 +14,7 @@ local SellFish = Remotes:WaitForChild("SellFish")
 local BuyRod = Remotes:WaitForChild("BuyRod")
 local UnlockBiome = Remotes:WaitForChild("UnlockBiome")
 local TeleportTo = Remotes:WaitForChild("TeleportTo")
+local OpenBiomeWarp = Remotes:WaitForChild("OpenBiomeWarp", 10)
 local AquariumAction = Remotes:WaitForChild("AquariumAction")
 local ToggleAutoFish = Remotes:WaitForChild("ToggleAutoFish")
 local StateUpdated = Remotes:WaitForChild("StateUpdated")
@@ -221,6 +222,124 @@ root.Position = UDim2.fromScale(0.5, 0.5)
 root.Size = UDim2.new(1, 0, 1, 0)
 root.BackgroundTransparency = 1
 root.Parent = screenGui
+
+local biomeWarpOverlay = Instance.new("Frame")
+biomeWarpOverlay.Name = "BiomeWarpOverlay"
+biomeWarpOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+biomeWarpOverlay.BackgroundTransparency = 0.35
+biomeWarpOverlay.Size = UDim2.fromScale(1, 1)
+biomeWarpOverlay.Visible = false
+biomeWarpOverlay.ZIndex = 90
+biomeWarpOverlay.Parent = root
+
+local biomeWarpPanel = Instance.new("Frame")
+biomeWarpPanel.Name = "BiomeWarpPanel"
+biomeWarpPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+biomeWarpPanel.BackgroundColor3 = Color3.fromRGB(17, 24, 34)
+biomeWarpPanel.Position = UDim2.fromScale(0.5, 0.5)
+biomeWarpPanel.Size = UDim2.new(0, 430, 0, 420)
+biomeWarpPanel.ZIndex = 91
+biomeWarpPanel.Parent = biomeWarpOverlay
+addCorner(biomeWarpPanel, 8)
+addStroke(biomeWarpPanel, Color3.fromRGB(74, 95, 124), 1)
+
+local biomeWarpTitle = makeText(biomeWarpPanel, "Biome Warp", 20, Color3.fromRGB(255, 255, 255), true)
+biomeWarpTitle.Position = UDim2.new(0, 18, 0, 12)
+biomeWarpTitle.Size = UDim2.new(1, -72, 0, 28)
+biomeWarpTitle.ZIndex = 92
+
+local biomeWarpClose = makeButton(biomeWarpPanel, "X", Color3.fromRGB(91, 104, 124))
+biomeWarpClose.Position = UDim2.new(1, -48, 0, 12)
+biomeWarpClose.Size = UDim2.new(0, 32, 0, 28)
+biomeWarpClose.TextSize = 14
+biomeWarpClose.ZIndex = 92
+
+local biomeWarpList = Instance.new("Frame")
+biomeWarpList.Name = "BiomeWarpList"
+biomeWarpList.BackgroundTransparency = 1
+biomeWarpList.Position = UDim2.new(0, 16, 0, 54)
+biomeWarpList.Size = UDim2.new(1, -32, 1, -70)
+biomeWarpList.ZIndex = 92
+biomeWarpList.Parent = biomeWarpPanel
+
+local biomeWarpListLayout = Instance.new("UIListLayout")
+biomeWarpListLayout.Padding = UDim.new(0, 10)
+biomeWarpListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+biomeWarpListLayout.Parent = biomeWarpList
+
+local function setBiomeWarpVisible(visible)
+	biomeWarpOverlay.Visible = visible
+end
+
+local function renderBiomeWarpOptions()
+	clearChildren(biomeWarpList)
+
+	if not state then
+		return
+	end
+
+	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
+		local biome = GameConfig.Biomes[biomeId]
+		local unlocked = state.UnlockedBiomes[biomeId] == true
+		local current = state.CurrentBiome == biomeId
+		local card = Instance.new("Frame")
+		card.Name = biomeId .. "WarpOption"
+		card.BackgroundColor3 = Color3.fromRGB(24, 32, 44)
+		card.Size = UDim2.new(1, 0, 0, 92)
+		card.ZIndex = 92
+		card.Parent = biomeWarpList
+		addCorner(card, 8)
+		addStroke(card, unlocked and biome.color or Color3.fromRGB(82, 92, 106), 1).Transparency = 0.25
+
+		local nameColor = unlocked and biome.color or Color3.fromRGB(130, 140, 155)
+		local name = makeText(card, biome.displayName, 16, nameColor, true)
+		name.Position = UDim2.new(0, 12, 0, 8)
+		name.Size = UDim2.new(1, -128, 0, 22)
+		name.ZIndex = 93
+
+		local requirement = makeText(card, "Requirement: " .. GameConfig.getBiomeUnlockText(biomeId), 13, Color3.fromRGB(190, 204, 220), false)
+		requirement.Position = UDim2.new(0, 12, 0, 34)
+		requirement.Size = UDim2.new(1, -128, 0, 18)
+		requirement.ZIndex = 93
+
+		local detail = makeText(card, "Species: " .. #biome.fish, 12, Color3.fromRGB(143, 160, 180), false)
+		detail.Position = UDim2.new(0, 12, 0, 56)
+		detail.Size = UDim2.new(1, -128, 0, 18)
+		detail.ZIndex = 93
+
+		local label = current and "Selected" or (unlocked and "Go" or "Unlock")
+		local buttonColor = current and Color3.fromRGB(91, 104, 124) or (unlocked and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(28, 160, 92))
+		local button = makeButton(card, label, buttonColor)
+		button.Position = UDim2.new(1, -106, 0, 28)
+		button.Size = UDim2.new(0, 90, 0, 36)
+		button.ZIndex = 93
+		button.MouseButton1Click:Connect(function()
+			if current then
+				setBiomeWarpVisible(false)
+			elseif unlocked then
+				setBiomeWarpVisible(false)
+				TeleportTo:FireServer(biomeId)
+			else
+				UnlockBiome:FireServer(biomeId)
+			end
+		end)
+	end
+end
+
+local function openBiomeWarp()
+	renderBiomeWarpOptions()
+	setBiomeWarpVisible(true)
+end
+
+biomeWarpClose.MouseButton1Click:Connect(function()
+	setBiomeWarpVisible(false)
+end)
+
+if OpenBiomeWarp then
+	OpenBiomeWarp.OnClientEvent:Connect(openBiomeWarp)
+else
+	warn("OpenBiomeWarp remote was not available; biome warp popup is disabled until remotes resync.")
+end
 
 local hud = Instance.new("Frame")
 hud.Name = "Hud"
@@ -807,7 +926,8 @@ local function renderBagTab()
 		name.Position = UDim2.new(0, 76, 0, 9)
 		name.Size = UDim2.new(1, -176, 0, 22)
 
-		local info = makeText(card, string.format("Value: %d | Timing: %d%%", fish.value, fish.score or 0), 13, Color3.fromRGB(190, 204, 220), false)
+		local fishSpace = GameConfig.getAquariumFishSpace(fish)
+		local info = makeText(card, string.format("Value: %d | Aquarium: %d space", fish.value, fishSpace), 13, Color3.fromRGB(190, 204, 220), false)
 		info.Position = UDim2.new(0, 76, 0, 34)
 		info.Size = UDim2.new(1, -176, 0, 18)
 
@@ -865,13 +985,14 @@ end
 local function renderAquariumTab()
 	local aquarium = state.Aquarium
 	local capacity = aquarium.Capacity
+	local usedCapacity = aquarium.UsedCapacity or GameConfig.getAquariumUsedSpace(aquarium.Fish)
 
 	local top = makeCard(content, 96)
 	local heading = makeText(top, "Personal Aquarium", 17, Color3.fromRGB(255, 255, 255), true)
 	heading.Position = UDim2.new(0, 12, 0, 8)
 	heading.Size = UDim2.new(1, -24, 0, 24)
 
-	local info = makeText(top, string.format("Level %d | Capacity %d/%d", aquarium.Level, #aquarium.Fish, capacity), 14, Color3.fromRGB(190, 204, 220), false)
+	local info = makeText(top, string.format("Level %d | Space %d/%d", aquarium.Level, usedCapacity, capacity), 14, Color3.fromRGB(190, 204, 220), false)
 	info.Position = UDim2.new(0, 12, 0, 36)
 	info.Size = UDim2.new(1, -24, 0, 22)
 
@@ -895,7 +1016,8 @@ local function renderAquariumTab()
 		name.Position = UDim2.new(0, 12, 0, 6)
 		name.Size = UDim2.new(1, -118, 0, 20)
 
-		local valueText = makeText(card, "Value: " .. fish.value .. " coins", 12, Color3.fromRGB(190, 204, 220), false)
+		local fishSpace = GameConfig.getAquariumFishSpace(fish)
+		local valueText = makeText(card, "Value: " .. fish.value .. " coins | Space: " .. fishSpace, 12, Color3.fromRGB(190, 204, 220), false)
 		valueText.Position = UDim2.new(0, 12, 0, 26)
 		valueText.Size = UDim2.new(1, -118, 0, 16)
 
@@ -1133,6 +1255,9 @@ StateUpdated.OnClientEvent:Connect(function(newState)
 	state = newState
 	refreshHud()
 	renderContent()
+	if biomeWarpOverlay.Visible then
+		renderBiomeWarpOptions()
+	end
 end)
 
 FishingPrompt.OnClientEvent:Connect(function(prompt)

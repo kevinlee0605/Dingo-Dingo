@@ -99,12 +99,25 @@ end)
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
 
 local Remotes = ReplicatedStorage:WaitForChild("FishingRemotes")
+local function getOrCreateRemoteEvent(name)
+	local remote = Remotes:FindFirstChild(name)
+	if remote and remote:IsA("RemoteEvent") then
+		return remote
+	end
+
+	remote = Instance.new("RemoteEvent")
+	remote.Name = name
+	remote.Parent = Remotes
+	return remote
+end
+
 local StartFishing = Remotes:WaitForChild("StartFishing")
 local FinishMinigame = Remotes:WaitForChild("FinishMinigame")
 local SellFish = Remotes:WaitForChild("SellFish")
 local BuyRod = Remotes:WaitForChild("BuyRod")
 local UnlockBiome = Remotes:WaitForChild("UnlockBiome")
 local TeleportTo = Remotes:WaitForChild("TeleportTo")
+local OpenBiomeWarp = getOrCreateRemoteEvent("OpenBiomeWarp")
 local AquariumAction = Remotes:WaitForChild("AquariumAction")
 local ToggleAutoFish = Remotes:WaitForChild("ToggleAutoFish")
 local StateUpdated = Remotes:WaitForChild("StateUpdated")
@@ -369,6 +382,7 @@ local function makeClientState(data)
 		Aquarium = {
 			Level = data.Aquarium.Level,
 			Capacity = GameConfig.AquariumCapacities[data.Aquarium.Level],
+			UsedCapacity = GameConfig.getAquariumUsedSpace(data.Aquarium.Fish),
 			Fish = copyArray(data.Aquarium.Fish),
 		},
 		BestCatch = data.BestCatch,
@@ -1567,15 +1581,28 @@ local function buildAquariumFishModel(model, root, fish, scale)
 	return rarityGlow
 end
 
+local function getAquariumFishSwimLane(origin, index)
+	local lane = (index - 1) % 24
+	local xIndex = lane % 4
+	local yIndex = math.floor(lane / 4) % 3
+	local zIndex = math.floor(lane / 12)
+
+	return {
+		center = origin + Vector3.new(-8.4 + (xIndex * 5.6), 3.7 + (yIndex * 2.1), -2.6 + (zIndex * 5.2)),
+		range = Vector3.new(0.95, 0.35, 0.55),
+	}
+end
+
 local function animateAquariumFish(part, origin, index, seed)
 	local random = Random.new(seed)
+	local lane = getAquariumFishSwimLane(origin, index)
 
 	task.spawn(function()
 		while part.Parent do
-			local target = origin + Vector3.new(
-				random:NextNumber(-8.5, 8.5),
-				random:NextNumber(3.2, 8.2),
-				random:NextNumber(-3.2, 3.2)
+			local target = lane.center + Vector3.new(
+				random:NextNumber(-lane.range.X, lane.range.X),
+				random:NextNumber(-lane.range.Y, lane.range.Y),
+				random:NextNumber(-lane.range.Z, lane.range.Z)
 			)
 			local current = part.Position
 			local direction = target - current
@@ -1606,13 +1633,13 @@ local function makeAquariumFish(parent, fish, origin, index, ownerUserId)
 		Mythic = 1.65,
 	}
 	local scale = rarityScale[fish.rarity] or 1
-	local offset = Vector3.new(((index - 1) % 5 - 2) * 2.8, 4 + ((index - 1) % 3), math.floor((index - 1) / 5) * 1.2 - 2.5)
+	local lane = getAquariumFishSwimLane(origin, index)
 
 	local model = Instance.new("Model")
 	model.Name = "AquariumFish_" .. tostring(fish.id or index)
 	model.Parent = parent
 
-	local startPosition = origin + offset
+	local startPosition = lane.center
 	local root = Instance.new("Part")
 	root.Name = "FishRoot"
 	root.Anchored = true
@@ -1674,7 +1701,7 @@ local function refreshPlayerAquarium(player)
 	makePart(model, "AquariumTopFrame", Vector3.new(25, 0.5, 11), origin + Vector3.new(0, 11.1, 0), Color3.fromRGB(38, 52, 68), Enum.Material.Metal)
 	makePart(model, "AquariumBottomFrame", Vector3.new(25, 0.5, 11), origin + Vector3.new(0, 0.9, 0), Color3.fromRGB(38, 52, 68), Enum.Material.Metal)
 
-	local sign = makePart(model, "AquariumOwnerSign", Vector3.new(18, 4, 0.5), origin + Vector3.new(0, 7, -7.3), Color3.fromRGB(34, 40, 46), Enum.Material.SmoothPlastic)
+	local sign = makePart(model, "AquariumOwnerSign", Vector3.new(18, 3.5, 0.5), origin + Vector3.new(0, 13.6, -5.8), Color3.fromRGB(34, 40, 46), Enum.Material.SmoothPlastic)
 	createLabel(sign, player.DisplayName .. "'s Aquarium")
 
 	local fishFolder = Instance.new("Folder")
@@ -1699,34 +1726,36 @@ end
 
 local function buildCleanLobby(world)
 	local block = 4
-	local center = Vector3.new(-180, -2, 0)
-	local groundRadiusX = 19
-	local groundRadiusZ = 26
+	local center = Vector3.new(-420, -2, 0)
+	local minX = -40
+	local maxX = 40
+	local minZ = -34
+	local maxZ = 34
 	local portalCooldowns = {}
 
 	local lobby = Instance.new("Model")
-	lobby.Name = "CleanFishingLobby"
+	lobby.Name = "LobbyArea"
 	lobby.Parent = world
 
 	local blocksFolder = Instance.new("Folder")
 	blocksFolder.Name = "Blocks"
 	blocksFolder.Parent = lobby
 
-	local pathFolder = Instance.new("Folder")
-	pathFolder.Name = "Paths"
-	pathFolder.Parent = lobby
+	local pathsFolder = Instance.new("Folder")
+	pathsFolder.Name = "Paths"
+	pathsFolder.Parent = lobby
 
 	local decorFolder = Instance.new("Folder")
 	decorFolder.Name = "Decorations"
 	decorFolder.Parent = lobby
 
-	local portalFolder = Instance.new("Folder")
-	portalFolder.Name = "Portals"
-	portalFolder.Parent = lobby
+	local shopsFolder = Instance.new("Folder")
+	shopsFolder.Name = "Shops"
+	shopsFolder.Parent = lobby
 
-	local shopFolder = Instance.new("Folder")
-	shopFolder.Name = "Shops"
-	shopFolder.Parent = lobby
+	local warpFolder = Instance.new("Folder")
+	warpFolder.Name = "Warps"
+	warpFolder.Parent = lobby
 
 	local spawnFolder = Instance.new("Folder")
 	spawnFolder.Name = "Spawn"
@@ -1766,7 +1795,7 @@ local function buildCleanLobby(world)
 		local gui = Instance.new("SurfaceGui")
 		gui.Name = name .. "_Gui"
 		gui.Face = face or Enum.NormalId.Front
-		gui.CanvasSize = Vector2.new(600, 260)
+		gui.CanvasSize = Vector2.new(800, 300)
 		gui.Parent = sign
 
 		local text = Instance.new("TextLabel")
@@ -1796,7 +1825,7 @@ local function buildCleanLobby(world)
 	local greenUI = Color3.fromRGB(35, 220, 75)
 	local goldUI = Color3.fromRGB(255, 190, 45)
 	local cyanUI = Color3.fromRGB(0, 220, 255)
-	local purpleUI = Color3.fromRGB(150, 95, 230)
+	local aquariumColor = Color3.fromRGB(0, 190, 255)
 
 	local function makeLantern(position)
 		makeLobbyPart(decorFolder, "LanternPost", Vector3.new(0.8, 5, 0.8), position, woodDark, Enum.Material.Wood)
@@ -1819,10 +1848,34 @@ local function buildCleanLobby(world)
 		light.Parent = lantern
 	end
 
-	local function makeTree(x, z)
-		makeLobbyPart(decorFolder, "TreeTrunk", Vector3.new(3, 12, 3), Vector3.new(x, 8, z), Color3.fromRGB(105, 65, 35), Enum.Material.Wood)
-		makeLobbyPart(decorFolder, "TreeLeaves", Vector3.new(11, 8, 11), Vector3.new(x, 18, z), Color3.fromRGB(60, 150, 55), Enum.Material.Grass)
-		makeLobbyPart(decorFolder, "TreeLeavesTop", Vector3.new(7, 5, 7), Vector3.new(x, 24, z), Color3.fromRGB(60, 150, 55), Enum.Material.Grass)
+	local function makeShopBuilding(name, gridX, gridZ, title, roofColor)
+		local shopModel = Instance.new("Model")
+		shopModel.Name = name
+		shopModel.Parent = shopsFolder
+
+		local footprint = {
+			{ -2, -1 }, { -1, -1 }, { 0, -1 }, { 1, -1 }, { 2, -1 },
+			{ -2, 0 }, { -1, 0 }, { 0, 0 }, { 1, 0 }, { 2, 0 },
+			{ -2, 1 }, { -1, 1 }, { 0, 1 },
+			{ -2, 2 }, { -1, 2 }, { 0, 2 },
+		}
+
+		for _, cell in ipairs(footprint) do
+			makeLobbyPart(
+				shopModel,
+				name .. "_Floor",
+				Vector3.new(block, 0.6, block),
+				Vector3.new((gridX + cell[1]) * block, 3.1, (gridZ + cell[2]) * block),
+				woodColor,
+				Enum.Material.WoodPlanks
+			)
+		end
+
+		makeLobbyPart(shopModel, name .. "_BackWall", Vector3.new(30, 12, 1), Vector3.new(gridX * block, 8.5, (gridZ + 2.9) * block), woodDark, Enum.Material.Wood)
+		makeLobbyPart(shopModel, name .. "_SideWall", Vector3.new(1, 12, 22), Vector3.new((gridX - 3.1) * block, 8.5, (gridZ + 0.5) * block), woodDark, Enum.Material.Wood)
+		makeLobbyPart(shopModel, name .. "_Counter", Vector3.new(24, 5, 4), Vector3.new(gridX * block, 5.5, (gridZ - 1.9) * block), woodColor, Enum.Material.WoodPlanks)
+		makeLobbyPart(shopModel, name .. "_Roof", Vector3.new(34, 2, 30), Vector3.new(gridX * block, 15, (gridZ + 0.5) * block), roofColor, Enum.Material.SmoothPlastic)
+		makeSign(shopModel, name .. "_Sign", Vector3.new(gridX * block, 11.5, (gridZ - 2.9) * block), Vector3.new(22, 4, 0.5), title, roofColor, Enum.NormalId.Front)
 	end
 
 	local function connectPortal(trigger, targetArea)
@@ -1844,12 +1897,25 @@ local function buildCleanLobby(world)
 				return
 			end
 
+			local root = character:FindFirstChild("HumanoidRootPart")
+			if targetArea == "BiomeWarp" then
+				OpenBiomeWarp:FireClient(player)
+				return
+			end
+
+			if targetArea == "Home" then
+				if root then
+					refreshPlayerAquarium(player)
+					root.CFrame = CFrame.new(getPlayerAquariumTeleportPosition(player))
+				end
+				return
+			end
+
 			if GameConfig.Biomes[targetArea] and not isBiomeUnlocked(data, targetArea) then
 				notify(player, "Unlock that area first.")
 				return
 			end
 
-			local root = character:FindFirstChild("HumanoidRootPart")
 			local target = GameConfig.Biomes[targetArea]
 			if root and target then
 				data.CurrentBiome = targetArea
@@ -1859,84 +1925,92 @@ local function buildCleanLobby(world)
 		end)
 	end
 
-	local function makePortal(name, position, color, textValue, targetArea, requiredLevel)
-		makeLobbyPart(portalFolder, name .. "_Base", Vector3.new(14, 1, 8), position, Color3.fromRGB(75, 75, 75), Enum.Material.Cobblestone)
-		makeLobbyPart(portalFolder, name .. "_Pad", Vector3.new(11, 0.35, 5), position + Vector3.new(0, 0.7, 0), color, Enum.Material.Neon, 0.1, false)
-		makeLobbyPart(portalFolder, name .. "_LeftPost", Vector3.new(1.2, 8, 1.2), position + Vector3.new(-6, 4.3, 0), Color3.fromRGB(25, 70, 150), Enum.Material.SmoothPlastic)
-		makeLobbyPart(portalFolder, name .. "_RightPost", Vector3.new(1.2, 8, 1.2), position + Vector3.new(6, 4.3, 0), Color3.fromRGB(25, 70, 150), Enum.Material.SmoothPlastic)
-		makeLobbyPart(portalFolder, name .. "_TopBeam", Vector3.new(14, 1.2, 1.2), position + Vector3.new(0, 8.4, 0), Color3.fromRGB(25, 70, 150), Enum.Material.SmoothPlastic)
+	local function makeWarpPad(name, position, color, textValue, targetArea, requiredLevel)
+		makeLobbyPart(warpFolder, name .. "_Base", Vector3.new(20, 1, 14), position - Vector3.new(0, 0.45, 0), Color3.fromRGB(75, 75, 75), Enum.Material.Cobblestone)
+		makeLobbyPart(warpFolder, name .. "_Pad", Vector3.new(17, 0.5, 11), position, color, Enum.Material.Neon, 0.08, false)
 
-		local trigger = makeLobbyPart(portalFolder, name .. "_Trigger", Vector3.new(12, 8, 6), position + Vector3.new(0, 4, 0), color, Enum.Material.ForceField, 1, false)
+		local trigger = makeLobbyPart(warpFolder, name .. "_Trigger", Vector3.new(17, 9, 11), position + Vector3.new(0, 4.5, 0), color, Enum.Material.ForceField, 1, false)
 		trigger:SetAttribute("TargetArea", targetArea)
 		trigger:SetAttribute("RequiredLevel", requiredLevel)
 		trigger:SetAttribute("PortalName", textValue)
 		CollectionService:AddTag(trigger, "AreaPortal")
 		connectPortal(trigger, targetArea)
 
-		makeSign(portalFolder, name .. "_Sign", position + Vector3.new(0, 10.4, -0.8), Vector3.new(14, 4, 0.5), textValue .. "\nLv. " .. tostring(requiredLevel) .. "+", blueUI, Enum.NormalId.Front)
+		makeSign(warpFolder, name .. "_SmallSign", position + Vector3.new(0, 5.2, -7.3), Vector3.new(15, 3.6, 0.5), textValue .. "\nLv. " .. tostring(requiredLevel) .. "+", color, Enum.NormalId.Front)
 		return trigger
 	end
 
-	local function makeShopStand(name, position, titleText, color)
-		makeLobbyPart(shopFolder, name .. "_Counter", Vector3.new(16, 4, 8), position, woodColor, Enum.Material.WoodPlanks)
-		makeLobbyPart(shopFolder, name .. "_BackWall", Vector3.new(18, 10, 1), position + Vector3.new(0, 5, 4.5), woodDark, Enum.Material.Wood)
-		makeLobbyPart(shopFolder, name .. "_Roof", Vector3.new(20, 1.5, 11), position + Vector3.new(0, 10.8, 0), color, Enum.Material.SmoothPlastic)
-		makeSign(shopFolder, name .. "_Sign", position + Vector3.new(0, 8.2, -4.3), Vector3.new(15, 3, 0.5), titleText, color, Enum.NormalId.Front)
-	end
-
-	for x = -groundRadiusX, groundRadiusX do
-		for z = -groundRadiusZ, groundRadiusZ do
+	for x = minX, maxX do
+		for z = minZ, maxZ do
 			makeBlock(blocksFolder, "GrassBlock", x, 0, z, grassColor, Enum.Material.Grass)
 			makeBlock(blocksFolder, "DirtBlock", x, -1, z, dirtColor, Enum.Material.Ground)
 		end
 	end
 
-	for _, p in ipairs({
-		{ -groundRadiusX, -groundRadiusZ }, { -groundRadiusX + 1, -groundRadiusZ }, { -groundRadiusX, -groundRadiusZ + 1 },
-		{ groundRadiusX, -groundRadiusZ }, { groundRadiusX - 1, -groundRadiusZ }, { groundRadiusX, -groundRadiusZ + 1 },
-		{ -groundRadiusX, groundRadiusZ }, { -groundRadiusX + 1, groundRadiusZ }, { -groundRadiusX, groundRadiusZ - 1 },
-		{ groundRadiusX, groundRadiusZ }, { groundRadiusX - 1, groundRadiusZ }, { groundRadiusX, groundRadiusZ - 1 },
-		{ -10, groundRadiusZ - 1 }, { 10, groundRadiusZ - 1 }, { -10, -groundRadiusZ + 1 }, { 10, -groundRadiusZ + 1 },
-	}) do
-		makeBlock(blocksFolder, "RaisedGrassBlock", p[1], 1, p[2], grassDark, Enum.Material.Grass)
+	for x = minX, maxX do
+		makeLobbyPart(blocksFolder, "OuterFenceNorth", Vector3.new(block, 3, 1), Vector3.new(x * block, 4, minZ * block), woodDark, Enum.Material.Wood)
+		makeLobbyPart(blocksFolder, "OuterFenceSouth", Vector3.new(block, 3, 1), Vector3.new(x * block, 4, maxZ * block), woodDark, Enum.Material.Wood)
 	end
 
-	for x = -6, 6 do
-		for z = -6, 6 do
-			local color = stoneColor
-			if (x + z) % 2 == 0 then
-				color = stoneDark
-			end
-			makeLobbyPart(blocksFolder, "SpawnPlazaTile", Vector3.new(block, 0.5, block), Vector3.new(x * block, 2.25, z * block), color, Enum.Material.Cobblestone)
-		end
+	for z = minZ, maxZ do
+		makeLobbyPart(blocksFolder, "OuterFenceWest", Vector3.new(1, 3, block), Vector3.new(minX * block, 4, z * block), woodDark, Enum.Material.Wood)
+		makeLobbyPart(blocksFolder, "OuterFenceEast", Vector3.new(1, 3, block), Vector3.new(maxX * block, 4, z * block), woodDark, Enum.Material.Wood)
 	end
 
-	for x = -2, 2 do
-		for z = -2, 2 do
-			makeLobbyPart(decorFolder, "LobbyFountainWater", Vector3.new(block, 0.5, block), Vector3.new(x * block, 2.75, z * block), waterColor, Enum.Material.Glass, 0.35, false)
-		end
-	end
-
-	for x = -3, 3 do
-		for z = -3, 3 do
-			if math.abs(x) == 3 or math.abs(z) == 3 then
-				makeLobbyPart(decorFolder, "FountainStoneBorder", Vector3.new(block, 1.2, block), Vector3.new(x * block, 3, z * block), stoneColor, Enum.Material.Cobblestone)
+	for x = -12, 12 do
+		for z = -10, 10 do
+			if not (math.abs(x) <= 4 and math.abs(z) <= 4) then
+				local color = stoneColor
+				if (x + z) % 2 == 0 then
+					color = stoneDark
+				end
+				makeLobbyPart(pathsFolder, "FountainPlazaTile", Vector3.new(block, 0.45, block), Vector3.new(x * block, 2.45, z * block), color, Enum.Material.Cobblestone)
 			end
 		end
 	end
 
-	makeLobbyPart(decorFolder, "FountainCore", Vector3.new(4, 6, 4), Vector3.new(0, 5.5, 0), stoneDark, Enum.Material.Cobblestone)
-	local fountainTop = makeLobbyPart(decorFolder, "FountainTopWater", Vector3.new(2.5, 2.5, 2.5), Vector3.new(0, 9.8, 0), waterColor, Enum.Material.Neon, 0.2, false)
+	for x = -4, 4 do
+		for z = -4, 4 do
+			makeLobbyPart(decorFolder, "FountainWater", Vector3.new(block, 0.55, block), Vector3.new(x * block, 2.8, z * block), waterColor, Enum.Material.Glass, 0.35, false)
+		end
+	end
+
+	for x = -5, 5 do
+		for z = -5, 5 do
+			if math.abs(x) == 5 or math.abs(z) == 5 then
+				makeLobbyPart(decorFolder, "FountainBorder", Vector3.new(block, 1.2, block), Vector3.new(x * block, 3.1, z * block), stoneColor, Enum.Material.Cobblestone)
+			end
+		end
+	end
+
+	makeLobbyPart(decorFolder, "FountainCore", Vector3.new(7, 9, 7), Vector3.new(0, 7, 0), stoneDark, Enum.Material.Cobblestone)
+	local fountainTop = makeLobbyPart(decorFolder, "FountainTopWater", Vector3.new(4, 4, 4), Vector3.new(0, 13, 0), waterColor, Enum.Material.Neon, 0.15, false)
 	local fountainLight = Instance.new("PointLight")
-	fountainLight.Brightness = 1
-	fountainLight.Range = 20
+	fountainLight.Brightness = 1.2
+	fountainLight.Range = 24
 	fountainLight.Color = Color3.fromRGB(80, 190, 255)
 	fountainLight.Parent = fountainTop
+
+	local fountainWarpTrigger = makeLobbyPart(
+		warpFolder,
+		"FountainBiomeWarpTrigger",
+		Vector3.new(42, 12, 42),
+		Vector3.new(0, 7, 0),
+		blueUI,
+		Enum.Material.ForceField,
+		1,
+		false
+	)
+	fountainWarpTrigger:SetAttribute("TargetArea", "BiomeWarp")
+	fountainWarpTrigger:SetAttribute("PortalName", "Biome Warp")
+	fountainWarpTrigger:SetAttribute("RequiredLevel", 1)
+	CollectionService:AddTag(fountainWarpTrigger, "AreaPortal")
+	connectPortal(fountainWarpTrigger, "BiomeWarp")
 
 	local lobbyZone = makeLobbyPart(
 		zonesFolder,
 		"LobbyZone",
-		Vector3.new(groundRadiusX * block * 2, 20, groundRadiusZ * block * 2),
+		Vector3.new((maxX - minX) * block, 20, (maxZ - minZ) * block),
 		Vector3.new(0, 8, 0),
 		Color3.fromRGB(0, 255, 255),
 		Enum.Material.ForceField,
@@ -1946,89 +2020,63 @@ local function buildCleanLobby(world)
 	lobbyZone:SetAttribute("AreaName", "Lobby")
 	CollectionService:AddTag(lobbyZone, "LobbyZone")
 
-	for x = -groundRadiusX, groundRadiusX do
+	for z = -28, -11 do
+		for x = -2, 2 do
+			makeLobbyPart(pathsFolder, "SpawnToFountainPath", Vector3.new(block, 0.25, block), Vector3.new(x * block, 2.6, z * block), pathColor, Enum.Material.Ground)
+		end
+	end
+
+	for z = 11, 28 do
+		for x = -2, 2 do
+			makeLobbyPart(pathsFolder, "FountainToBiomePath", Vector3.new(block, 0.25, block), Vector3.new(x * block, 2.6, z * block), pathColor, Enum.Material.Ground)
+		end
+	end
+
+	for x = -30, 30 do
 		for z = -1, 1 do
-			makeLobbyPart(pathFolder, "MainPathEastWest", Vector3.new(block, 0.25, block), Vector3.new(x * block, 2.55, z * block), pathColor, Enum.Material.Ground)
+			makeLobbyPart(pathsFolder, "LeftRightPath", Vector3.new(block, 0.25, block), Vector3.new(x * block, 2.6, z * block), pathColor, Enum.Material.Ground)
 		end
 	end
 
-	for z = -groundRadiusZ, groundRadiusZ do
-		for x = -1, 1 do
-			makeLobbyPart(pathFolder, "MainPathNorthSouth", Vector3.new(block, 0.25, block), Vector3.new(x * block, 2.55, z * block), pathColor, Enum.Material.Ground)
+	for x = -32, -14 do
+		for z = -26, -23 do
+			makeLobbyPart(pathsFolder, "FishShopPath", Vector3.new(block, 0.25, block), Vector3.new(x * block, 2.6, z * block), pathColor, Enum.Material.Ground)
 		end
 	end
 
-	for x = -groundRadiusX + 3, groundRadiusX - 3 do
-		makeLobbyPart(pathFolder, "OuterPathNorth", Vector3.new(block, 0.25, block), Vector3.new(x * block, 2.55, (-groundRadiusZ + 3) * block), pathColor, Enum.Material.Ground)
-		makeLobbyPart(pathFolder, "OuterPathSouth", Vector3.new(block, 0.25, block), Vector3.new(x * block, 2.55, (groundRadiusZ - 3) * block), pathColor, Enum.Material.Ground)
+	for x = 14, 32 do
+		for z = -26, -23 do
+			makeLobbyPart(pathsFolder, "RodShopPath", Vector3.new(block, 0.25, block), Vector3.new(x * block, 2.6, z * block), pathColor, Enum.Material.Ground)
+		end
 	end
 
-	for z = -groundRadiusZ + 3, groundRadiusZ - 3 do
-		makeLobbyPart(pathFolder, "OuterPathWest", Vector3.new(block, 0.25, block), Vector3.new((-groundRadiusX + 3) * block, 2.55, z * block), pathColor, Enum.Material.Ground)
-		makeLobbyPart(pathFolder, "OuterPathEast", Vector3.new(block, 0.25, block), Vector3.new((groundRadiusX - 3) * block, 2.55, z * block), pathColor, Enum.Material.Ground)
-	end
+	makeLobbyPart(decorFolder, "LeaderboardLeftPost", Vector3.new(1.4, 22, 1.4), Vector3.new(-7 * block, 12, 27 * block), woodDark, Enum.Material.Wood)
+	makeLobbyPart(decorFolder, "LeaderboardRightPost", Vector3.new(1.4, 22, 1.4), Vector3.new(7 * block, 12, 27 * block), woodDark, Enum.Material.Wood)
+	makeSign(decorFolder, "LeaderboardBoard", Vector3.new(0, 13.5, 27 * block), Vector3.new(56, 25, 0.8), "Leaderboard\n\n1. ---\n2. ---\n3. ---\n4. ---\n5. ---", blueUI, Enum.NormalId.Front)
 
-	makePortal("BeginnerPondPortal", Vector3.new(0, 3, -16 * block), greenUI, "Beginner Pond", "BeginnerPond", 1)
-	makePortal("RiverPortal", Vector3.new(16 * block, 3, 0), blueUI, "River", "River", GameConfig.Biomes.River.unlockLevel)
-	makePortal("OceanPortal", Vector3.new(0, 3, 16 * block), cyanUI, "Ocean", "Ocean", GameConfig.Biomes.Ocean.unlockLevel)
-	makePortal("ComingSoonPortal", Vector3.new(-16 * block, 3, 0), purpleUI, "Coming Soon", "ComingSoon", 999)
+	makeSign(warpFolder, "AquariumWarpSign", Vector3.new(31 * block, 11, 10 * block), Vector3.new(22, 15, 0.7), "Aquarium\nWarp", aquariumColor, Enum.NormalId.Front)
+	makeWarpPad("AquariumWarp", Vector3.new(31 * block, 3.2, 10 * block), aquariumColor, "Aquarium", "Home", 1)
 
-	makeShopStand("RodShop", Vector3.new(-11 * block, 4, -10 * block), "ROD SHOP", goldUI)
-	makeShopStand("SellFishStand", Vector3.new(11 * block, 4, -10 * block), "SELL FISH", blueUI)
+	makeShopBuilding("FishShop", -24, -24, "FISH SHOP", blueUI)
+	makeShopBuilding("RodShop", 24, -24, "ROD SHOP", goldUI)
 
-	makeLobbyPart(decorFolder, "LeaderboardLeftPost", Vector3.new(1, 8, 1), Vector3.new(-9 * block, 6, 15.5 * block), woodDark, Enum.Material.Wood)
-	makeLobbyPart(decorFolder, "LeaderboardRightPost", Vector3.new(1, 8, 1), Vector3.new(-3 * block, 6, 15.5 * block), woodDark, Enum.Material.Wood)
-	makeSign(decorFolder, "LeaderboardBoard", Vector3.new(-6 * block, 8.5, 15.5 * block), Vector3.new(24, 10, 0.7), "TOP FISHERS\n1. ---\n2. ---\n3. ---", blueUI, Enum.NormalId.Front)
-
-	makeLobbyPart(decorFolder, "TutorialLeftPost", Vector3.new(1, 8, 1), Vector3.new(3 * block, 6, 15.5 * block), woodDark, Enum.Material.Wood)
-	makeLobbyPart(decorFolder, "TutorialRightPost", Vector3.new(1, 8, 1), Vector3.new(9 * block, 6, 15.5 * block), woodDark, Enum.Material.Wood)
-	makeSign(decorFolder, "TutorialBoard", Vector3.new(6 * block, 8.5, 15.5 * block), Vector3.new(24, 10, 0.7), "HOW TO FISH\n1. Equip Rod\n2. Cast Rod\n3. Click Catch!", greenUI, Enum.NormalId.Front)
+	makeLobbyPart(spawnFolder, "SpawnPointPad", Vector3.new(64, 0.5, 24), Vector3.new(0, 3, -28 * block), Color3.fromRGB(145, 95, 50), Enum.Material.WoodPlanks)
+	makeSign(spawnFolder, "SpawnPointSign", Vector3.new(0, 7, -31 * block), Vector3.new(24, 4, 0.5), "Spawn Point", greenUI, Enum.NormalId.Back)
 
 	for _, pos in ipairs({
-		Vector3.new(-7 * block, 5, -7 * block), Vector3.new(7 * block, 5, -7 * block),
-		Vector3.new(-7 * block, 5, 7 * block), Vector3.new(7 * block, 5, 7 * block),
-		Vector3.new(0, 5, -12 * block), Vector3.new(12 * block, 5, 0),
-		Vector3.new(0, 5, 12 * block), Vector3.new(-12 * block, 5, 0),
+		Vector3.new(-12 * block, 5, -12 * block), Vector3.new(12 * block, 5, -12 * block),
+		Vector3.new(-12 * block, 5, 12 * block), Vector3.new(12 * block, 5, 12 * block),
+		Vector3.new(-31 * block, 5, 3 * block), Vector3.new(31 * block, 5, 3 * block),
+		Vector3.new(-18 * block, 5, -29 * block), Vector3.new(18 * block, 5, -29 * block),
+		Vector3.new(-22 * block, 5, 26 * block), Vector3.new(22 * block, 5, 26 * block),
 	}) do
 		makeLantern(pos)
 	end
 
-	makeTree(-68, -68)
-	makeTree(68, -68)
-	makeTree(-68, 68)
-	makeTree(68, 68)
-	makeTree(-36, -70)
-	makeTree(36, -70)
-	makeTree(-36, 70)
-	makeTree(36, 70)
-
-	for _, flower in ipairs({
-		{ -13, -5, Color3.fromRGB(245, 245, 230) }, { -12, -5, Color3.fromRGB(245, 210, 65) },
-		{ 13, -5, Color3.fromRGB(245, 245, 230) }, { 12, -5, Color3.fromRGB(245, 210, 65) },
-		{ -13, 5, Color3.fromRGB(245, 210, 65) }, { -12, 5, Color3.fromRGB(245, 245, 230) },
-		{ 13, 5, Color3.fromRGB(245, 210, 65) }, { 12, 5, Color3.fromRGB(245, 245, 230) },
-		{ -5, -13, Color3.fromRGB(245, 245, 230) }, { 5, -13, Color3.fromRGB(245, 210, 65) },
-		{ -5, 13, Color3.fromRGB(245, 210, 65) }, { 5, 13, Color3.fromRGB(245, 245, 230) },
-	}) do
-		local x, z, color = flower[1], flower[2], flower[3]
-		makeLobbyPart(decorFolder, "FlowerStem", Vector3.new(0.35, 1.2, 0.35), Vector3.new(x * block, 3.25, z * block), grassDark, Enum.Material.Grass, 0, false)
-		makeLobbyPart(decorFolder, "FlowerTop", Vector3.new(1, 0.35, 1), Vector3.new(x * block, 4, z * block), color, Enum.Material.SmoothPlastic, 0, false)
-	end
-
-	for _, bench in ipairs({
-		{ 0, -10, 0 }, { 0, 10, 180 }, { -10, 0, 90 }, { 10, 0, -90 },
-	}) do
-		local x, z, rotY = bench[1], bench[2], bench[3]
-		local seat = makeLobbyPart(decorFolder, "BenchSeat", Vector3.new(10, 1, 2), Vector3.new(x * block, 3.4, z * block), woodColor, Enum.Material.Wood)
-		seat.Orientation = Vector3.new(0, rotY, 0)
-		local back = makeLobbyPart(decorFolder, "BenchBack", Vector3.new(10, 3, 1), Vector3.new(x * block, 5, z * block + 1.6), woodDark, Enum.Material.Wood)
-		back.Orientation = Vector3.new(0, rotY, 0)
-	end
-
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "LobbySpawn"
-	spawn.Size = Vector3.new(6, 1, 6)
-	spawn.Position = localPosition(Vector3.new((groundRadiusX * block) - 8, 2.5, 0))
+	spawn.Size = Vector3.new(24, 1, 16)
+	spawn.Position = localPosition(Vector3.new(0, 3.7, -28 * block))
 	spawn.Anchored = true
 	spawn.Material = Enum.Material.WoodPlanks
 	spawn.Color = Color3.fromRGB(145, 95, 50)
@@ -2041,9 +2089,6 @@ local function buildCleanLobby(world)
 			descendant:Destroy()
 		end
 	end
-
-	makeLobbyPart(decorFolder, "MainSignPost", Vector3.new(1, 6, 1), Vector3.new(0, 5, -8 * block), woodDark, Enum.Material.Wood)
-	makeSign(decorFolder, "MainLobbySign", Vector3.new(0, 9, -8.2 * block), Vector3.new(22, 5, 0.5), "FISHING LOBBY", blueUI, Enum.NormalId.Front)
 
 	lobby.PrimaryPart = lobbyZone
 	return lobby
@@ -2655,7 +2700,6 @@ local function buildWorld()
 	world.Name = "FishyFishWorld"
 	world.Parent = workspace
 
-	makePart(world, "WorldGroundLobbyToPond", Vector3.new(4, 2, 180), Vector3.new(-100, -1, 0), Color3.fromRGB(74, 126, 66), Enum.Material.Grass)
 	makePart(world, "WorldGroundPondToRiver", Vector3.new(29.5, 2, 95), Vector3.new(112.75, -1, 0), Color3.fromRGB(74, 126, 66), Enum.Material.Grass)
 	makePart(world, "WorldGroundRiverToOcean", Vector3.new(75, 2, 95), Vector3.new(270, -1, 0), Color3.fromRGB(74, 126, 66), Enum.Material.Grass)
 	makePart(world, "WorldGroundBeginnerNorth", Vector3.new(196, 2, 30), Vector3.new(0, -1, -105), Color3.fromRGB(74, 126, 66), Enum.Material.Grass)
@@ -2943,7 +2987,7 @@ local function teleportPlayer(player, target)
 	local position
 
 	if target == "Lobby" then
-		position = Vector3.new(-180, 8, 0)
+		position = Vector3.new(-420, 5, -112)
 	elseif target == "Home" then
 		refreshPlayerAquarium(player)
 		position = getPlayerAquariumTeleportPosition(player)
@@ -3223,13 +3267,16 @@ AquariumAction.OnServerEvent:Connect(function(player, action, fishSerial, fishIn
 			return
 		end
 
+		local fish = data.Inventory[targetIndex]
 		local capacity = GameConfig.AquariumCapacities[data.Aquarium.Level]
-		if #data.Aquarium.Fish >= capacity then
-			notify(player, "Aquarium full. Upgrade it first.")
+		local usedCapacity = GameConfig.getAquariumUsedSpace(data.Aquarium.Fish)
+		local fishSpace = GameConfig.getAquariumFishSpace(fish)
+		if usedCapacity + fishSpace > capacity then
+			notify(player, "Aquarium needs " .. fishSpace .. " space. Upgrade it or remove fish first.")
 			return
 		end
 
-		local fish = table.remove(data.Inventory, targetIndex)
+		fish = table.remove(data.Inventory, targetIndex)
 		table.insert(data.Aquarium.Fish, fish)
 		refreshPlayerAquarium(player)
 		sendState(player)
@@ -3283,13 +3330,16 @@ AquariumAction.OnServerEvent:Connect(function(player, action, fishSerial, fishIn
 			return
 		end
 
+		local fish = data.Inventory[targetIndex]
 		local capacity = GameConfig.AquariumCapacities[data.Aquarium.Level]
-		if #data.Aquarium.Fish >= capacity then
-			notify(player, "Aquarium full. Upgrade it first.")
+		local usedCapacity = GameConfig.getAquariumUsedSpace(data.Aquarium.Fish)
+		local fishSpace = GameConfig.getAquariumFishSpace(fish)
+		if usedCapacity + fishSpace > capacity then
+			notify(player, "Aquarium needs " .. fishSpace .. " space. Upgrade it or remove fish first.")
 			return
 		end
 
-		local fish = table.remove(data.Inventory, targetIndex)
+		fish = table.remove(data.Inventory, targetIndex)
 		table.insert(data.Aquarium.Fish, fish)
 		refreshPlayerAquarium(player)
 		sendState(player)

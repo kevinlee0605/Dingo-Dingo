@@ -33,6 +33,9 @@
         "TeleportTo": {
           "$className": "RemoteEvent"
         },
+        "OpenBiomeWarp": {
+          "$className": "RemoteEvent"
+        },
         "AquariumAction": {
           "$className": "RemoteEvent"
         },
