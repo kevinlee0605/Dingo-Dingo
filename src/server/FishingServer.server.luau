@@ -1948,15 +1948,16 @@ local function buildExtraLargeBeginnerPond(parent, biome)
 		makePondPart(decorFolder, "DirtPath", Vector3.new(block, 0.28, block), Vector3.new(p[1] * block, 2.35, p[2] * block), Color3.fromRGB(150, 105, 60), Enum.Material.Ground)
 	end
 
+	local reedBaseY = 1.05
 	for _, basePos in ipairs({
-		Vector3.new(-58, 4, -36), Vector3.new(-58, 4, 36),
-		Vector3.new(58, 4, -36), Vector3.new(58, 4, 36),
-		Vector3.new(-36, 4, -46), Vector3.new(36, 4, -46),
-		Vector3.new(-36, 4, 46), Vector3.new(36, 4, 46),
-		Vector3.new(0, 4, -46), Vector3.new(0, 4, 46),
-		Vector3.new(-58, 4, 0), Vector3.new(58, 4, 0),
-		Vector3.new(-48, 4, -16), Vector3.new(48, 4, 16),
-		Vector3.new(-16, 4, 40), Vector3.new(16, 4, -40),
+		Vector3.new(-58, reedBaseY, -36), Vector3.new(-58, reedBaseY, 36),
+		Vector3.new(58, reedBaseY, -36), Vector3.new(58, reedBaseY, 36),
+		Vector3.new(-36, reedBaseY, -46), Vector3.new(36, reedBaseY, -46),
+		Vector3.new(-36, reedBaseY, 46), Vector3.new(36, reedBaseY, 46),
+		Vector3.new(0, reedBaseY, -46), Vector3.new(0, reedBaseY, 46),
+		Vector3.new(-58, reedBaseY, 0), Vector3.new(58, reedBaseY, 0),
+		Vector3.new(-48, reedBaseY, -16), Vector3.new(48, reedBaseY, 16),
+		Vector3.new(-16, reedBaseY, 40), Vector3.new(16, reedBaseY, -40),
 	}) do
 		for i = 1, 3 do
 			local height = 3 + i

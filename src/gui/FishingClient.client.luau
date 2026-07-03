@@ -597,7 +597,7 @@ end
 local function refreshTabs()
 	clearChildren(tabs)
 
-	local tabNames = { "Fish", "Rods", "Biomes", "Bag", "Fishdex", "Aquarium", "Teleport" }
+	local tabNames = { "Fish", "Rods", "Bag", "Fishdex", "Aquarium", "Teleport" }
 	for _, tabName in ipairs(tabNames) do
 		local color = activeTab == tabName and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(38, 45, 57)
 		local button = makeButton(tabs, tabName, color)
@@ -755,7 +755,7 @@ local function renderBagTab()
 		SellFish:FireServer()
 	end)
 
-	local rodsHeader = makeText(content, "Owned Rods", 16, Color3.fromRGB(255, 255, 255), true)
+	local rodsHeader = makeText(content, "Rods", 16, Color3.fromRGB(255, 255, 255), true)
 	rodsHeader.Size = UDim2.new(1, -8, 0, 28)
 
 	for _, rodId in ipairs(GameConfig.RodOrder) do
@@ -791,7 +791,7 @@ local function renderBagTab()
 		end
 	end
 
-	local fishHeader = makeText(content, "Fish Inventory", 16, Color3.fromRGB(255, 255, 255), true)
+	local fishHeader = makeText(content, "Fish", 16, Color3.fromRGB(255, 255, 255), true)
 	fishHeader.Size = UDim2.new(1, -8, 0, 28)
 
 	for index = #state.Inventory, 1, -1 do
@@ -901,31 +901,67 @@ end
 
 local function renderTeleportTab()
 	local targets = {
-		{ id = "Lobby", name = "Lobby" },
-		{ id = "Home", name = "Home Aquarium" },
+		{ id = "Lobby", name = "Lobby", requirement = "Free" },
+		{ id = "Home", name = "Home Aquarium", requirement = "Free" },
 	}
 
 	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
-		table.insert(targets, { id = biomeId, name = GameConfig.Biomes[biomeId].displayName })
+		local biome = GameConfig.Biomes[biomeId]
+		table.insert(targets, {
+			id = biomeId,
+			name = biome.displayName,
+			biome = biome,
+			requirement = GameConfig.getBiomeUnlockText(biomeId),
+		})
 	end
 
 	for _, target in ipairs(targets) do
-		local locked = GameConfig.Biomes[target.id] and not state.UnlockedBiomes[target.id]
-		local card = makeCard(content, 58)
-		local name = makeText(card, target.name, 15, locked and Color3.fromRGB(130, 140, 155) or Color3.fromRGB(255, 255, 255), true)
-		name.Position = UDim2.new(0, 12, 0, 10)
-		name.Size = UDim2.new(1, -128, 0, 24)
+		local biome = target.biome
+		local unlocked = not biome or state.UnlockedBiomes[target.id]
+		local current = biome and state.CurrentBiome == target.id
+		local card = makeCard(content, biome and 96 or 72)
+		local nameColor = biome and biome.color or Color3.fromRGB(255, 255, 255)
+		if not unlocked then
+			nameColor = Color3.fromRGB(130, 140, 155)
+		end
 
-		local button = makeButton(card, locked and "Locked" or "Go", locked and Color3.fromRGB(86, 98, 115) or Color3.fromRGB(53, 130, 246))
-		button.Position = UDim2.new(1, -110, 0, 12)
-		button.Size = UDim2.new(0, 94, 0, 34)
+		local name = makeText(card, target.name, 16, nameColor, true)
+		name.Position = UDim2.new(0, 12, 0, 8)
+		name.Size = UDim2.new(1, -132, 0, 22)
+
+		local requirement = makeText(card, "Requirement: " .. target.requirement, 13, Color3.fromRGB(190, 204, 220), false)
+		requirement.Position = UDim2.new(0, 12, 0, 34)
+		requirement.Size = UDim2.new(1, -132, 0, 20)
+
+		local detailText = biome and ("Species: " .. #biome.fish) or "Safe travel point"
+		local detail = makeText(card, detailText, 12, Color3.fromRGB(143, 160, 180), false)
+		detail.Position = UDim2.new(0, 12, 0, 58)
+		detail.Size = UDim2.new(1, -132, 0, 18)
+
+		local label = current and "Selected" or (unlocked and "Go" or "Unlock")
+		local color = unlocked and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(28, 160, 92)
+		if current then
+			color = Color3.fromRGB(91, 104, 124)
+		end
+
+		local button = makeButton(card, label, color)
+		button.Position = UDim2.new(1, -110, 0, biome and 30 or 19)
+		button.Size = UDim2.new(0, 94, 0, 36)
 		button.MouseButton1Click:Connect(function()
-			TeleportTo:FireServer(target.id)
+			if unlocked then
+				TeleportTo:FireServer(target.id)
+			elseif biome then
+				UnlockBiome:FireServer(target.id)
+			end
 		end)
 	end
 end
 
 renderContent = function()
+	if activeTab == "Biomes" then
+		activeTab = "Teleport"
+	end
+
 	refreshHud()
 	refreshCenterControls()
 	refreshTabs()
@@ -941,8 +977,6 @@ renderContent = function()
 		renderFishTab()
 	elseif activeTab == "Rods" then
 		renderRodsTab()
-	elseif activeTab == "Biomes" then
-		renderBiomesTab()
 	elseif activeTab == "Bag" then
 		renderBagTab()
 	elseif activeTab == "Fishdex" then
