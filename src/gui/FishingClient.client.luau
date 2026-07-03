@@ -796,24 +796,33 @@ local function renderBagTab()
 
 	for index = #state.Inventory, 1, -1 do
 		local fish = state.Inventory[index]
-		local card = makeCard(content, 76)
+		local card = makeCard(content, 84)
 		local color = GameConfig.RarityColors[fish.rarity] or Color3.fromRGB(255, 255, 255)
 
 		local icon = makeFishIcon(card, fish.id, fish.rarity, true)
-		icon.Position = UDim2.new(0, 8, 0, 9)
+		icon.Position = UDim2.new(0, 8, 0, 13)
 		icon.Size = UDim2.new(0, 58, 0, 58)
 
 		local name = makeText(card, fish.name .. " [" .. fish.rarity .. "]", 15, color, true)
 		name.Position = UDim2.new(0, 76, 0, 9)
-		name.Size = UDim2.new(1, -170, 0, 22)
+		name.Size = UDim2.new(1, -176, 0, 22)
 
 		local info = makeText(card, string.format("Value: %d | Timing: %d%%", fish.value, fish.score or 0), 13, Color3.fromRGB(190, 204, 220), false)
 		info.Position = UDim2.new(0, 76, 0, 34)
-		info.Size = UDim2.new(1, -170, 0, 18)
+		info.Size = UDim2.new(1, -176, 0, 18)
+
+		local display = makeButton(card, "Display", Color3.fromRGB(53, 130, 246))
+		display.Position = UDim2.new(1, -92, 0, 8)
+		display.Size = UDim2.new(0, 76, 0, 30)
+		display.TextSize = 12
+		display.MouseButton1Click:Connect(function()
+			AquariumAction:FireServer("DisplayFish", fish.serial, index)
+		end)
 
 		local sellOne = makeButton(card, "Sell", Color3.fromRGB(230, 126, 48))
-		sellOne.Position = UDim2.new(1, -84, 0, 20)
-		sellOne.Size = UDim2.new(0, 68, 0, 34)
+		sellOne.Position = UDim2.new(1, -92, 0, 46)
+		sellOne.Size = UDim2.new(0, 76, 0, 30)
+		sellOne.TextSize = 12
 		sellOne.MouseButton1Click:Connect(function()
 			SellFish:FireServer("Single", fish.serial, index)
 		end)
@@ -857,7 +866,7 @@ local function renderAquariumTab()
 	local aquarium = state.Aquarium
 	local capacity = aquarium.Capacity
 
-	local top = makeCard(content, 118)
+	local top = makeCard(content, 96)
 	local heading = makeText(top, "Personal Aquarium", 17, Color3.fromRGB(255, 255, 255), true)
 	heading.Position = UDim2.new(0, 12, 0, 8)
 	heading.Size = UDim2.new(1, -24, 0, 24)
@@ -869,33 +878,34 @@ local function renderAquariumTab()
 	local best = state.BestCatch and ("Best: " .. state.BestCatch.name .. " (" .. state.BestCatch.value .. " coins)") or "Best: None yet"
 	local bestText = makeText(top, best, 13, Color3.fromRGB(143, 160, 180), false)
 	bestText.Position = UDim2.new(0, 12, 0, 60)
-	bestText.Size = UDim2.new(1, -24, 0, 20)
-
-	local display = makeButton(top, "Display Best", Color3.fromRGB(53, 130, 246))
-	display.Position = UDim2.new(0, 12, 0, 84)
-	display.Size = UDim2.new(0, 130, 0, 28)
-	display.MouseButton1Click:Connect(function()
-		AquariumAction:FireServer("DisplayBest")
-	end)
+	bestText.Size = UDim2.new(1, -184, 0, 20)
 
 	local nextCost = GameConfig.AquariumUpgradeCosts[aquarium.Level + 1]
 	local upgrade = makeButton(top, nextCost and ("Upgrade " .. nextCost) or "Max Level", Color3.fromRGB(28, 160, 92))
-	upgrade.Position = UDim2.new(0, 152, 0, 84)
+	upgrade.Position = UDim2.new(1, -162, 0, 58)
 	upgrade.Size = UDim2.new(0, 150, 0, 28)
 	upgrade.MouseButton1Click:Connect(function()
 		AquariumAction:FireServer("Upgrade")
 	end)
 
 	for index, fish in ipairs(aquarium.Fish) do
-		local card = makeCard(content, 48)
+		local card = makeCard(content, 62)
 		local color = GameConfig.RarityColors[fish.rarity] or Color3.new(1, 1, 1)
 		local name = makeText(card, index .. ". " .. fish.name .. " [" .. fish.rarity .. "]", 14, color, true)
 		name.Position = UDim2.new(0, 12, 0, 6)
-		name.Size = UDim2.new(1, -24, 0, 20)
+		name.Size = UDim2.new(1, -118, 0, 20)
 
 		local valueText = makeText(card, "Value: " .. fish.value .. " coins", 12, Color3.fromRGB(190, 204, 220), false)
 		valueText.Position = UDim2.new(0, 12, 0, 26)
-		valueText.Size = UDim2.new(1, -24, 0, 16)
+		valueText.Size = UDim2.new(1, -118, 0, 16)
+
+		local remove = makeButton(card, "Remove", Color3.fromRGB(230, 126, 48))
+		remove.Position = UDim2.new(1, -94, 0, 15)
+		remove.Size = UDim2.new(0, 78, 0, 32)
+		remove.TextSize = 12
+		remove.MouseButton1Click:Connect(function()
+			AquariumAction:FireServer("RemoveFish", fish.serial, index)
+		end)
 	end
 end
 

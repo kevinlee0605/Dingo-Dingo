@@ -4,6 +4,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local StarterPack = game:GetService("StarterPack")
 local CollectionService = game:GetService("CollectionService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local EARLY_ROD_TEMPLATE_FOLDER_NAME = "FishyFishModelTemplates"
 
@@ -123,6 +125,7 @@ local AUTO_FISH_MIN_SCORE = 0.42
 local AUTO_FISH_MAX_SCORE = 0.62
 local TESTING_START_COINS = 100000
 local TESTING_START_LEVEL = GameConfig.MAX_LEVEL
+local STUDIO_GIVE_BEGINNER_FISH_IN_BAG = true
 
 -- Optional fallback: paste a single uploaded rod MeshId here if you prefer an asset-id based rod.
 local WOODEN_ROD_MESH_ID = ""
@@ -259,6 +262,89 @@ local function syncFishSerials(data)
 			fish.serial = fishSerial
 		end
 	end
+end
+
+local function makeInventoryFishEntry(fish, biomeId, score)
+	fishSerial += 1
+
+	return {
+		serial = fishSerial,
+		id = fish.id,
+		name = fish.name,
+		rarity = fish.rarity,
+		imageKey = fish.imageKey or fish.id,
+		value = fish.value,
+		baseValue = fish.value,
+		biome = biomeId,
+		score = score or 100,
+	}
+end
+
+local function giveStudioBeginnerFishInBag(data)
+	if not STUDIO_GIVE_BEGINNER_FISH_IN_BAG or not RunService:IsStudio() then
+		return false
+	end
+
+	local beginnerPond = GameConfig.Biomes.BeginnerPond
+	if not beginnerPond then
+		return false
+	end
+
+	local ownedById = {}
+	for _, fish in ipairs(data.Inventory) do
+		if fish.id then
+			ownedById[fish.id] = true
+		end
+	end
+	for _, fish in ipairs(data.Aquarium.Fish) do
+		if fish.id then
+			ownedById[fish.id] = true
+		end
+	end
+
+	local missingFish = {}
+	for _, fish in ipairs(beginnerPond.fish) do
+		if not ownedById[fish.id] then
+			table.insert(missingFish, fish)
+		end
+	end
+
+	if #missingFish == 0 then
+		return false
+	end
+
+	data.BackpackSize = math.max(data.BackpackSize, #data.Inventory + #missingFish)
+	for _, fish in ipairs(missingFish) do
+		local entry = makeInventoryFishEntry(fish, "BeginnerPond", 100)
+		table.insert(data.Inventory, entry)
+		if not data.BestCatch or entry.value > data.BestCatch.value then
+			data.BestCatch = entry
+		end
+	end
+
+	return true
+end
+
+local function findInventoryFishIndex(data, fishSerial, fishIndex)
+	local requestedSerial = tonumber(fishSerial)
+	local requestedIndex = tonumber(fishIndex)
+
+	if requestedIndex and data.Inventory[requestedIndex] then
+		local fish = data.Inventory[requestedIndex]
+		if not requestedSerial or tonumber(fish.serial) == requestedSerial then
+			return requestedIndex
+		end
+	end
+
+	if requestedSerial then
+		for index, fish in ipairs(data.Inventory) do
+			if tonumber(fish.serial) == requestedSerial then
+				return index
+			end
+		end
+	end
+
+	return nil
 end
 
 local function makeClientState(data)
@@ -1120,6 +1206,495 @@ local function removeNonLobbySpawnLocations()
 			descendant:Destroy()
 		end
 	end
+end
+
+local function getAquariumsFolder()
+	local world = workspace:FindFirstChild("FishyFishWorld")
+	if not world then
+		return nil
+	end
+
+	local folder = world:FindFirstChild("PersonalAquariums")
+	if not folder then
+		folder = Instance.new("Folder")
+		folder.Name = "PersonalAquariums"
+		folder.Parent = world
+	end
+
+	return folder
+end
+
+local function getPlayerAquariumSlot(player)
+	local players = Players:GetPlayers()
+	table.sort(players, function(left, right)
+		return left.UserId < right.UserId
+	end)
+
+	for index, candidate in ipairs(players) do
+		if candidate == player then
+			return index
+		end
+	end
+
+	return 1
+end
+
+local function getPlayerAquariumOrigin(player)
+	local slot = getPlayerAquariumSlot(player) - 1
+	local column = slot % 3
+	local row = math.floor(slot / 3)
+	return Vector3.new(-232 + (column * 34), 0, 52 + (row * 24))
+end
+
+local function getPlayerAquariumTeleportPosition(player)
+	return getPlayerAquariumOrigin(player) + Vector3.new(0, 5, -15)
+end
+
+local function getAquariumFishColor(fish)
+	return GameConfig.RarityColors[fish.rarity] or Color3.fromRGB(110, 190, 255)
+end
+
+local function weldFishPart(root, part)
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = root
+	weld.Part1 = part
+	weld.Parent = part
+end
+
+local function makeFishBlock(parent, root, name, size, localCFrame, color, scale, material)
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Anchored = false
+	part.CanCollide = false
+	part.CanTouch = false
+	part.CanQuery = false
+	part.Massless = true
+	part.Size = size * scale
+	part.CFrame = root.CFrame * CFrame.new(localCFrame.Position * scale) * localCFrame.Rotation
+	part.Color = color
+	part.Material = material or Enum.Material.SmoothPlastic
+	part.Parent = parent
+	weldFishPart(root, part)
+	return part
+end
+
+local function getAquariumFishModelSpec(fish)
+	local fishId = fish.id or fish.imageKey or ""
+	if fishId == "" and type(fish.name) == "string" then
+		fishId = fish.name:gsub("%s", "")
+	end
+
+	local specs = {
+		SmallFish = {
+			modelScale = 0.72,
+			width = 0.72,
+			height = 0.72,
+			length = 0.8,
+			head = Color3.fromRGB(55, 132, 160),
+			mouth = Color3.fromRGB(230, 232, 226),
+			back = Color3.fromRGB(18, 86, 112),
+			side = Color3.fromRGB(83, 157, 188),
+			shine = Color3.fromRGB(164, 209, 222),
+			belly = Color3.fromRGB(218, 221, 213),
+			bellyLight = Color3.fromRGB(242, 241, 233),
+			tail = Color3.fromRGB(25, 91, 122),
+			tailDark = Color3.fromRGB(18, 70, 96),
+			fin = Color3.fromRGB(83, 157, 188),
+			bottomFin = Color3.fromRGB(150, 176, 180),
+			dorsal = "tall",
+		},
+		Carp = {
+			modelScale = 1.08,
+			width = 1.04,
+			height = 0.95,
+			length = 1.08,
+			head = Color3.fromRGB(135, 121, 55),
+			mouth = Color3.fromRGB(231, 205, 132),
+			back = Color3.fromRGB(104, 86, 31),
+			side = Color3.fromRGB(172, 145, 55),
+			shine = Color3.fromRGB(213, 181, 74),
+			belly = Color3.fromRGB(224, 203, 130),
+			bellyLight = Color3.fromRGB(242, 228, 171),
+			tail = Color3.fromRGB(202, 127, 34),
+			tailDark = Color3.fromRGB(163, 93, 25),
+			fin = Color3.fromRGB(200, 126, 36),
+			bottomFin = Color3.fromRGB(137, 83, 28),
+			barbels = true,
+			scaleChecks = true,
+		},
+		Bluegill = {
+			modelScale = 1,
+			width = 1,
+			height = 1,
+			length = 1,
+			head = Color3.fromRGB(95, 102, 54),
+			mouth = Color3.fromRGB(229, 204, 144),
+			back = Color3.fromRGB(62, 70, 42),
+			side = Color3.fromRGB(90, 139, 154),
+			shine = Color3.fromRGB(141, 180, 183),
+			belly = Color3.fromRGB(206, 174, 91),
+			bellyLight = Color3.fromRGB(229, 204, 144),
+			tail = Color3.fromRGB(83, 109, 119),
+			tailDark = Color3.fromRGB(56, 75, 84),
+			fin = Color3.fromRGB(83, 109, 119),
+			bottomFin = Color3.fromRGB(56, 75, 84),
+			bluegillStripes = true,
+		},
+		Bass = {
+			modelScale = 1.18,
+			width = 1.02,
+			height = 0.92,
+			length = 1.18,
+			head = Color3.fromRGB(92, 99, 49),
+			mouth = Color3.fromRGB(232, 218, 151),
+			back = Color3.fromRGB(49, 58, 31),
+			side = Color3.fromRGB(126, 134, 61),
+			shine = Color3.fromRGB(165, 164, 79),
+			belly = Color3.fromRGB(221, 211, 147),
+			bellyLight = Color3.fromRGB(244, 234, 180),
+			tail = Color3.fromRGB(91, 99, 48),
+			tailDark = Color3.fromRGB(57, 67, 37),
+			fin = Color3.fromRGB(127, 126, 74),
+			bottomFin = Color3.fromRGB(91, 99, 48),
+			verticalBars = Color3.fromRGB(58, 66, 35),
+			dorsal = "tall",
+		},
+		Catfish = {
+			modelScale = 1.34,
+			width = 1.03,
+			height = 0.76,
+			length = 1.42,
+			head = Color3.fromRGB(62, 67, 72),
+			mouth = Color3.fromRGB(206, 198, 184),
+			back = Color3.fromRGB(43, 48, 54),
+			side = Color3.fromRGB(83, 86, 89),
+			shine = Color3.fromRGB(107, 109, 111),
+			belly = Color3.fromRGB(169, 160, 144),
+			bellyLight = Color3.fromRGB(220, 211, 197),
+			tail = Color3.fromRGB(63, 68, 75),
+			tailDark = Color3.fromRGB(42, 46, 51),
+			fin = Color3.fromRGB(86, 89, 94),
+			bottomFin = Color3.fromRGB(67, 69, 72),
+			barbels = true,
+			longBarbels = true,
+			dorsal = "short",
+		},
+		GoldenCarp = {
+			modelScale = 1.28,
+			width = 1.06,
+			height = 0.98,
+			length = 1.14,
+			head = Color3.fromRGB(236, 169, 0),
+			mouth = Color3.fromRGB(255, 235, 118),
+			back = Color3.fromRGB(223, 137, 0),
+			side = Color3.fromRGB(255, 184, 0),
+			shine = Color3.fromRGB(255, 226, 58),
+			belly = Color3.fromRGB(255, 209, 75),
+			bellyLight = Color3.fromRGB(255, 239, 137),
+			tail = Color3.fromRGB(237, 145, 0),
+			tailDark = Color3.fromRGB(201, 103, 0),
+			fin = Color3.fromRGB(238, 130, 0),
+			bottomFin = Color3.fromRGB(184, 92, 0),
+			barbels = true,
+			scaleChecks = true,
+			goldGlow = true,
+		},
+		Koi = {
+			modelScale = 1.25,
+			width = 1.06,
+			height = 0.98,
+			length = 1.18,
+			head = Color3.fromRGB(238, 82, 26),
+			mouth = Color3.fromRGB(252, 228, 180),
+			back = Color3.fromRGB(238, 82, 26),
+			side = Color3.fromRGB(245, 242, 232),
+			shine = Color3.fromRGB(255, 96, 48),
+			belly = Color3.fromRGB(247, 244, 235),
+			bellyLight = Color3.fromRGB(255, 250, 242),
+			tail = Color3.fromRGB(246, 244, 236),
+			tailDark = Color3.fromRGB(239, 77, 28),
+			fin = Color3.fromRGB(247, 244, 236),
+			bottomFin = Color3.fromRGB(227, 218, 205),
+			barbels = true,
+			koiPatches = true,
+		},
+		PondGuardian = {
+			modelScale = 1.68,
+			width = 1.12,
+			height = 1.05,
+			length = 1.42,
+			head = Color3.fromRGB(25, 92, 94),
+			mouth = Color3.fromRGB(202, 211, 198),
+			back = Color3.fromRGB(14, 67, 70),
+			side = Color3.fromRGB(35, 111, 114),
+			shine = Color3.fromRGB(76, 151, 153),
+			belly = Color3.fromRGB(143, 166, 158),
+			bellyLight = Color3.fromRGB(206, 220, 210),
+			tail = Color3.fromRGB(27, 104, 112),
+			tailDark = Color3.fromRGB(16, 70, 78),
+			fin = Color3.fromRGB(32, 111, 121),
+			bottomFin = Color3.fromRGB(21, 83, 91),
+			barbels = true,
+			longBarbels = true,
+			guardian = true,
+			neon = Color3.fromRGB(85, 245, 255),
+			gold = Color3.fromRGB(187, 151, 75),
+		},
+	}
+
+	return specs[fishId] or specs.Bluegill
+end
+
+local function buildAquariumFishModel(model, root, fish, scale)
+	local spec = getAquariumFishModelSpec(fish)
+	local finalScale = scale * (spec.modelScale or 1)
+	local width = spec.width or 1
+	local height = spec.height or 1
+	local length = spec.length or 1
+	local rarityGlow = getAquariumFishColor(fish)
+
+	local function size(x, y, z)
+		return Vector3.new(x * width, y * height, z * length)
+	end
+
+	local function cf(x, y, z)
+		return CFrame.new(x * width, y * height, z * length)
+	end
+
+	makeFishBlock(model, root, "Head", size(0.95, 0.9, 0.55), cf(0, 0.03, -0.92), spec.head, finalScale)
+	makeFishBlock(model, root, "Mouth", size(0.55, 0.38, 0.3), cf(0, -0.16, -1.32), spec.mouth, finalScale)
+	makeFishBlock(model, root, "Back", size(0.9, 0.36, 1.72), cf(0, 0.42, -0.08), spec.back, finalScale)
+	makeFishBlock(model, root, "Side", size(0.98, 0.38, 1.82), cf(0, 0.05, 0.02), spec.side, finalScale)
+	makeFishBlock(model, root, "SideShine", size(1.02, 0.16, 0.9), cf(0, 0.18, -0.14), spec.shine, finalScale)
+	makeFishBlock(model, root, "Belly", size(0.82, 0.32, 1.62), cf(0, -0.35, 0), spec.belly, finalScale)
+	makeFishBlock(model, root, "BellyLight", size(0.62, 0.18, 0.95), cf(0, -0.52, -0.14), spec.bellyLight, finalScale)
+
+	if spec.bluegillStripes then
+		for stripeIndex, stripeZ in ipairs({ -0.56, -0.18, 0.2, 0.58 }) do
+			local stripeHeight = 0.42 - (stripeIndex * 0.03)
+			makeFishBlock(model, root, "BluegillStripe", size(1.04, stripeHeight, 0.08), cf(0, 0.13, stripeZ), Color3.fromRGB(58, 93, 103), finalScale)
+		end
+	end
+
+	if spec.verticalBars then
+		for _, stripeZ in ipairs({ -0.72, -0.28, 0.16, 0.56, 0.9 }) do
+			makeFishBlock(model, root, "BodyBar", size(1.04, 0.55, 0.09), cf(0, 0.08, stripeZ), spec.verticalBars, finalScale)
+		end
+	end
+
+	if spec.scaleChecks then
+		for row, y in ipairs({ 0.18, 0.02, -0.14 }) do
+			for column, z in ipairs({ -0.48, -0.15, 0.18, 0.51, 0.84 }) do
+				local color = (row + column) % 2 == 0 and spec.shine or spec.side
+				makeFishBlock(model, root, "ScalePatch", size(0.26, 0.16, 0.12), cf(-0.01, y, z), color, finalScale)
+			end
+		end
+	end
+
+	if spec.koiPatches then
+		for _, patch in ipairs({
+			{ color = spec.head, x = 0, y = 0.3, z = -0.45, sx = 0.95, sy = 0.22, sz = 0.42 },
+			{ color = spec.head, x = -0.08, y = 0.03, z = -0.08, sx = 1.03, sy = 0.3, sz = 0.36 },
+			{ color = Color3.fromRGB(59, 61, 62), x = 0, y = 0.12, z = 0.28, sx = 1.04, sy = 0.32, sz = 0.22 },
+			{ color = spec.head, x = 0.1, y = -0.18, z = 0.66, sx = 0.8, sy = 0.25, sz = 0.28 },
+			{ color = Color3.fromRGB(50, 52, 54), x = 0, y = 0.03, z = 0.86, sx = 0.85, sy = 0.28, sz = 0.2 },
+		}) do
+			makeFishBlock(model, root, "KoiPatch", size(patch.sx, patch.sy, patch.sz), cf(patch.x, patch.y, patch.z), patch.color, finalScale)
+		end
+	end
+
+	local dorsalBlocks = {
+		Vector3.new(-0.25, 0.72, -0.55),
+		Vector3.new(-0.1, 0.82, -0.22),
+		Vector3.new(0.04, 0.77, 0.12),
+		Vector3.new(0.17, 0.67, 0.46),
+	}
+	local dorsalHeight = spec.dorsal == "short" and 0.16 or 0.28
+	if spec.dorsal == "tall" then
+		dorsalHeight = 0.34
+	end
+	for _, ridge in ipairs(dorsalBlocks) do
+		makeFishBlock(model, root, "DorsalBlock", size(0.42, dorsalHeight, 0.22), cf(ridge.X, ridge.Y, ridge.Z), spec.back, finalScale)
+	end
+
+	makeFishBlock(model, root, "TailStem", size(0.45, 0.46, 0.38), cf(0, -0.01, 1.02), spec.tail, finalScale)
+	makeFishBlock(model, root, "TailTop", size(0.7, 0.42, 0.24), cf(0, 0.36, 1.32), spec.tail, finalScale)
+	makeFishBlock(model, root, "TailMiddle", size(0.82, 0.38, 0.24), cf(0, 0, 1.42), spec.tailDark, finalScale)
+	makeFishBlock(model, root, "TailBottom", size(0.7, 0.42, 0.24), cf(0, -0.36, 1.32), spec.tail, finalScale)
+	makeFishBlock(model, root, "LeftFin", size(0.14, 0.3, 0.65), cf(-0.58, -0.18, -0.22) * CFrame.Angles(0, 0, math.rad(-18)), spec.fin, finalScale)
+	makeFishBlock(model, root, "RightFin", size(0.14, 0.3, 0.65), cf(0.58, -0.18, -0.22) * CFrame.Angles(0, 0, math.rad(18)), spec.fin, finalScale)
+	makeFishBlock(model, root, "BottomFin", size(0.42, 0.18, 0.48), cf(0, -0.7, 0.28), spec.bottomFin, finalScale)
+	makeFishBlock(model, root, "LeftEye", size(0.16, 0.2, 0.08), cf(-0.42, 0.18, -1.17), Color3.fromRGB(12, 13, 12), finalScale)
+	makeFishBlock(model, root, "RightEye", size(0.16, 0.2, 0.08), cf(0.42, 0.18, -1.17), Color3.fromRGB(12, 13, 12), finalScale)
+
+	if spec.barbels then
+		local barbelColor = spec.guardian and (spec.neon or spec.mouth) or spec.mouth
+		local barbelLength = spec.longBarbels and 0.9 or 0.55
+		makeFishBlock(model, root, "LeftBarbel", size(0.06, 0.06, barbelLength), cf(-0.36, -0.25, -1.5) * CFrame.Angles(math.rad(8), math.rad(24), 0), barbelColor, finalScale, spec.guardian and Enum.Material.Neon or Enum.Material.SmoothPlastic)
+		makeFishBlock(model, root, "RightBarbel", size(0.06, 0.06, barbelLength), cf(0.36, -0.25, -1.5) * CFrame.Angles(math.rad(8), math.rad(-24), 0), barbelColor, finalScale, spec.guardian and Enum.Material.Neon or Enum.Material.SmoothPlastic)
+		makeFishBlock(model, root, "LowerBarbel", size(0.05, 0.05, barbelLength * 0.8), cf(-0.18, -0.48, -1.44) * CFrame.Angles(math.rad(-15), math.rad(12), 0), barbelColor, finalScale)
+		makeFishBlock(model, root, "LowerBarbel", size(0.05, 0.05, barbelLength * 0.8), cf(0.18, -0.48, -1.44) * CFrame.Angles(math.rad(-15), math.rad(-12), 0), barbelColor, finalScale)
+	end
+
+	if spec.goldGlow then
+		makeFishBlock(model, root, "GoldGlowScale", size(0.25, 0.14, 0.22), cf(0, 0.26, 0.04), Color3.fromRGB(255, 240, 54), finalScale, Enum.Material.Neon)
+	end
+
+	if spec.guardian then
+		local neon = spec.neon
+		local gold = spec.gold
+		for _, crystal in ipairs({
+			Vector3.new(-0.25, 1.05, -0.32),
+			Vector3.new(0, 1.17, 0.05),
+			Vector3.new(0.22, 1.02, 0.42),
+		}) do
+			makeFishBlock(model, root, "GlowCrystal", size(0.25, 0.55, 0.2), cf(crystal.X, crystal.Y, crystal.Z), neon, finalScale, Enum.Material.Neon)
+		end
+		for _, lightSpot in ipairs({
+			Vector3.new(-0.36, 0.04, -0.2),
+			Vector3.new(0.36, 0.02, 0.2),
+			Vector3.new(-0.24, -0.22, 0.62),
+			Vector3.new(0.22, 0.28, 0.82),
+		}) do
+			makeFishBlock(model, root, "GuardianGlow", size(0.16, 0.16, 0.16), cf(lightSpot.X, lightSpot.Y, lightSpot.Z), neon, finalScale, Enum.Material.Neon)
+		end
+		makeFishBlock(model, root, "GoldHeadBand", size(1.02, 0.12, 0.12), cf(0, 0.42, -0.75), gold, finalScale, Enum.Material.Metal)
+		makeFishBlock(model, root, "GoldSideLine", size(0.08, 0.08, 1.38), cf(-0.56, 0.16, 0.25), gold, finalScale, Enum.Material.Metal)
+		makeFishBlock(model, root, "GoldSideLine", size(0.08, 0.08, 1.38), cf(0.56, 0.16, 0.25), gold, finalScale, Enum.Material.Metal)
+	end
+
+	makeFishBlock(model, root, "RarityScale", size(0.2, 0.12, 0.2), cf(0, 0.26, -0.04), rarityGlow, finalScale, Enum.Material.Neon)
+	return rarityGlow
+end
+
+local function animateAquariumFish(part, origin, index, seed)
+	local random = Random.new(seed)
+
+	task.spawn(function()
+		while part.Parent do
+			local target = origin + Vector3.new(
+				random:NextNumber(-8.5, 8.5),
+				random:NextNumber(3.2, 8.2),
+				random:NextNumber(-3.2, 3.2)
+			)
+			local current = part.Position
+			local direction = target - current
+			if direction.Magnitude < 0.1 then
+				direction = Vector3.new(1, 0, 0)
+			end
+
+			local travelTime = random:NextNumber(2.2, 4.6) + (index * 0.04)
+			local tween = TweenService:Create(
+				part,
+				TweenInfo.new(travelTime, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
+				{ CFrame = CFrame.lookAt(target, target + direction.Unit) }
+			)
+			tween:Play()
+			tween.Completed:Wait()
+			task.wait(random:NextNumber(0.15, 0.55))
+		end
+	end)
+end
+
+local function makeAquariumFish(parent, fish, origin, index, ownerUserId)
+	local rarityScale = {
+		Common = 0.85,
+		Uncommon = 0.95,
+		Rare = 1.08,
+		Epic = 1.22,
+		Legendary = 1.42,
+		Mythic = 1.65,
+	}
+	local scale = rarityScale[fish.rarity] or 1
+	local offset = Vector3.new(((index - 1) % 5 - 2) * 2.8, 4 + ((index - 1) % 3), math.floor((index - 1) / 5) * 1.2 - 2.5)
+
+	local model = Instance.new("Model")
+	model.Name = "AquariumFish_" .. tostring(fish.id or index)
+	model.Parent = parent
+
+	local startPosition = origin + offset
+	local root = Instance.new("Part")
+	root.Name = "FishRoot"
+	root.Anchored = true
+	root.CanCollide = false
+	root.CanTouch = false
+	root.CanQuery = false
+	root.Transparency = 1
+	root.Size = Vector3.new(0.2, 0.2, 0.2)
+	root.CFrame = CFrame.lookAt(startPosition, startPosition + Vector3.new(1, 0, 0))
+	root.Parent = model
+
+	local rarityGlow = buildAquariumFishModel(model, root, fish, scale)
+
+	local light = Instance.new("PointLight")
+	light.Brightness = 0.18
+	light.Range = 4.5
+	light.Color = rarityGlow
+	light.Parent = root
+
+	model.PrimaryPart = root
+	animateAquariumFish(root, origin, index, ownerUserId + (index * 997))
+	return model
+end
+
+local function refreshPlayerAquarium(player)
+	local data = playerData[player]
+	local folder = getAquariumsFolder()
+	if not data or not folder then
+		return
+	end
+
+	local modelName = "Aquarium_" .. tostring(player.UserId)
+	local existing = folder:FindFirstChild(modelName)
+	if existing then
+		existing:Destroy()
+	end
+
+	local origin = getPlayerAquariumOrigin(player)
+	local model = Instance.new("Model")
+	model.Name = modelName
+	model.Parent = folder
+
+	local base = makePart(model, "AquariumBase", Vector3.new(28, 1, 14), origin + Vector3.new(0, 0.5, 0), Color3.fromRGB(89, 122, 88), Enum.Material.Grass)
+	local tank = makePart(model, "GlassTank", Vector3.new(24, 10, 10), origin + Vector3.new(0, 5.8, 0), Color3.fromRGB(75, 165, 220), Enum.Material.Glass)
+	tank.Transparency = 0.55
+	tank.CanCollide = false
+
+	local water = makePart(model, "AquariumWater", Vector3.new(22, 7.5, 8), origin + Vector3.new(0, 5.1, 0), Color3.fromRGB(50, 145, 220), Enum.Material.Glass)
+	water.Transparency = 0.35
+	water.CanCollide = false
+
+	for _, corner in ipairs({
+		Vector3.new(-12, 5.8, -5), Vector3.new(12, 5.8, -5),
+		Vector3.new(-12, 5.8, 5), Vector3.new(12, 5.8, 5),
+	}) do
+		makePart(model, "AquariumFramePost", Vector3.new(0.5, 10.5, 0.5), origin + corner, Color3.fromRGB(38, 52, 68), Enum.Material.Metal)
+	end
+
+	makePart(model, "AquariumTopFrame", Vector3.new(25, 0.5, 11), origin + Vector3.new(0, 11.1, 0), Color3.fromRGB(38, 52, 68), Enum.Material.Metal)
+	makePart(model, "AquariumBottomFrame", Vector3.new(25, 0.5, 11), origin + Vector3.new(0, 0.9, 0), Color3.fromRGB(38, 52, 68), Enum.Material.Metal)
+
+	local sign = makePart(model, "AquariumOwnerSign", Vector3.new(18, 4, 0.5), origin + Vector3.new(0, 7, -7.3), Color3.fromRGB(34, 40, 46), Enum.Material.SmoothPlastic)
+	createLabel(sign, player.DisplayName .. "'s Aquarium")
+
+	local fishFolder = Instance.new("Folder")
+	fishFolder.Name = "Fish"
+	fishFolder.Parent = model
+
+	local maxVisualFish = 24
+	for index, fish in ipairs(data.Aquarium.Fish) do
+		if index > maxVisualFish then
+			break
+		end
+		makeAquariumFish(fishFolder, fish, origin, index, player.UserId)
+	end
+
+	if #data.Aquarium.Fish == 0 then
+		local emptySign = makePart(model, "EmptyAquariumSign", Vector3.new(14, 3, 0.4), origin + Vector3.new(0, 4.5, 0), Color3.fromRGB(24, 90, 130), Enum.Material.SmoothPlastic)
+		createLabel(emptySign, "Display a fish")
+	end
+
+	model.PrimaryPart = base
 end
 
 local function buildCleanLobby(world)
@@ -2370,7 +2945,8 @@ local function teleportPlayer(player, target)
 	if target == "Lobby" then
 		position = Vector3.new(-180, 8, 0)
 	elseif target == "Home" then
-		position = Vector3.new(-205, 8, 18)
+		refreshPlayerAquarium(player)
+		position = getPlayerAquariumTeleportPosition(player)
 	elseif GameConfig.Biomes[target] then
 		position = GameConfig.Biomes[target].position
 	end
@@ -2384,6 +2960,7 @@ local function setupPlayer(player)
 	ensureWorld()
 
 	playerData[player] = loadData(player)
+	local addedStudioFish = giveStudioBeginnerFishInBag(playerData[player])
 	setupLeaderstats(player)
 	updateLeaderstats(player)
 
@@ -2400,7 +2977,13 @@ local function setupPlayer(player)
 	task.defer(function()
 		local data = playerData[player]
 		ensureWorld()
+		if data then
+			refreshPlayerAquarium(player)
+		end
 		sendState(player)
+		if addedStudioFish then
+			notify(player, "Added beginner pond fish to your Bag for testing.")
+		end
 		teleportPlayer(player, "Lobby")
 		if data then
 			refreshFishingRodForPlayer(player, data)
@@ -2514,25 +3097,7 @@ SellFish.OnServerEvent:Connect(function(player, action, fishSerialToSell, fishIn
 	end
 
 	if action == "Single" then
-		local requestedSerial = tonumber(fishSerialToSell)
-		local requestedIndex = tonumber(fishIndexToSell)
-		local targetIndex = nil
-
-		if requestedIndex and data.Inventory[requestedIndex] then
-			local fish = data.Inventory[requestedIndex]
-			if not requestedSerial or tonumber(fish.serial) == requestedSerial then
-				targetIndex = requestedIndex
-			end
-		end
-
-		if not targetIndex and requestedSerial then
-			for index, fish in ipairs(data.Inventory) do
-				if tonumber(fish.serial) == requestedSerial then
-					targetIndex = index
-					break
-				end
-			end
-		end
+		local targetIndex = findInventoryFishIndex(data, fishSerialToSell, fishIndexToSell)
 
 		if not targetIndex then
 			notify(player, "That fish is no longer in your inventory.")
@@ -2645,15 +3210,16 @@ TeleportTo.OnServerEvent:Connect(function(player, target)
 	teleportPlayer(player, target)
 end)
 
-AquariumAction.OnServerEvent:Connect(function(player, action)
+AquariumAction.OnServerEvent:Connect(function(player, action, fishSerial, fishIndex)
 	local data = playerData[player]
 	if not data then
 		return
 	end
 
-	if action == "DisplayBest" then
-		if not data.BestCatch then
-			notify(player, "Catch a fish first.")
+	if action == "DisplayFish" then
+		local targetIndex = findInventoryFishIndex(data, fishSerial, fishIndex)
+		if not targetIndex then
+			notify(player, "That fish is no longer in your Bag.")
 			return
 		end
 
@@ -2663,9 +3229,71 @@ AquariumAction.OnServerEvent:Connect(function(player, action)
 			return
 		end
 
-		table.insert(data.Aquarium.Fish, data.BestCatch)
+		local fish = table.remove(data.Inventory, targetIndex)
+		table.insert(data.Aquarium.Fish, fish)
+		refreshPlayerAquarium(player)
 		sendState(player)
-		notify(player, "Displayed " .. data.BestCatch.name .. " in your aquarium.")
+		notify(player, "Displayed " .. fish.name .. " in your aquarium.")
+	elseif action == "RemoveFish" then
+		local requestedSerial = tonumber(fishSerial)
+		local requestedIndex = tonumber(fishIndex)
+		local targetIndex = nil
+
+		if requestedIndex and data.Aquarium.Fish[requestedIndex] then
+			local fish = data.Aquarium.Fish[requestedIndex]
+			if not requestedSerial or tonumber(fish.serial) == requestedSerial then
+				targetIndex = requestedIndex
+			end
+		end
+
+		if not targetIndex and requestedSerial then
+			for index, fish in ipairs(data.Aquarium.Fish) do
+				if tonumber(fish.serial) == requestedSerial then
+					targetIndex = index
+					break
+				end
+			end
+		end
+
+		if not targetIndex then
+			notify(player, "That fish is no longer in your aquarium.")
+			sendState(player)
+			return
+		end
+
+		if #data.Inventory >= data.BackpackSize then
+			notify(player, "Bag full. Make room first.")
+			return
+		end
+
+		local fish = table.remove(data.Aquarium.Fish, targetIndex)
+		table.insert(data.Inventory, fish)
+		refreshPlayerAquarium(player)
+		sendState(player)
+		notify(player, "Moved " .. fish.name .. " back to your Bag.")
+	elseif action == "DisplayBest" then
+		if not data.BestCatch then
+			notify(player, "Catch a fish first.")
+			return
+		end
+
+		local targetIndex = findInventoryFishIndex(data, data.BestCatch.serial)
+		if not targetIndex then
+			notify(player, "Your best fish is not in your Bag anymore.")
+			return
+		end
+
+		local capacity = GameConfig.AquariumCapacities[data.Aquarium.Level]
+		if #data.Aquarium.Fish >= capacity then
+			notify(player, "Aquarium full. Upgrade it first.")
+			return
+		end
+
+		local fish = table.remove(data.Inventory, targetIndex)
+		table.insert(data.Aquarium.Fish, fish)
+		refreshPlayerAquarium(player)
+		sendState(player)
+		notify(player, "Displayed " .. fish.name .. " in your aquarium.")
 	elseif action == "Upgrade" then
 		local nextLevel = data.Aquarium.Level + 1
 		local cost = GameConfig.AquariumUpgradeCosts[nextLevel]
@@ -2684,6 +3312,7 @@ AquariumAction.OnServerEvent:Connect(function(player, action)
 		data.Aquarium.Level = nextLevel
 
 		updateLeaderstats(player)
+		refreshPlayerAquarium(player)
 		sendState(player)
 		notify(player, "Aquarium upgraded to level " .. nextLevel .. ".")
 	end
@@ -2718,6 +3347,13 @@ Players.PlayerAdded:Connect(setupPlayer)
 
 Players.PlayerRemoving:Connect(function(player)
 	saveData(player)
+	local folder = getAquariumsFolder()
+	if folder then
+		local aquarium = folder:FindFirstChild("Aquarium_" .. tostring(player.UserId))
+		if aquarium then
+			aquarium:Destroy()
+		end
+	end
 	playerData[player] = nil
 	pendingFishing[player] = nil
 end)
