@@ -1,0 +1,11 @@
+# Generated Roblox place files
+*.rbxlx
+*.rbxl
+
+# Roblox Studio lock files
+/*.rbxlx.lock
+/*.rbxl.lock
+
+sourcemap.json
+.DS_Store
+.tools/

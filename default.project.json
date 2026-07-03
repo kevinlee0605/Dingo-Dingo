@@ -1,0 +1,118 @@
+{
+  "name": "Stop it and Stop it",
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      },
+      "FishImages": {
+        "$path": "assets/fish_icons"
+      },
+      "RodImages": {
+        "$path": "assets/rod_icons"
+      },
+      "FishingRemotes": {
+        "$className": "Folder",
+        "StartFishing": {
+          "$className": "RemoteEvent"
+        },
+        "FinishMinigame": {
+          "$className": "RemoteEvent"
+        },
+        "SellFish": {
+          "$className": "RemoteEvent"
+        },
+        "BuyRod": {
+          "$className": "RemoteEvent"
+        },
+        "UnlockBiome": {
+          "$className": "RemoteEvent"
+        },
+        "TeleportTo": {
+          "$className": "RemoteEvent"
+        },
+        "AquariumAction": {
+          "$className": "RemoteEvent"
+        },
+        "ToggleAutoFish": {
+          "$className": "RemoteEvent"
+        },
+        "StateUpdated": {
+          "$className": "RemoteEvent"
+        },
+        "FishingPrompt": {
+          "$className": "RemoteEvent"
+        },
+        "Notice": {
+          "$className": "RemoteEvent"
+        },
+        "GetState": {
+          "$className": "RemoteFunction"
+        }
+      }
+    },
+
+    "ServerScriptService": {
+      "$path": "src/server"
+    },
+
+    "StarterGui": {
+      "FishingGui": {
+        "$className": "ScreenGui",
+        "$path": "src/gui",
+        "$properties": {
+          "ResetOnSpawn": false
+        }
+      }
+    },
+
+    "Workspace": {
+      "$properties": {
+        "FilteringEnabled": true
+      },
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Color": [
+            0.38823,
+            0.37254,
+            0.38823
+          ],
+          "Locked": true,
+          "Transparency": 1,
+          "Position": [
+            0,
+            -80,
+            0
+          ],
+          "Size": [
+            512,
+            4,
+            512
+          ]
+        }
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "Ambient": [
+          0,
+          0,
+          0
+        ],
+        "Brightness": 2,
+        "GlobalShadows": true,
+        "Outlines": false,
+        "Technology": "Voxel"
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    }
+  }
+}
