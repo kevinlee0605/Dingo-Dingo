@@ -21,6 +21,124 @@ GameConfig.RarityXP = {
 	Mythic = 500,
 }
 
+GameConfig.FishingMinigame = {
+	Defaults = {
+		baseBarSize = 0.24,
+		progressGainPerSecond = 0.34,
+		progressDrainPerSecond = 0.16,
+		gravity = 1.8,
+		lift = 2.75,
+		damping = 0.90,
+		bounceDamping = 0.36,
+		maxBarVelocity = 1.65,
+		startProgress = 0.34,
+		minSuccessDuration = 1.75,
+		maxDuration = 35,
+	},
+	RodBonuses = {
+		WoodenRod = {
+			barSizeMultiplier = 1,
+			progressGainMultiplier = 1,
+			progressDrainMultiplier = 1,
+		},
+		IronRod = {
+			barSizeMultiplier = 1.10,
+			progressGainMultiplier = 1.05,
+			progressDrainMultiplier = 0.94,
+		},
+		GoldenRod = {
+			barSizeMultiplier = 1.20,
+			progressGainMultiplier = 1.08,
+			progressDrainMultiplier = 0.90,
+		},
+		EmeraldRod = {
+			barSizeMultiplier = 1.35,
+			progressGainMultiplier = 1.14,
+			progressDrainMultiplier = 0.84,
+		},
+		OceanRod = {
+			barSizeMultiplier = 1.50,
+			progressGainMultiplier = 1.20,
+			progressDrainMultiplier = 0.78,
+		},
+	},
+	RarityDifficulty = {
+		Common = {
+			moveSpeed = 0.20,
+			turnIntervalMin = 1.8,
+			turnIntervalMax = 2.8,
+			jitter = 0.05,
+			pauseChance = 0,
+			jumpChance = 0,
+		},
+		Uncommon = {
+			moveSpeed = 0.27,
+			turnIntervalMin = 1.25,
+			turnIntervalMax = 2.0,
+			jitter = 0.10,
+			pauseChance = 0.02,
+			jumpChance = 0,
+		},
+		Rare = {
+			moveSpeed = 0.36,
+			turnIntervalMin = 0.85,
+			turnIntervalMax = 1.45,
+			jitter = 0.18,
+			pauseChance = 0.04,
+			jumpChance = 0.015,
+		},
+		Epic = {
+			moveSpeed = 0.47,
+			turnIntervalMin = 0.55,
+			turnIntervalMax = 1.05,
+			jitter = 0.26,
+			pauseChance = 0.06,
+			jumpChance = 0.03,
+		},
+		Legendary = {
+			moveSpeed = 0.58,
+			turnIntervalMin = 0.38,
+			turnIntervalMax = 0.88,
+			jitter = 0.34,
+			pauseChance = 0.15,
+			pauseMin = 0.18,
+			pauseMax = 0.52,
+			jumpChance = 0.06,
+		},
+		Mythic = {
+			moveSpeed = 0.68,
+			turnIntervalMin = 0.28,
+			turnIntervalMax = 0.72,
+			jitter = 0.42,
+			pauseChance = 0.20,
+			pauseMin = 0.12,
+			pauseMax = 0.45,
+			jumpChance = 0.09,
+		},
+	},
+}
+
+function GameConfig.getFishingMinigameConfig(rarity, rodId)
+	local defaults = GameConfig.FishingMinigame.Defaults
+	local difficulty = GameConfig.FishingMinigame.RarityDifficulty[rarity] or GameConfig.FishingMinigame.RarityDifficulty.Common
+	local rodBonus = GameConfig.FishingMinigame.RodBonuses[rodId] or GameConfig.FishingMinigame.RodBonuses.WoodenRod
+
+	return {
+		barSize = math.clamp(defaults.baseBarSize * rodBonus.barSizeMultiplier, 0.16, 0.58),
+		progressGainPerSecond = defaults.progressGainPerSecond * rodBonus.progressGainMultiplier,
+		progressDrainPerSecond = defaults.progressDrainPerSecond * rodBonus.progressDrainMultiplier,
+		gravity = defaults.gravity,
+		lift = defaults.lift,
+		damping = defaults.damping,
+		bounceDamping = defaults.bounceDamping,
+		maxBarVelocity = defaults.maxBarVelocity,
+		startProgress = defaults.startProgress,
+		minSuccessDuration = defaults.minSuccessDuration,
+		maxDuration = defaults.maxDuration,
+		difficulty = difficulty,
+	}
+end
+
 GameConfig.FishImageIds = {
 	SmallFish = "rbxassetid://92425635797325",
 	Carp = "rbxassetid://85530716090863",
@@ -135,15 +253,6 @@ GameConfig.Rods = {
 		zoneBonus = 0.04,
 		order = 2,
 	},
-	EmeraldRod = {
-		displayName = "Emerald Rod",
-		cost = 30000,
-		unlockLevel = 20,
-		luck = 0.35,
-		speed = 0.76,
-		zoneBonus = 0.10,
-		order = 4,
-	},
 	GoldenRod = {
 		displayName = "Golden Rod",
 		cost = 10000,
@@ -152,6 +261,15 @@ GameConfig.Rods = {
 		speed = 0.84,
 		zoneBonus = 0.07,
 		order = 3,
+	},
+	EmeraldRod = {
+		displayName = "Emerald Rod",
+		cost = 30000,
+		unlockLevel = 20,
+		luck = 0.35,
+		speed = 0.76,
+		zoneBonus = 0.10,
+		order = 4,
 	},
 	OceanRod = {
 		displayName = "Ocean Rod",
@@ -162,6 +280,102 @@ GameConfig.Rods = {
 		speed = 0.68,
 		zoneBonus = 0.14,
 		order = 5,
+	},
+}
+
+GameConfig.BasicBaitId = "BasicBait"
+
+GameConfig.Baits = {
+	BasicBait = {
+		displayName = "Basic Bait",
+		cost = 0,
+		purchaseAmount = 0,
+		unlockLevel = 1,
+		unlimited = true,
+		biteSpeedMultiplier = 1,
+		rareChanceBonus = 0,
+		xpMultiplier = 1,
+		valueMultiplier = 1,
+		order = 1,
+		description = "Default fishing.",
+	},
+	FreshBait = {
+		displayName = "Fresh Bait",
+		cost = 80,
+		purchaseAmount = 10,
+		unlockLevel = 1,
+		biteSpeedMultiplier = 0.88,
+		rareChanceBonus = 0,
+		xpMultiplier = 1,
+		valueMultiplier = 1,
+		order = 2,
+		description = "Slightly faster bites.",
+	},
+	TastyBait = {
+		displayName = "Tasty Bait",
+		cost = 140,
+		purchaseAmount = 10,
+		unlockLevel = 3,
+		biteSpeedMultiplier = 1,
+		rareChanceBonus = 0,
+		xpMultiplier = 1,
+		valueMultiplier = 1.15,
+		order = 3,
+		description = "Fish sell for slightly more.",
+	},
+	LuckyBait = {
+		displayName = "Lucky Bait",
+		cost = 220,
+		purchaseAmount = 10,
+		unlockLevel = 5,
+		biteSpeedMultiplier = 1,
+		rareChanceBonus = 0.15,
+		xpMultiplier = 1,
+		valueMultiplier = 1,
+		order = 4,
+		description = "Slightly better rare fish odds.",
+	},
+	GlowBait = {
+		displayName = "Glow Bait",
+		cost = 300,
+		purchaseAmount = 10,
+		unlockLevel = 8,
+		biteSpeedMultiplier = 1,
+		rareChanceBonus = 0,
+		xpMultiplier = 1.20,
+		valueMultiplier = 1,
+		order = 5,
+		description = "Fish give more Fishing XP.",
+	},
+	MysticBait = {
+		displayName = "Mystic Bait",
+		cost = 500,
+		purchaseAmount = 10,
+		unlockLevel = 12,
+		biteSpeedMultiplier = 0.92,
+		rareChanceBonus = 0.10,
+		xpMultiplier = 1.12,
+		valueMultiplier = 1.10,
+		order = 6,
+		description = "Small boost to bites, luck, XP, and value.",
+	},
+}
+
+GameConfig.BaitOrder = { "BasicBait", "FreshBait", "TastyBait", "LuckyBait", "GlowBait", "MysticBait" }
+
+function GameConfig.getBait(baitId)
+	return GameConfig.Baits[baitId] or GameConfig.Baits[GameConfig.BasicBaitId]
+end
+
+GameConfig.Lobby = {
+	displayName = "Lobby",
+	center = Vector3.new(-170, 8, -452),
+	spawnPosition = Vector3.new(-147, 10, -492),
+	bounds = {
+		minX = -325,
+		maxX = -15,
+		minZ = -605,
+		maxZ = -300,
 	},
 }
 
