@@ -3,16 +3,40 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
+local TextChatService = game:GetService("TextChatService")
+local StarterGui = game:GetService("StarterGui")
 
 local player = Players.LocalPlayer
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
+local MonetizationConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("MonetizationConfig"))
+
+if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+	TextChatService.OnIncomingMessage = function(message)
+		local source = message.TextSource
+		if not source then
+			return nil
+		end
+
+		local speaker = Players:GetPlayerByUserId(source.UserId)
+		if not speaker or speaker:GetAttribute("FishyFishVip") ~= true then
+			return nil
+		end
+
+		local properties = Instance.new("TextChatMessageProperties")
+		properties.PrefixText = "<font color='#FFD94F'>[VIP]</font> " .. message.PrefixText
+		return properties
+	end
+end
 
 local Remotes = ReplicatedStorage:WaitForChild("FishingRemotes")
 local StartFishing = Remotes:WaitForChild("StartFishing")
+local GetCastConfig = Remotes:WaitForChild("GetCastConfig", 10)
 local FinishMinigame = Remotes:WaitForChild("FinishMinigame")
 local SellFish = Remotes:WaitForChild("SellFish")
 local BuyRod = Remotes:WaitForChild("BuyRod")
 local BaitAction = Remotes:WaitForChild("BaitAction", 10)
+local QuestAction = Remotes:WaitForChild("QuestAction", 10)
+local ShopAction = Remotes:WaitForChild("ShopAction", 10)
 local UnlockBiome = Remotes:WaitForChild("UnlockBiome")
 local TeleportTo = Remotes:WaitForChild("TeleportTo")
 local OpenBiomeWarp = Remotes:WaitForChild("OpenBiomeWarp", 10)
@@ -37,13 +61,45 @@ local function fireBaitAction(action, baitId)
 	end
 end
 
+local function fireQuestAction(action, periodName, questId)
+	if not QuestAction then
+		QuestAction = Remotes:FindFirstChild("QuestAction")
+	end
+
+	if QuestAction then
+		QuestAction:FireServer(action, periodName, questId)
+	else
+		warn("QuestAction remote was not available; quest claiming is disabled until remotes resync.")
+	end
+end
+
+local function fireShopAction(action, category, itemKey, payload)
+	if not ShopAction then
+		ShopAction = Remotes:FindFirstChild("ShopAction")
+	end
+
+	if ShopAction then
+		ShopAction:FireServer(action, category, itemKey, payload)
+	else
+		warn("ShopAction remote was not available; shop actions are disabled until remotes resync.")
+	end
+end
+
 local screenGui = script.Parent
 screenGui.IgnoreGuiInset = true
 screenGui.DisplayOrder = 20
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
+task.defer(function()
+	pcall(function()
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+	end)
+end)
+
 local state = nil
 local activeTab = "Fishdex"
+local activeQuestPeriod = "Daily"
+local activeShopTab = "Game Passes"
 local fishingBusy = false
 local minigameRunning = false
 local activeMinigameCleanup = nil
@@ -427,6 +483,8 @@ fishmongerOverlay.Visible = false
 fishmongerOverlay.ZIndex = 95
 fishmongerOverlay.Parent = root
 
+local activeFishmongerSort = "Recent"
+
 local fishmongerPanel = Instance.new("Frame")
 fishmongerPanel.Name = "FishmongerSellPanel"
 fishmongerPanel.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -455,6 +513,20 @@ fishmongerClose.Size = UDim2.new(0, 32, 0, 28)
 fishmongerClose.TextSize = 14
 fishmongerClose.ZIndex = 97
 
+local fishmongerSortBar = Instance.new("Frame")
+fishmongerSortBar.Name = "FishmongerSortBar"
+fishmongerSortBar.Position = UDim2.new(0, 16, 0, 52)
+fishmongerSortBar.Size = UDim2.new(1, -32, 0, 34)
+fishmongerSortBar.BackgroundTransparency = 1
+fishmongerSortBar.ZIndex = 97
+fishmongerSortBar.Parent = fishmongerPanel
+
+local fishmongerSortLayout = Instance.new("UIListLayout")
+fishmongerSortLayout.FillDirection = Enum.FillDirection.Horizontal
+fishmongerSortLayout.Padding = UDim.new(0, 7)
+fishmongerSortLayout.SortOrder = Enum.SortOrder.LayoutOrder
+fishmongerSortLayout.Parent = fishmongerSortBar
+
 local fishmongerList = Instance.new("ScrollingFrame")
 fishmongerList.Name = "FishmongerSellList"
 fishmongerList.Active = true
@@ -462,9 +534,9 @@ fishmongerList.AutomaticCanvasSize = Enum.AutomaticSize.Y
 fishmongerList.BackgroundTransparency = 1
 fishmongerList.BorderSizePixel = 0
 fishmongerList.CanvasSize = UDim2.new(0, 0, 0, 0)
-fishmongerList.Position = UDim2.new(0, 16, 0, 56)
+fishmongerList.Position = UDim2.new(0, 16, 0, 94)
 fishmongerList.ScrollBarThickness = 6
-fishmongerList.Size = UDim2.new(1, -32, 1, -72)
+fishmongerList.Size = UDim2.new(1, -32, 1, -110)
 fishmongerList.ZIndex = 97
 fishmongerList.Parent = fishmongerPanel
 
@@ -473,11 +545,86 @@ fishmongerListLayout.Padding = UDim.new(0, 10)
 fishmongerListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 fishmongerListLayout.Parent = fishmongerList
 
+local POPUP_SCROLL_GUTTER = 18
+
+local function makePopupListCard(parent, name, height, strokeColor, strokeTransparency)
+	local wrapper = Instance.new("Frame")
+	wrapper.Name = name .. "Row"
+	wrapper.Size = UDim2.new(1, -POPUP_SCROLL_GUTTER, 0, height)
+	wrapper.BackgroundTransparency = 1
+	wrapper.ZIndex = 97
+	wrapper.Parent = parent
+
+	local card = Instance.new("Frame")
+	card.Name = name
+	card.BackgroundColor3 = Color3.fromRGB(24, 32, 44)
+	card.Position = UDim2.new(0, 6, 0, 1)
+	card.Size = UDim2.new(1, -12, 1, -2)
+	card.ZIndex = 97
+	card.Parent = wrapper
+	addCorner(card, 8)
+	local stroke = addStroke(card, strokeColor or Color3.fromRGB(83, 104, 134), 1)
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	if strokeTransparency ~= nil then
+		stroke.Transparency = strokeTransparency
+	end
+	return card
+end
+
 local function setFishmongerSellVisible(visible)
 	fishmongerOverlay.Visible = visible
 end
 
-local function renderFishmongerSellOptions()
+local renderFishmongerSellOptions
+
+local function getFishmongerRarityRank(rarity)
+	local ranks = {
+		Common = 1,
+		Uncommon = 2,
+		Rare = 3,
+		Epic = 4,
+		Legendary = 5,
+		Mythic = 6,
+	}
+
+	return ranks[rarity] or 0
+end
+
+local function renderFishmongerSortButtons()
+	clearChildren(fishmongerSortBar)
+
+	local sortOptions = {
+		{ mode = "Rarity", label = "Rarity" },
+		{ mode = "Value", label = "Value" },
+	}
+
+	for _, option in ipairs(sortOptions) do
+		local descendingId = option.mode .. "Desc"
+		local ascendingId = option.mode .. "Asc"
+		local selected = activeFishmongerSort == descendingId or activeFishmongerSort == ascendingId
+		local label = option.label
+		if selected then
+			label = option.label .. (activeFishmongerSort == descendingId and ": High" or ": Low")
+		end
+
+		local button = makeButton(fishmongerSortBar, label, selected and Color3.fromRGB(230, 126, 48) or Color3.fromRGB(38, 45, 57))
+		button.Size = UDim2.new(0, 132, 1, 0)
+		button.TextSize = 13
+		button.ZIndex = 98
+		button.MouseButton1Click:Connect(function()
+			if activeFishmongerSort == descendingId then
+				activeFishmongerSort = ascendingId
+			else
+				activeFishmongerSort = descendingId
+			end
+			fishmongerList.CanvasPosition = Vector2.new(0, 0)
+			renderFishmongerSellOptions()
+		end)
+	end
+end
+
+function renderFishmongerSellOptions()
+	renderFishmongerSortButtons()
 	clearChildren(fishmongerList)
 
 	if not state then
@@ -494,18 +641,47 @@ local function renderFishmongerSellOptions()
 		return
 	end
 
-	for index = #state.Inventory, 1, -1 do
-		local fish = state.Inventory[index]
+	local fishEntries = {}
+	for index, fish in ipairs(state.Inventory) do
+		table.insert(fishEntries, {
+			fish = fish,
+			index = index,
+		})
+	end
+
+	table.sort(fishEntries, function(left, right)
+		local leftFish = left.fish
+		local rightFish = right.fish
+
+		if activeFishmongerSort == "RarityAsc" or activeFishmongerSort == "RarityDesc" then
+			local leftRank = getFishmongerRarityRank(leftFish.rarity)
+			local rightRank = getFishmongerRarityRank(rightFish.rarity)
+			if leftRank ~= rightRank then
+				if activeFishmongerSort == "RarityAsc" then
+					return leftRank < rightRank
+				end
+				return leftRank > rightRank
+			end
+		elseif activeFishmongerSort == "ValueAsc" or activeFishmongerSort == "ValueDesc" then
+			local leftValue = tonumber(leftFish.value) or 0
+			local rightValue = tonumber(rightFish.value) or 0
+			if leftValue ~= rightValue then
+				if activeFishmongerSort == "ValueAsc" then
+					return leftValue < rightValue
+				end
+				return leftValue > rightValue
+			end
+		end
+
+		return left.index > right.index
+	end)
+
+	for _, entry in ipairs(fishEntries) do
+		local fish = entry.fish
+		local index = entry.index
 		local color = GameConfig.RarityColors[fish.rarity] or Color3.fromRGB(255, 255, 255)
 
-		local card = Instance.new("Frame")
-		card.Name = "SellOption_" .. tostring(fish.serial or index)
-		card.BackgroundColor3 = Color3.fromRGB(24, 32, 44)
-		card.Size = UDim2.new(1, -8, 0, 82)
-		card.ZIndex = 97
-		card.Parent = fishmongerList
-		addCorner(card, 8)
-		addStroke(card, color, 1).Transparency = 0.25
+		local card = makePopupListCard(fishmongerList, "SellOption_" .. tostring(fish.serial or index), 82, color, 0.25)
 
 		local icon = makeFishIcon(card, fish.id, fish.rarity, true)
 		icon.Position = UDim2.new(0, 8, 0, 12)
@@ -555,6 +731,7 @@ else
 end
 
 local rodShopUI = {}
+local activeSupplyShopTab = "Rods"
 
 rodShopUI.overlay = Instance.new("Frame")
 rodShopUI.overlay.Name = "RodShopOverlay"
@@ -576,7 +753,7 @@ rodShopUI.panel.Parent = rodShopUI.overlay
 addCorner(rodShopUI.panel, 8)
 addStroke(rodShopUI.panel, Color3.fromRGB(70, 94, 134), 1)
 
-rodShopUI.title = makeText(rodShopUI.panel, "Rod & Bait Shop", 20, Color3.fromRGB(255, 255, 255), true)
+rodShopUI.title = makeText(rodShopUI.panel, "Supply Shop", 20, Color3.fromRGB(255, 255, 255), true)
 rodShopUI.title.Position = UDim2.new(0, 18, 0, 12)
 rodShopUI.title.Size = UDim2.new(1, -72, 0, 28)
 rodShopUI.title.ZIndex = 97
@@ -587,6 +764,20 @@ rodShopUI.close.Size = UDim2.new(0, 32, 0, 28)
 rodShopUI.close.TextSize = 14
 rodShopUI.close.ZIndex = 97
 
+rodShopUI.tabs = Instance.new("Frame")
+rodShopUI.tabs.Name = "SupplyShopTabs"
+rodShopUI.tabs.Position = UDim2.new(0, 16, 0, 52)
+rodShopUI.tabs.Size = UDim2.new(1, -32, 0, 34)
+rodShopUI.tabs.BackgroundTransparency = 1
+rodShopUI.tabs.ZIndex = 97
+rodShopUI.tabs.Parent = rodShopUI.panel
+
+rodShopUI.tabLayout = Instance.new("UIListLayout")
+rodShopUI.tabLayout.FillDirection = Enum.FillDirection.Horizontal
+rodShopUI.tabLayout.Padding = UDim.new(0, 8)
+rodShopUI.tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+rodShopUI.tabLayout.Parent = rodShopUI.tabs
+
 rodShopUI.list = Instance.new("ScrollingFrame")
 rodShopUI.list.Name = "RodShopList"
 rodShopUI.list.Active = true
@@ -594,9 +785,9 @@ rodShopUI.list.AutomaticCanvasSize = Enum.AutomaticSize.Y
 rodShopUI.list.BackgroundTransparency = 1
 rodShopUI.list.BorderSizePixel = 0
 rodShopUI.list.CanvasSize = UDim2.new(0, 0, 0, 0)
-rodShopUI.list.Position = UDim2.new(0, 16, 0, 56)
+rodShopUI.list.Position = UDim2.new(0, 16, 0, 94)
 rodShopUI.list.ScrollBarThickness = 6
-rodShopUI.list.Size = UDim2.new(1, -32, 1, -72)
+rodShopUI.list.Size = UDim2.new(1, -32, 1, -110)
 rodShopUI.list.ZIndex = 97
 rodShopUI.list.Parent = rodShopUI.panel
 
@@ -609,6 +800,25 @@ local function setRodShopVisible(visible)
 	rodShopUI.overlay.Visible = visible
 end
 
+local renderRodShopOptions
+
+local function renderSupplyShopTabs()
+	clearChildren(rodShopUI.tabs)
+
+	for _, tabName in ipairs({ "Rods", "Bait" }) do
+		local selected = activeSupplyShopTab == tabName
+		local button = makeButton(rodShopUI.tabs, tabName, selected and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(38, 45, 57))
+		button.Size = UDim2.new(0, 112, 1, 0)
+		button.TextSize = 14
+		button.ZIndex = 98
+		button.MouseButton1Click:Connect(function()
+			activeSupplyShopTab = tabName
+			rodShopUI.list.CanvasPosition = Vector2.new(0, 0)
+			renderRodShopOptions()
+		end)
+	end
+end
+
 local function getRodRequirementText(rod)
 	local text = string.format("Cost: %d | Unlock: Level %d | Luck: +%d%%", rod.cost, rod.unlockLevel, math.floor(rod.luck * 100))
 	if rod.requiredBiome then
@@ -618,14 +828,16 @@ local function getRodRequirementText(rod)
 	return text
 end
 
-local function renderRodShopOptions()
+function renderRodShopOptions()
+	renderSupplyShopTabs()
 	clearChildren(rodShopUI.list)
 
 	if not state then
 		return
 	end
 
-	for _, rodId in ipairs(GameConfig.RodOrder) do
+	if activeSupplyShopTab == "Rods" then
+		for _, rodId in ipairs(GameConfig.RodOrder) do
 		local rod = GameConfig.Rods[rodId]
 		local owned = state.OwnedRods[rodId] == true
 		local equipped = state.EquippedRod == rodId
@@ -634,14 +846,7 @@ local function renderRodShopOptions()
 		local biomeOK = not rod.requiredBiome or state.UnlockedBiomes[rod.requiredBiome] == true
 		local canUseButton = (owned and not equipped) or (not owned and canAfford and levelOK and biomeOK)
 
-		local card = Instance.new("Frame")
-		card.Name = rodId .. "ShopOption"
-		card.BackgroundColor3 = Color3.fromRGB(24, 32, 44)
-		card.Size = UDim2.new(1, -8, 0, 92)
-		card.ZIndex = 97
-		card.Parent = rodShopUI.list
-		addCorner(card, 8)
-		addStroke(card, owned and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(83, 104, 134), 1).Transparency = 0.25
+		local card = makePopupListCard(rodShopUI.list, rodId .. "ShopOption", 92, owned and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(83, 104, 134), 0.25)
 
 		local icon = makeRodIcon(card, rodId)
 		icon.Position = UDim2.new(0, 8, 0, 14)
@@ -692,12 +897,10 @@ local function renderRodShopOptions()
 				BuyRod:FireServer(rodId)
 			end
 		end)
-	end
+		end
 
-	local baitHeader = makeText(rodShopUI.list, "Bait", 16, Color3.fromRGB(255, 255, 255), true)
-	baitHeader.Name = "BaitHeader"
-	baitHeader.Size = UDim2.new(1, -8, 0, 28)
-	baitHeader.ZIndex = 97
+		return
+	end
 
 	for _, baitId in ipairs(GameConfig.BaitOrder) do
 		local bait = GameConfig.Baits[baitId]
@@ -707,14 +910,7 @@ local function renderRodShopOptions()
 		local canEquip = isBasic or count > 0
 		local canBuy = not isBasic and state.Level >= (bait.unlockLevel or 1) and state.Coins >= (bait.cost or 0)
 
-		local card = Instance.new("Frame")
-		card.Name = baitId .. "ShopOption"
-		card.BackgroundColor3 = Color3.fromRGB(24, 32, 44)
-		card.Size = UDim2.new(1, -8, 0, 104)
-		card.ZIndex = 97
-		card.Parent = rodShopUI.list
-		addCorner(card, 8)
-		addStroke(card, equipped and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(83, 104, 134), 1).Transparency = equipped and 0.15 or 0.35
+		local card = makePopupListCard(rodShopUI.list, baitId .. "ShopOption", 104, equipped and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(83, 104, 134), equipped and 0.15 or 0.35)
 
 		local name = makeText(card, bait.displayName, 16, Color3.fromRGB(255, 255, 255), true)
 		name.Position = UDim2.new(0, 12, 0, 8)
@@ -1144,6 +1340,198 @@ minigameInstruction.Size = UDim2.new(1, -306, 0, 70)
 minigameInstruction.TextWrapped = true
 minigameInstruction.ZIndex = 45
 
+local CastPower = {
+	running = false,
+}
+
+CastPower.content = Instance.new("Frame")
+CastPower.content.Name = "CastPowerContent"
+CastPower.content.Position = UDim2.new(0, 40, 0, 92)
+CastPower.content.Size = UDim2.new(1, -80, 1, -126)
+CastPower.content.BackgroundTransparency = 1
+CastPower.content.Visible = false
+CastPower.content.ZIndex = 44
+CastPower.content.Parent = minigame
+
+CastPower.title = makeText(CastPower.content, "Hold to charge. Release to cast.", 18, Color3.fromRGB(255, 255, 255), true)
+CastPower.title.Position = UDim2.new(0, 0, 0, 8)
+CastPower.title.Size = UDim2.new(1, 0, 0, 36)
+CastPower.title.TextXAlignment = Enum.TextXAlignment.Center
+CastPower.title.TextScaled = true
+CastPower.title.ZIndex = 45
+styleOutlinedText(CastPower.title, 20)
+forcePureWhiteText(CastPower.title)
+limitTextSize(CastPower.title, 16, 22)
+
+CastPower.track = Instance.new("Frame")
+CastPower.track.Name = "CastPowerTrack"
+CastPower.track.Position = UDim2.new(0, 14, 0, 96)
+CastPower.track.Size = UDim2.new(1, -28, 0, 58)
+CastPower.track.BackgroundColor3 = Color3.fromRGB(27, 73, 132)
+CastPower.track.ZIndex = 45
+CastPower.track.Parent = CastPower.content
+addCorner(CastPower.track, 22)
+addStroke(CastPower.track, Color3.fromRGB(7, 48, 106), 5)
+addStroke(CastPower.track, Color3.fromRGB(126, 219, 255), 2).Transparency = 0.18
+addGradient(CastPower.track, Color3.fromRGB(62, 153, 213), Color3.fromRGB(16, 69, 137), 90)
+
+CastPower.perfectZone = Instance.new("Frame")
+CastPower.perfectZone.Name = "PerfectTimingZone"
+CastPower.perfectZone.BackgroundColor3 = Color3.fromRGB(61, 255, 132)
+CastPower.perfectZone.BackgroundTransparency = 0.12
+CastPower.perfectZone.Position = UDim2.new(0.675, 0, 0, 0)
+CastPower.perfectZone.Size = UDim2.new(0.09, 0, 1, 0)
+CastPower.perfectZone.ZIndex = 46
+CastPower.perfectZone.Parent = CastPower.track
+addCorner(CastPower.perfectZone, 18)
+addStroke(CastPower.perfectZone, Color3.fromRGB(10, 120, 42), 3).Transparency = 0.1
+addGradient(CastPower.perfectZone, Color3.fromRGB(117, 255, 129), Color3.fromRGB(23, 190, 72), 90)
+
+CastPower.fill = Instance.new("Frame")
+CastPower.fill.Name = "PowerFill"
+CastPower.fill.BackgroundColor3 = Color3.fromRGB(255, 204, 65)
+CastPower.fill.Size = UDim2.new(0, 0, 1, 0)
+CastPower.fill.ZIndex = 47
+CastPower.fill.Parent = CastPower.track
+addCorner(CastPower.fill, 18)
+addGradient(CastPower.fill, Color3.fromRGB(255, 235, 121), Color3.fromRGB(255, 126, 40), 90)
+
+CastPower.marker = Instance.new("Frame")
+CastPower.marker.Name = "BobberMarker"
+CastPower.marker.AnchorPoint = Vector2.new(0.5, 0.5)
+CastPower.marker.Position = UDim2.new(0, 0, 0.5, 0)
+CastPower.marker.Size = UDim2.new(0, 18, 1, 28)
+CastPower.marker.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+CastPower.marker.ZIndex = 49
+CastPower.marker.Parent = CastPower.track
+addCorner(CastPower.marker, 9)
+addStroke(CastPower.marker, Color3.fromRGB(7, 55, 128), 3)
+
+CastPower.value = makeText(CastPower.content, "Power 0%", 16, Color3.fromRGB(255, 255, 255), true)
+CastPower.value.Position = UDim2.new(0, 0, 0, 168)
+CastPower.value.Size = UDim2.new(1, 0, 0, 30)
+CastPower.value.TextXAlignment = Enum.TextXAlignment.Center
+CastPower.value.ZIndex = 45
+forcePureWhiteText(CastPower.value)
+
+CastPower.status = makeText(CastPower.content, "Release in the green zone for a Perfect cast.", 15, Color3.fromRGB(218, 239, 255), false)
+CastPower.status.Position = UDim2.new(0, 0, 0, 206)
+CastPower.status.Size = UDim2.new(1, 0, 0, 46)
+CastPower.status.TextXAlignment = Enum.TextXAlignment.Center
+CastPower.status.TextWrapped = true
+CastPower.status.ZIndex = 45
+
+CastPower.hint = makeText(CastPower.content, "Mouse, tap, or Space", 14, Color3.fromRGB(184, 219, 255), false)
+CastPower.hint.Position = UDim2.new(0, 0, 1, -64)
+CastPower.hint.Size = UDim2.new(1, 0, 0, 28)
+CastPower.hint.TextXAlignment = Enum.TextXAlignment.Center
+CastPower.hint.ZIndex = 45
+local showToast
+CastPower.activeConfig = nil
+
+function CastPower.getConfig()
+	return CastPower.activeConfig or GameConfig.Casting or {}
+end
+
+function CastPower.ease(value)
+	local clamped = math.clamp(tonumber(value) or 0, 0, 1)
+	return clamped * clamped * (3 - (2 * clamped))
+end
+
+function CastPower.requestConfig(biomeId)
+	if not GetCastConfig then
+		GetCastConfig = Remotes:FindFirstChild("GetCastConfig")
+	end
+
+	if not GetCastConfig then
+		showToast("Cast meter is still syncing. Try again.")
+		return nil
+	end
+
+	local success, response = pcall(function()
+		return GetCastConfig:InvokeServer(biomeId)
+	end)
+
+	if not success or type(response) ~= "table" or response.ok ~= true then
+		showToast((type(response) == "table" and response.message) or "Could not start casting.")
+		return nil
+	end
+
+	return response
+end
+
+function CastPower.getPerfectTiming()
+	local config = CastPower.getConfig()
+	local targetPower = math.clamp(tonumber(config.perfectCenter) or 0.72, 0, 1)
+	local tolerance = math.clamp(tonumber(config.perfectRadius) or 0.045, 0.01, 0.35)
+	return targetPower, tolerance
+end
+
+function CastPower.getLocalRating(power)
+	local config = CastPower.getConfig()
+	local casting = GameConfig.Casting or {}
+	local targetPower = math.clamp(tonumber(config.perfectCenter) or 0.72, 0, 1)
+	local perfectRadius = math.clamp(tonumber(config.perfectRadius) or 0.045, 0.01, 0.5)
+	local greatRadius = math.clamp(tonumber(config.greatRadius) or tonumber(casting.greatRadius) or 0.11, perfectRadius, 0.5)
+	local goodRadius = math.clamp(tonumber(config.goodRadius) or tonumber(casting.goodRadius) or 0.24, greatRadius, 0.5)
+	local accuracy = math.abs(math.clamp(tonumber(power) or 0, 0, 1) - targetPower)
+	local rating = "Weak"
+
+	if accuracy <= perfectRadius then
+		rating = "Perfect"
+	elseif accuracy <= greatRadius then
+		rating = "Great"
+	elseif accuracy <= goodRadius then
+		rating = "Good"
+	end
+
+	local ratingConfig = casting.Ratings and casting.Ratings[rating]
+	return rating, (ratingConfig and ratingConfig.displayName) or rating
+end
+
+function CastPower.updateVisual(power)
+	local clampedPower = math.clamp(tonumber(power) or 0, 0, 1)
+	CastPower.fill.Size = UDim2.new(clampedPower, 0, 1, 0)
+	CastPower.marker.Position = UDim2.new(clampedPower, 0, 0.5, 0)
+	CastPower.value.Text = string.format("Power %d%%", math.floor(clampedPower * 100 + 0.5))
+
+	local targetPower, tolerance = CastPower.getPerfectTiming()
+	local left = math.clamp(targetPower - tolerance, 0, 1)
+	local right = math.clamp(targetPower + tolerance, 0, 1)
+	CastPower.perfectZone.Visible = true
+	CastPower.perfectZone.Position = UDim2.new(left, 0, 0, 0)
+	CastPower.perfectZone.Size = UDim2.new(math.max(0.04, right - left), 0, 1, 0)
+
+	local rating = CastPower.getLocalRating(clampedPower)
+	if rating == "Perfect" then
+		CastPower.status.Text = "Release now for Perfect!"
+	elseif rating == "Great" then
+		CastPower.status.Text = "Great timing. Nudge closer for Perfect."
+	else
+		CastPower.status.Text = "Aim for the green perfect zone."
+	end
+end
+
+function CastPower.showSparkle()
+	for index = 1, 5 do
+		local sparkle = Instance.new("Frame")
+		sparkle.Name = "PerfectCastSparkle"
+		sparkle.AnchorPoint = Vector2.new(0.5, 0.5)
+		sparkle.BackgroundColor3 = index % 2 == 0 and Color3.fromRGB(255, 245, 156) or Color3.fromRGB(255, 255, 255)
+		sparkle.BorderSizePixel = 0
+		sparkle.Position = UDim2.new(0.34 + (index * 0.06), 0, 0.42 + ((index % 2) * 0.12), 0)
+		sparkle.Size = UDim2.new(0, 10, 0, 10)
+		sparkle.ZIndex = 60
+		sparkle.Parent = CastPower.content
+		addCorner(sparkle, 10)
+		task.delay(0.5 + (index * 0.04), function()
+			if sparkle.Parent then
+				sparkle:Destroy()
+			end
+		end)
+	end
+end
+
 local function setMinigameFishIcon(fish)
 	local fishId = fish and (fish.imageKey or fish.id)
 	local imageId = fishId and GameConfig.getFishImage(fishId)
@@ -1180,7 +1568,7 @@ toast.Parent = root
 addCorner(toast, 8)
 addStroke(toast, Color3.fromRGB(255, 255, 255), 1).Transparency = 0.88
 
-local function showToast(message)
+function showToast(message)
 	statusText.Text = message
 	toast.Text = message
 	toast.Visible = true
@@ -1193,13 +1581,43 @@ local function showToast(message)
 end
 
 local function makeCard(parent, height)
+	local wrapper = Instance.new("Frame")
+	wrapper.Name = "CardRow"
+	wrapper.Size = UDim2.new(1, 0, 0, height)
+	wrapper.BackgroundTransparency = 1
+	wrapper.Parent = parent
+
 	local card = Instance.new("Frame")
-	card.Size = UDim2.new(1, -8, 0, height)
+	card.Position = UDim2.new(0, 6, 0, 1)
+	card.Size = UDim2.new(1, -12, 1, -2)
 	card.BackgroundColor3 = Color3.fromRGB(27, 33, 43)
-	card.Parent = parent
+	card.Parent = wrapper
 	addCorner(card, 8)
-	addStroke(card, Color3.fromRGB(60, 72, 90), 1)
+	local stroke = addStroke(card, Color3.fromRGB(60, 72, 90), 1)
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	return card
+end
+
+local function attachNotificationBadge(parent, count)
+	count = math.max(0, math.floor(tonumber(count) or 0))
+	local badge = Instance.new("Frame")
+	badge.Name = "NotificationBadge"
+	badge.AnchorPoint = Vector2.new(1, 0)
+	badge.Position = UDim2.new(1, 4, 0, -6)
+	badge.Size = UDim2.new(0, count >= 10 and 26 or 20, 0, 20)
+	badge.BackgroundColor3 = Color3.fromRGB(226, 50, 50)
+	badge.BorderSizePixel = 0
+	badge.Visible = count > 0
+	badge.ZIndex = (parent.ZIndex or 1) + 5
+	badge.Parent = parent
+	addCorner(badge, 10)
+	addStroke(badge, Color3.fromRGB(255, 232, 232), 1).Transparency = 0.1
+
+	local label = makeText(badge, count > 99 and "99+" or tostring(count), 11, Color3.fromRGB(255, 255, 255), true)
+	label.Size = UDim2.fromScale(1, 1)
+	label.TextXAlignment = Enum.TextXAlignment.Center
+	label.ZIndex = badge.ZIndex + 1
+	return badge
 end
 
 local function getDiscoveredCount()
@@ -1333,6 +1751,146 @@ local function getLocalTravelLocation()
 	return (state and state.ActualLocation) or "Lobby"
 end
 
+function CastPower.isInput(input)
+	return input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch
+		or input.KeyCode == Enum.KeyCode.Space
+end
+
+function CastPower.run(biomeId)
+	if CastPower.running then
+		return
+	end
+
+	local biome = GameConfig.Biomes[biomeId]
+	local castConfig = CastPower.requestConfig(biomeId)
+	if not castConfig then
+		return false
+	end
+
+	CastPower.activeConfig = castConfig
+	local meterSpeed = tonumber(castConfig.meterSpeed) or tonumber((GameConfig.Casting or {}).chargeSpeed) or 1.05
+	local progress = math.clamp(tonumber(castConfig.startProgress) or 0, 0, 1)
+	local power = CastPower.ease(progress)
+	local direction = tonumber(castConfig.direction) == -1 and -1 or 1
+	local holding = false
+	local hasHeld = false
+	local finished = false
+	local renderConnection
+	local inputBeganConnection
+	local inputEndedConnection
+
+	CastPower.running = true
+	setMinigameVisible(true)
+	CastPower.content.Visible = true
+	CastPower.title.Text = "Hold to charge. Release to cast."
+	CastPower.status.Text = "Release in the green zone for a Perfect cast."
+	CastPower.hint.Text = string.format("Left start - %s speed", castConfig.speedName or "Random")
+	fishingGameContent.Visible = false
+	catchButton.Visible = false
+	timingBar.Visible = false
+	zone.Visible = false
+	marker.Visible = false
+
+	minigameText.Text = "Cast into " .. ((biome and biome.displayName) or "the water")
+	forcePureWhiteText(minigameText)
+	forcePureWhiteText(catchButton)
+	CastPower.updateVisual(power)
+
+	local function disconnectAll()
+		if renderConnection then
+			renderConnection:Disconnect()
+			renderConnection = nil
+		end
+		if inputBeganConnection then
+			inputBeganConnection:Disconnect()
+			inputBeganConnection = nil
+		end
+		if inputEndedConnection then
+			inputEndedConnection:Disconnect()
+			inputEndedConnection = nil
+		end
+	end
+
+	activeMinigameCleanup = function()
+		finished = true
+		disconnectAll()
+		activeMinigameCleanup = nil
+		CastPower.running = false
+		CastPower.activeConfig = nil
+		CastPower.content.Visible = false
+	end
+
+	local function finishCast()
+		if finished then
+			return
+		end
+
+		finished = true
+		disconnectAll()
+		activeMinigameCleanup = nil
+		CastPower.running = false
+		fishingGameContent.Visible = false
+		local rating, displayName = CastPower.getLocalRating(power)
+		CastPower.title.Text = displayName .. " Cast!"
+		CastPower.status.Text = "Bobber landed. Waiting for a bite..."
+		minigameText.Text = displayName .. " Cast! Waiting for a bite..."
+		forcePureWhiteText(minigameText)
+		if rating == "Perfect" then
+			CastPower.showSparkle()
+		end
+		task.delay(0.45, function()
+			if not CastPower.running and not minigameRunning then
+				CastPower.content.Visible = false
+			end
+		end)
+
+		StartFishing:FireServer({
+			biomeId = biomeId,
+			castPower = math.clamp(power, 0, 1),
+			castAttemptId = castConfig.attemptId,
+		})
+		renderContent()
+	end
+
+	inputBeganConnection = UserInputService.InputBegan:Connect(function(input)
+		if CastPower.isInput(input) then
+			holding = true
+			hasHeld = true
+		end
+	end)
+
+	inputEndedConnection = UserInputService.InputEnded:Connect(function(input)
+		if CastPower.isInput(input) and hasHeld then
+			holding = false
+			finishCast()
+		end
+	end)
+
+	renderConnection = RunService.RenderStepped:Connect(function(deltaTime)
+		if finished or not CastPower.running then
+			return
+		end
+
+		if holding then
+			progress += direction * meterSpeed * deltaTime
+
+			if progress >= 1 then
+				progress = 1
+				direction = -1
+			elseif progress <= 0 then
+				progress = 0
+				direction = 1
+			end
+
+			power = CastPower.ease(progress)
+			CastPower.updateVisual(power)
+		end
+	end)
+
+	return true
+end
+
 local function startManualFishing()
 	if fishingBusy or not state then
 		return
@@ -1347,12 +1905,9 @@ local function startManualFishing()
 	local biome = GameConfig.Biomes[biomeId]
 	fishingBusy = true
 	showToast("Casting in " .. biome.displayName .. "...")
-	setMinigameVisible(true)
-	minigameText.Text = "Waiting for a fish..."
-	forcePureWhiteText(minigameText)
-	forcePureWhiteText(catchButton)
-	catchButton.Visible = false
-	StartFishing:FireServer(biomeId)
+	if not CastPower.run(biomeId) then
+		fishingBusy = false
+	end
 	renderContent()
 end
 
@@ -1470,6 +2025,15 @@ player.CharacterAdded:Connect(function(character)
 	task.defer(watchAquariumViewerTools, character)
 end)
 
+local function refreshLeaderboardTabIfOpen()
+	if activeTab == "Leaderboard" then
+		renderContent()
+	end
+end
+
+Players.PlayerAdded:Connect(refreshLeaderboardTabIfOpen)
+Players.PlayerRemoving:Connect(refreshLeaderboardTabIfOpen)
+
 local function openRodShop()
 	renderRodShopOptions()
 	setRodShopVisible(true)
@@ -1484,10 +2048,13 @@ end
 local function refreshTabs()
 	clearChildren(tabs)
 
-	local tabNames = { "Fishdex", "Bag", "Aquarium", "Teleport" }
+	local tabNames = { "Fishdex", "Bag", "Aquarium", "Teleport", "Quests", "Shop", "Leaderboard" }
 	for _, tabName in ipairs(tabNames) do
 		local color = activeTab == tabName and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(38, 45, 57)
 		local button = makeButton(tabs, tabName, color)
+		if tabName == "Quests" then
+			attachNotificationBadge(button, state and state.QuestUnclaimedCount or 0)
+		end
 		button.MouseButton1Click:Connect(function()
 			setTab(tabName)
 		end)
@@ -1908,6 +2475,654 @@ local function renderTeleportTab()
 	end
 end
 
+local function formatQuestReward(reward)
+	local parts = {}
+	reward = type(reward) == "table" and reward or {}
+
+	if (tonumber(reward.coins) or 0) > 0 then
+		table.insert(parts, tostring(reward.coins) .. " Coins")
+	end
+	if (tonumber(reward.xp) or 0) > 0 then
+		table.insert(parts, tostring(reward.xp) .. " Fishing XP")
+	end
+	if type(reward.bait) == "table" then
+		for _, baitId in ipairs(GameConfig.BaitOrder) do
+			local amount = tonumber(reward.bait[baitId]) or 0
+			if amount > 0 then
+				local bait = GameConfig.Baits[baitId]
+				table.insert(parts, tostring(amount) .. " " .. (bait and bait.displayName or baitId))
+			end
+		end
+	end
+	if type(reward.decorations) == "table" then
+		for _, amount in pairs(reward.decorations) do
+			amount = tonumber(amount) or 0
+			if amount > 0 then
+				table.insert(parts, amount > 1 and (tostring(amount) .. " Aquarium Decorations") or "Aquarium Decoration")
+			end
+		end
+	end
+
+	if #parts == 0 then
+		return "Reward ready"
+	end
+
+	return table.concat(parts, " | ")
+end
+
+local function getQuestPeriod(periodName)
+	local quests = state and state.Quests
+	return quests and quests[periodName] or nil
+end
+
+local function renderQuestPeriodTabs()
+	local selector = Instance.new("Frame")
+	selector.Size = UDim2.new(1, -8, 0, 38)
+	selector.BackgroundTransparency = 1
+	selector.Parent = content
+
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.Padding = UDim.new(0, 7)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = selector
+
+	for _, periodName in ipairs({ "Daily", "Weekly", "Monthly" }) do
+		local button = makeButton(selector, periodName, activeQuestPeriod == periodName and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(38, 45, 57))
+		button.Size = UDim2.new(0.333, -5, 1, 0)
+		button.MouseButton1Click:Connect(function()
+			activeQuestPeriod = periodName
+			renderContent()
+		end)
+	end
+end
+
+local function renderQuestsTab()
+	renderQuestPeriodTabs()
+
+	local period = getQuestPeriod(activeQuestPeriod)
+	if not period then
+		local loading = makeCard(content, 64)
+		local loadingText = makeText(loading, "Loading quests...", 15, Color3.fromRGB(190, 204, 220), true)
+		loadingText.Position = UDim2.new(0, 12, 0, 16)
+		loadingText.Size = UDim2.new(1, -24, 0, 24)
+		return
+	end
+
+	local summary = makeCard(content, 72)
+	local heading = makeText(summary, activeQuestPeriod .. " Quests", 17, Color3.fromRGB(255, 255, 255), true)
+	heading.Position = UDim2.new(0, 12, 0, 8)
+	heading.Size = UDim2.new(1, -24, 0, 24)
+
+	local completedCount = 0
+	for _, quest in ipairs(period.quests or {}) do
+		if quest.completed then
+			completedCount += 1
+		end
+	end
+
+	local detail = makeText(summary, string.format("%d/%d complete | Resets automatically", completedCount, #(period.quests or {})), 13, Color3.fromRGB(190, 204, 220), false)
+	detail.Position = UDim2.new(0, 12, 0, 38)
+	detail.Size = UDim2.new(1, -24, 0, 20)
+
+	for _, quest in ipairs(period.quests or {}) do
+		local card = makeCard(content, 124)
+		local complete = quest.completed == true
+		local claimed = quest.claimed == true
+		addStroke(card, claimed and Color3.fromRGB(112, 255, 156) or (complete and Color3.fromRGB(255, 219, 92) or Color3.fromRGB(60, 72, 90)), 1).Transparency = complete and 0.16 or 0.45
+
+		local title = makeText(card, quest.title or "Quest", 15, complete and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(235, 242, 255), true)
+		title.Position = UDim2.new(0, 12, 0, 7)
+		title.Size = UDim2.new(1, -126, 0, 22)
+
+		local description = makeText(card, quest.description or "", 12, Color3.fromRGB(190, 204, 220), false)
+		description.Position = UDim2.new(0, 12, 0, 31)
+		description.Size = UDim2.new(1, -126, 0, 32)
+		description.TextWrapped = true
+
+		local progressText = string.format("Progress: %d/%d", tonumber(quest.progress) or 0, tonumber(quest.target) or 1)
+		local progress = makeText(card, progressText, 12, complete and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(143, 160, 180), true)
+		progress.Position = UDim2.new(0, 12, 0, 66)
+		progress.Size = UDim2.new(1, -126, 0, 18)
+
+		local reward = makeText(card, "Reward: " .. formatQuestReward(quest.reward), 12, Color3.fromRGB(214, 226, 244), false)
+		reward.Position = UDim2.new(0, 12, 0, 88)
+		reward.Size = UDim2.new(1, -126, 0, 28)
+		reward.TextWrapped = true
+
+		if claimed then
+			local checkHolder = Instance.new("Frame")
+			checkHolder.Position = UDim2.new(1, -82, 0, 18)
+			checkHolder.Size = UDim2.new(0, 48, 0, 38)
+			checkHolder.BackgroundTransparency = 1
+			checkHolder.Parent = card
+
+			local checkShort = Instance.new("Frame")
+			checkShort.AnchorPoint = Vector2.new(0.5, 0.5)
+			checkShort.Position = UDim2.new(0, 18, 0, 23)
+			checkShort.Size = UDim2.new(0, 8, 0, 22)
+			checkShort.Rotation = -38
+			checkShort.BackgroundColor3 = Color3.fromRGB(112, 255, 156)
+			checkShort.BorderSizePixel = 0
+			checkShort.Parent = checkHolder
+			addCorner(checkShort, 4)
+
+			local checkLong = Instance.new("Frame")
+			checkLong.AnchorPoint = Vector2.new(0.5, 0.5)
+			checkLong.Position = UDim2.new(0, 30, 0, 18)
+			checkLong.Size = UDim2.new(0, 8, 0, 34)
+			checkLong.Rotation = 42
+			checkLong.BackgroundColor3 = Color3.fromRGB(112, 255, 156)
+			checkLong.BorderSizePixel = 0
+			checkLong.Parent = checkHolder
+			addCorner(checkLong, 4)
+
+			local claimedText = makeText(card, "Claimed", 12, Color3.fromRGB(112, 255, 156), true)
+			claimedText.Position = UDim2.new(1, -104, 0, 58)
+			claimedText.Size = UDim2.new(0, 90, 0, 20)
+			claimedText.TextXAlignment = Enum.TextXAlignment.Center
+		elseif complete then
+			local claim = makeButton(card, "Claim", Color3.fromRGB(28, 160, 92))
+			claim.Position = UDim2.new(1, -104, 0, 42)
+			claim.Size = UDim2.new(0, 88, 0, 36)
+			claim.MouseButton1Click:Connect(function()
+				fireQuestAction("Claim", activeQuestPeriod, quest.id)
+			end)
+		else
+			local status = makeText(card, "In Progress", 12, Color3.fromRGB(143, 160, 180), true)
+			status.Position = UDim2.new(1, -106, 0, 48)
+			status.Size = UDim2.new(0, 92, 0, 24)
+			status.TextXAlignment = Enum.TextXAlignment.Center
+		end
+	end
+end
+
+local function getMonetizationState()
+	return state and state.Monetization or {}
+end
+
+local function ownsGamePass(passKey)
+	local monetization = getMonetizationState()
+	local owned = monetization.OwnedGamePasses or {}
+	return owned[passKey] == true
+end
+
+local function copyAquariumDesignWith(changes)
+	local monetization = getMonetizationState()
+	local current = monetization.AquariumPreviewDesign or monetization.AquariumDesign or MonetizationConfig.AquariumDesigner.defaultDesign
+	local design = {
+		theme = current.theme,
+		backgroundColor = current.backgroundColor,
+		lightingColor = current.lightingColor,
+		signText = current.signText or "",
+		decorations = {},
+	}
+
+	for slotId, decorationId in pairs(current.decorations or {}) do
+		design.decorations[slotId] = decorationId
+	end
+
+	if type(changes) == "table" then
+		for key, value in pairs(changes) do
+			if key == "decorations" and type(value) == "table" then
+				for slotId, decorationId in pairs(value) do
+					if decorationId == "None" then
+						design.decorations[slotId] = nil
+					else
+						design.decorations[slotId] = decorationId
+					end
+				end
+			else
+				design[key] = value
+			end
+		end
+	end
+
+	return design
+end
+
+local function makeShopIcon(parent, text, color)
+	local icon = Instance.new("Frame")
+	icon.Position = UDim2.new(0, 10, 0, 12)
+	icon.Size = UDim2.new(0, 54, 0, 54)
+	icon.BackgroundColor3 = color or Color3.fromRGB(53, 130, 246)
+	icon.Parent = parent
+	addCorner(icon, 8)
+	addStroke(icon, Color3.fromRGB(255, 255, 255), 1).Transparency = 0.75
+
+	local label = makeText(icon, text, 14, Color3.fromRGB(255, 255, 255), true)
+	label.Size = UDim2.fromScale(1, 1)
+	label.TextXAlignment = Enum.TextXAlignment.Center
+	label.TextWrapped = true
+	return icon
+end
+
+local function renderShopSubTabs()
+	local selector = Instance.new("Frame")
+	selector.Size = UDim2.new(1, -8, 0, 38)
+	selector.BackgroundTransparency = 1
+	selector.Parent = content
+
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.Padding = UDim.new(0, 6)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = selector
+
+	for _, tabName in ipairs({ "Game Passes", "Bait", "Aquarium", "Storage" }) do
+		local button = makeButton(selector, tabName, activeShopTab == tabName and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(38, 45, 57))
+		button.Size = UDim2.new(0.25, -5, 1, 0)
+		button.TextSize = 12
+		button.MouseButton1Click:Connect(function()
+			activeShopTab = tabName
+			renderContent()
+		end)
+	end
+end
+
+local function renderRobuxItem(itemKey, item, purchaseAction, owned, iconText, iconColor)
+	local card = makeCard(content, 104)
+	makeShopIcon(card, iconText, iconColor)
+
+	local name = makeText(card, item.name, 15, Color3.fromRGB(255, 255, 255), true)
+	name.Position = UDim2.new(0, 76, 0, 8)
+	name.Size = UDim2.new(1, -194, 0, 22)
+
+	local description = makeText(card, item.description, 12, Color3.fromRGB(190, 204, 220), false)
+	description.Position = UDim2.new(0, 76, 0, 32)
+	description.Size = UDim2.new(1, -194, 0, 36)
+	description.TextWrapped = true
+
+	local price = makeText(card, tostring(item.priceRobux or "?") .. " Robux", 12, Color3.fromRGB(255, 219, 92), true)
+	price.Position = UDim2.new(0, 76, 0, 74)
+	price.Size = UDim2.new(1, -194, 0, 18)
+
+	if owned then
+		local ownedText = makeText(card, "Owned", 13, Color3.fromRGB(112, 255, 156), true)
+		ownedText.Position = UDim2.new(1, -108, 0, 35)
+		ownedText.Size = UDim2.new(0, 92, 0, 34)
+		ownedText.TextXAlignment = Enum.TextXAlignment.Center
+	else
+		local purchase = makeButton(card, "Buy", Color3.fromRGB(28, 160, 92))
+		purchase.Position = UDim2.new(1, -104, 0, 35)
+		purchase.Size = UDim2.new(0, 88, 0, 34)
+		purchase.MouseButton1Click:Connect(function()
+			purchaseAction(itemKey)
+		end)
+	end
+end
+
+local function renderShopGamePasses()
+	local monetization = getMonetizationState()
+	local reward = makeCard(content, 92)
+	makeShopIcon(reward, "VIP", Color3.fromRGB(255, 181, 36))
+	local title = makeText(reward, "VIP Daily Reward", 16, Color3.fromRGB(255, 255, 255), true)
+	title.Position = UDim2.new(0, 76, 0, 10)
+	title.Size = UDim2.new(1, -194, 0, 22)
+	local detail = makeText(reward, "5 Fresh Bait + 2 Lucky Bait once per day.", 12, Color3.fromRGB(190, 204, 220), false)
+	detail.Position = UDim2.new(0, 76, 0, 36)
+	detail.Size = UDim2.new(1, -194, 0, 20)
+	local rewardButton = makeButton(reward, monetization.VipRewardAvailable and "Claim" or "VIP", monetization.VipRewardAvailable and Color3.fromRGB(28, 160, 92) or Color3.fromRGB(86, 98, 115))
+	rewardButton.Position = UDim2.new(1, -104, 0, 29)
+	rewardButton.Size = UDim2.new(0, 88, 0, 34)
+	rewardButton.AutoButtonColor = monetization.VipRewardAvailable == true
+	rewardButton.MouseButton1Click:Connect(function()
+		fireShopAction("ClaimVipReward", "GamePass", "VipAngler")
+	end)
+
+	for _, passKey in ipairs({ "VipAngler", "AquariumDesigner" }) do
+		local pass = MonetizationConfig.GamePasses[passKey]
+		renderRobuxItem(passKey, pass, function(key)
+			fireShopAction("PromptGamePass", "GamePass", key)
+		end, ownsGamePass(passKey), passKey == "VipAngler" and "VIP" or "AQUA", passKey == "VipAngler" and Color3.fromRGB(255, 181, 36) or Color3.fromRGB(58, 174, 205))
+	end
+end
+
+local function renderShopBait()
+	for _, productKey in ipairs(MonetizationConfig.DeveloperProductOrder) do
+		local product = MonetizationConfig.DeveloperProducts[productKey]
+		renderRobuxItem(productKey, product, function(key)
+			fireShopAction("PromptProduct", "Product", key)
+		end, false, "BAIT", Color3.fromRGB(116, 94, 255))
+	end
+end
+
+local function renderShopStorage()
+	local summary = makeCard(content, 74)
+	local heading = makeText(summary, "Fish Bag Storage", 16, Color3.fromRGB(255, 255, 255), true)
+	heading.Position = UDim2.new(0, 12, 0, 10)
+	heading.Size = UDim2.new(1, -24, 0, 22)
+	local detail = makeText(summary, string.format("Current capacity: %d fish", state.BackpackSize or 0), 13, Color3.fromRGB(190, 204, 220), false)
+	detail.Position = UDim2.new(0, 12, 0, 38)
+	detail.Size = UDim2.new(1, -24, 0, 20)
+
+	for _, passKey in ipairs({ "SmallBag", "MediumBag", "LargeBag" }) do
+		local pass = MonetizationConfig.GamePasses[passKey]
+		renderRobuxItem(passKey, pass, function(key)
+			fireShopAction("PromptGamePass", "GamePass", key)
+		end, ownsGamePass(passKey), "+" .. tostring(pass.bonusSlots or 0), Color3.fromRGB(76, 160, 92))
+	end
+end
+
+local function renderAquariumDesignerControls()
+	local monetization = getMonetizationState()
+	local ownsDesigner = ownsGamePass("AquariumDesigner")
+	local currentDesign = monetization.AquariumPreviewDesign or monetization.AquariumDesign or MonetizationConfig.AquariumDesigner.defaultDesign
+	local aquariumLevel = (state and state.Aquarium and tonumber(state.Aquarium.Level)) or 1
+
+	local summary = makeCard(content, 96)
+	makeShopIcon(summary, ownsDesigner and "OPEN" or "LOCK", ownsDesigner and Color3.fromRGB(58, 174, 205) or Color3.fromRGB(96, 106, 122))
+	local heading = makeText(summary, "Aquarium Designer", 16, Color3.fromRGB(255, 255, 255), true)
+	heading.Position = UDim2.new(0, 76, 0, 8)
+	heading.Size = UDim2.new(1, -194, 0, 22)
+	local status = ownsDesigner and "Owned | Preview, apply, and save premium designs." or "Preview is free. Apply premium designs after buying the pass."
+	local detail = makeText(summary, status, 12, Color3.fromRGB(190, 204, 220), false)
+	detail.Position = UDim2.new(0, 76, 0, 34)
+	detail.Size = UDim2.new(1, -194, 0, 34)
+	detail.TextWrapped = true
+	local cancel = makeButton(summary, monetization.AquariumPreviewActive and "Cancel" or "Preview", monetization.AquariumPreviewActive and Color3.fromRGB(230, 126, 48) or Color3.fromRGB(86, 98, 115))
+	cancel.Position = UDim2.new(1, -104, 0, 31)
+	cancel.Size = UDim2.new(0, 88, 0, 34)
+	cancel.MouseButton1Click:Connect(function()
+		fireShopAction("CancelAquariumPreview", "Aquarium")
+	end)
+
+	local function renderDesignOption(kind, id, item, labelPrefix)
+		local premium = item.premium == true
+		local card = makeCard(content, 124)
+		makeShopIcon(card, premium and "LOCK" or "FREE", premium and Color3.fromRGB(255, 181, 36) or Color3.fromRGB(58, 174, 205))
+		local name = makeText(card, (labelPrefix or "") .. item.name, 15, Color3.fromRGB(255, 255, 255), true)
+		name.Position = UDim2.new(0, 76, 0, 8)
+		name.Size = UDim2.new(1, -96, 0, 22)
+		local desc = makeText(card, premium and "Premium aquarium option" or "Standard aquarium option", 12, Color3.fromRGB(190, 204, 220), false)
+		desc.Position = UDim2.new(0, 76, 0, 34)
+		desc.Size = UDim2.new(1, -96, 0, 18)
+		local selected = currentDesign[kind] == id
+		local statusText = makeText(card, selected and "Selected" or (premium and "Requires Designer Pass" or "Available"), 12, selected and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(143, 160, 180), false)
+		statusText.Position = UDim2.new(0, 76, 0, 58)
+		statusText.Size = UDim2.new(1, -96, 0, 18)
+
+		local preview = makeButton(card, "Preview", Color3.fromRGB(53, 130, 246))
+		preview.Position = UDim2.new(1, -196, 0, 82)
+		preview.Size = UDim2.new(0, 84, 0, 32)
+		preview.TextSize = 12
+		preview.MouseButton1Click:Connect(function()
+			fireShopAction("PreviewAquariumDesign", "Aquarium", kind, copyAquariumDesignWith({ [kind] = id }))
+		end)
+
+		local apply = makeButton(card, premium and "Apply" or "Apply", premium and Color3.fromRGB(28, 160, 92) or Color3.fromRGB(28, 160, 92))
+		apply.Position = UDim2.new(1, -104, 0, 82)
+		apply.Size = UDim2.new(0, 88, 0, 32)
+		apply.TextSize = 12
+		apply.MouseButton1Click:Connect(function()
+			fireShopAction("ApplyAquariumDesign", "Aquarium", kind, copyAquariumDesignWith({ [kind] = id }))
+		end)
+	end
+
+	local themeHeader = makeText(content, "Themes", 16, Color3.fromRGB(255, 255, 255), true)
+	themeHeader.Size = UDim2.new(1, -8, 0, 28)
+	for _, themeId in ipairs(MonetizationConfig.AquariumDesigner.themeOrder) do
+		renderDesignOption("theme", themeId, MonetizationConfig.AquariumDesigner.themes[themeId])
+	end
+
+	local colorHeader = makeText(content, "Colors", 16, Color3.fromRGB(255, 255, 255), true)
+	colorHeader.Size = UDim2.new(1, -8, 0, 28)
+	for _, colorId in ipairs(MonetizationConfig.AquariumDesigner.backgroundColorOrder) do
+		renderDesignOption("backgroundColor", colorId, MonetizationConfig.AquariumDesigner.backgroundColors[colorId], "Background: ")
+	end
+	for _, colorId in ipairs(MonetizationConfig.AquariumDesigner.lightingColorOrder) do
+		renderDesignOption("lightingColor", colorId, MonetizationConfig.AquariumDesigner.lightingColors[colorId], "Light: ")
+	end
+
+	local signCard = makeCard(content, 104)
+	makeShopIcon(signCard, "TEXT", Color3.fromRGB(255, 181, 36))
+	local signTitle = makeText(signCard, "Display Sign Text", 15, Color3.fromRGB(255, 255, 255), true)
+	signTitle.Position = UDim2.new(0, 76, 0, 8)
+	signTitle.Size = UDim2.new(1, -194, 0, 22)
+	local signBox = Instance.new("TextBox")
+	signBox.Position = UDim2.new(0, 76, 0, 38)
+	signBox.Size = UDim2.new(1, -194, 0, 32)
+	signBox.BackgroundColor3 = Color3.fromRGB(38, 45, 57)
+	signBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+	signBox.PlaceholderText = "Custom sign text"
+	signBox.Text = currentDesign.signText or ""
+	signBox.Font = Enum.Font.Gotham
+	signBox.TextSize = 13
+	signBox.ClearTextOnFocus = false
+	signBox.Parent = signCard
+	addCorner(signBox, 6)
+	addStroke(signBox, Color3.fromRGB(60, 72, 90), 1)
+	local applySign = makeButton(signCard, "Apply", Color3.fromRGB(28, 160, 92))
+	applySign.Position = UDim2.new(1, -104, 0, 72)
+	applySign.Size = UDim2.new(0, 88, 0, 26)
+	applySign.TextSize = 12
+	applySign.MouseButton1Click:Connect(function()
+		fireShopAction("ApplyAquariumDesign", "Aquarium", "signText", copyAquariumDesignWith({ signText = signBox.Text }))
+	end)
+
+	local decorHeader = makeText(content, "Fixed Decoration Slots", 16, Color3.fromRGB(255, 255, 255), true)
+	decorHeader.Size = UDim2.new(1, -8, 0, 28)
+	for _, slotId in ipairs(MonetizationConfig.AquariumDesigner.slotOrder) do
+		local slot = MonetizationConfig.AquariumDesigner.slots[slotId]
+		local card = makeCard(content, 190)
+		local requiredLevel = tonumber(slot.level) or 1
+		local lockedByLevel = requiredLevel > aquariumLevel
+		local lockedByPass = not ownsDesigner
+		local locked = lockedByLevel
+		local selectedDecoration = currentDesign.decorations and currentDesign.decorations[slotId] or "None"
+		local lockLabel = ""
+		if lockedByLevel then
+			lockLabel = "  [Level " .. tostring(requiredLevel) .. "]"
+		elseif lockedByPass then
+			lockLabel = "  [LOCK]"
+		end
+		local name = makeText(card, slot.name .. lockLabel, 15, (lockedByLevel or lockedByPass) and Color3.fromRGB(143, 160, 180) or Color3.fromRGB(255, 255, 255), true)
+		name.Position = UDim2.new(0, 12, 0, 8)
+		name.Size = UDim2.new(1, -24, 0, 22)
+		local detailText
+		if lockedByLevel then
+			detailText = "Locked until aquarium level " .. tostring(requiredLevel)
+		elseif lockedByPass then
+			detailText = "Requires Aquarium Designer Pass. Preview is allowed."
+		else
+			detailText = "Selected: " .. ((MonetizationConfig.AquariumDesigner.decorations[selectedDecoration] or {}).name or "None")
+		end
+		local detail = makeText(card, detailText, 12, (lockedByLevel or lockedByPass) and Color3.fromRGB(255, 190, 105) or Color3.fromRGB(190, 204, 220), false)
+		detail.Position = UDim2.new(0, 12, 0, 32)
+		detail.Size = UDim2.new(1, -24, 0, 18)
+
+		local x = 12
+		local rowY = 56
+		for _, decorationId in ipairs(MonetizationConfig.AquariumDesigner.decorationOrder) do
+			local decoration = MonetizationConfig.AquariumDesigner.decorations[decorationId]
+			local wideButton = decorationId == "TreasureChest" or decorationId == "ShipwreckPiece" or decorationId == "BubbleMachine"
+			local buttonWidth = wideButton and 112 or 76
+			if x + buttonWidth > 380 then
+				x = 12
+				rowY += 32
+			end
+			local buttonColor = locked and Color3.fromRGB(64, 72, 86) or (decorationId == selectedDecoration and Color3.fromRGB(91, 104, 124) or Color3.fromRGB(53, 130, 246))
+			local button = makeButton(card, decoration.name, buttonColor)
+			button.Position = UDim2.new(0, x, 0, rowY)
+			button.Size = UDim2.new(0, buttonWidth, 0, 28)
+			button.TextSize = 10
+			button.AutoButtonColor = not locked
+			if locked then
+				button.TextColor3 = Color3.fromRGB(160, 171, 190)
+			else
+				button.MouseButton1Click:Connect(function()
+					fireShopAction("PreviewAquariumDesign", "Aquarium", slotId, copyAquariumDesignWith({
+						decorations = {
+							[slotId] = decorationId,
+						},
+					}))
+				end)
+			end
+			x += buttonWidth + 6
+		end
+
+		local applyText = lockedByLevel and "Locked" or (lockedByPass and "Buy Pass" or "Apply Slot")
+		local applyColor = (lockedByLevel or lockedByPass) and Color3.fromRGB(86, 98, 115) or Color3.fromRGB(28, 160, 92)
+		local apply = makeButton(card, applyText, applyColor)
+		apply.Position = UDim2.new(1, -112, 0, 150)
+		apply.Size = UDim2.new(0, 96, 0, 28)
+		apply.TextSize = 12
+		apply.AutoButtonColor = not lockedByLevel
+		if lockedByPass and not lockedByLevel then
+			apply.MouseButton1Click:Connect(function()
+				fireShopAction("PromptGamePass", "GamePass", "AquariumDesigner")
+			end)
+		elseif not lockedByLevel then
+			apply.MouseButton1Click:Connect(function()
+				fireShopAction("ApplyAquariumDesign", "Aquarium", slotId, currentDesign)
+			end)
+		end
+	end
+end
+
+local function renderShopTab()
+	renderShopSubTabs()
+
+	if activeShopTab == "Game Passes" then
+		renderShopGamePasses()
+	elseif activeShopTab == "Bait" then
+		renderShopBait()
+	elseif activeShopTab == "Aquarium" then
+		renderAquariumDesignerControls()
+	elseif activeShopTab == "Storage" then
+		renderShopStorage()
+	end
+end
+
+local function getPlayerLeaderstat(targetPlayer, statName)
+	local leaderstats = targetPlayer:FindFirstChild("leaderstats")
+	local stat = leaderstats and leaderstats:FindFirstChild(statName)
+	if stat and stat:IsA("ValueBase") then
+		return stat.Value
+	end
+
+	return 0
+end
+
+local function formatCompactNumber(value)
+	value = tonumber(value) or 0
+	if value >= 1000000 then
+		return string.format("%.1fM", value / 1000000):gsub("%.0M", "M")
+	elseif value >= 1000 then
+		return string.format("%.1fK", value / 1000):gsub("%.0K", "K")
+	end
+
+	return tostring(value)
+end
+
+local function renderLeaderboardTab()
+	local function makeLeaderboardCard(height, strokeColor, strokeThickness, strokeTransparency)
+		local wrapper = Instance.new("Frame")
+		wrapper.Name = "LeaderboardCardRow"
+		wrapper.Size = UDim2.new(1, 0, 0, height)
+		wrapper.BackgroundTransparency = 1
+		wrapper.Parent = content
+
+		local card = Instance.new("Frame")
+		card.Name = "LeaderboardCard"
+		card.Position = UDim2.new(0, 6, 0, 1)
+		card.Size = UDim2.new(1, -12, 1, -2)
+		card.BackgroundColor3 = Color3.fromRGB(27, 33, 43)
+		card.Parent = wrapper
+		addCorner(card, 8)
+		local stroke = addStroke(card, strokeColor or Color3.fromRGB(60, 72, 90), strokeThickness or 1)
+		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		if strokeTransparency ~= nil then
+			stroke.Transparency = strokeTransparency
+		end
+		return card, stroke
+	end
+
+	local onlinePlayers = Players:GetPlayers()
+	table.sort(onlinePlayers, function(left, right)
+		local leftCaught = tonumber(getPlayerLeaderstat(left, "Fish Caught")) or 0
+		local rightCaught = tonumber(getPlayerLeaderstat(right, "Fish Caught")) or 0
+		if leftCaught ~= rightCaught then
+			return leftCaught > rightCaught
+		end
+
+		return string.lower(left.DisplayName or left.Name) < string.lower(right.DisplayName or right.Name)
+	end)
+
+	local summary = makeLeaderboardCard(80)
+	local heading = makeText(summary, "Leaderboard", 17, Color3.fromRGB(255, 255, 255), true)
+	heading.Position = UDim2.new(0, 18, 0, 8)
+	heading.Size = UDim2.new(1, -30, 0, 24)
+
+	local detail = makeText(summary, string.format("Sorted by fish-caught leaderboard | %d player%s online", #onlinePlayers, #onlinePlayers == 1 and "" or "s"), 13, Color3.fromRGB(190, 204, 220), false)
+	detail.Position = UDim2.new(0, 18, 0, 38)
+	detail.Size = UDim2.new(1, -36, 0, 20)
+
+	local header = makeLeaderboardCard(38)
+	local rankHeader = makeText(header, "#", 12, Color3.fromRGB(143, 160, 180), true)
+	rankHeader.Position = UDim2.new(0, 16, 0, 8)
+	rankHeader.Size = UDim2.new(0, 28, 0, 20)
+	rankHeader.TextXAlignment = Enum.TextXAlignment.Center
+	local nameHeader = makeText(header, "Player", 12, Color3.fromRGB(143, 160, 180), true)
+	nameHeader.Position = UDim2.new(0, 52, 0, 8)
+	nameHeader.Size = UDim2.new(0.48, -52, 0, 20)
+	local coinsHeader = makeText(header, "Coins", 12, Color3.fromRGB(143, 160, 180), true)
+	coinsHeader.Position = UDim2.new(0.52, 0, 0, 8)
+	coinsHeader.Size = UDim2.new(0.17, 0, 0, 20)
+	coinsHeader.TextXAlignment = Enum.TextXAlignment.Center
+	local levelHeader = makeText(header, "Level", 12, Color3.fromRGB(143, 160, 180), true)
+	levelHeader.Position = UDim2.new(0.69, 0, 0, 8)
+	levelHeader.Size = UDim2.new(0.14, 0, 0, 20)
+	levelHeader.TextXAlignment = Enum.TextXAlignment.Center
+	local caughtHeader = makeText(header, "Fish", 12, Color3.fromRGB(143, 160, 180), true)
+	caughtHeader.Position = UDim2.new(0.83, 0, 0, 8)
+	caughtHeader.Size = UDim2.new(0.17, -18, 0, 20)
+	caughtHeader.TextXAlignment = Enum.TextXAlignment.Center
+
+	for rank, listedPlayer in ipairs(onlinePlayers) do
+		local isSelf = listedPlayer == player
+		local card = makeLeaderboardCard(62, isSelf and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(60, 72, 90), isSelf and 2 or 1, isSelf and 0 or 0.45)
+
+		local displayName = listedPlayer.DisplayName or listedPlayer.Name
+		if listedPlayer:GetAttribute("FishyFishVip") == true then
+			displayName = "[VIP] " .. displayName
+		end
+		if isSelf then
+			displayName ..= " (You)"
+		end
+
+		local rankLabel = makeText(card, tostring(rank), 13, Color3.fromRGB(143, 160, 180), true)
+		rankLabel.Position = UDim2.new(0, 16, 0, 20)
+		rankLabel.Size = UDim2.new(0, 28, 0, 20)
+		rankLabel.TextXAlignment = Enum.TextXAlignment.Center
+
+		local name = makeText(card, displayName, 13, isSelf and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(255, 255, 255), true)
+		name.Position = UDim2.new(0, 52, 0, 8)
+		name.Size = UDim2.new(0.48, -52, 0, 22)
+		name.TextTruncate = Enum.TextTruncate.None
+
+		local username = makeText(card, "@" .. listedPlayer.Name, 11, Color3.fromRGB(143, 160, 180), false)
+		username.Position = UDim2.new(0, 52, 0, 32)
+		username.Size = UDim2.new(0.48, -52, 0, 16)
+		username.TextTruncate = Enum.TextTruncate.None
+
+		local coins = makeText(card, formatCompactNumber(getPlayerLeaderstat(listedPlayer, "Coins")), 13, Color3.fromRGB(235, 242, 255), true)
+		coins.Position = UDim2.new(0.52, 0, 0, 20)
+		coins.Size = UDim2.new(0.17, 0, 0, 20)
+		coins.TextXAlignment = Enum.TextXAlignment.Center
+
+		local level = makeText(card, tostring(getPlayerLeaderstat(listedPlayer, "Level")), 13, Color3.fromRGB(235, 242, 255), true)
+		level.Position = UDim2.new(0.69, 0, 0, 20)
+		level.Size = UDim2.new(0.14, 0, 0, 20)
+		level.TextXAlignment = Enum.TextXAlignment.Center
+
+		local caught = makeText(card, formatCompactNumber(getPlayerLeaderstat(listedPlayer, "Fish Caught")), 13, Color3.fromRGB(235, 242, 255), true)
+		caught.Position = UDim2.new(0.83, 0, 0, 20)
+		caught.Size = UDim2.new(0.17, -18, 0, 20)
+		caught.TextXAlignment = Enum.TextXAlignment.Center
+	end
+end
+
 renderContent = function()
 	if activeTab == "Rods" then
 		activeTab = "Bag"
@@ -1938,6 +3153,12 @@ renderContent = function()
 		renderAquariumTab()
 	elseif activeTab == "Teleport" then
 		renderTeleportTab()
+	elseif activeTab == "Quests" then
+		renderQuestsTab()
+	elseif activeTab == "Shop" then
+		renderShopTab()
+	elseif activeTab == "Leaderboard" then
+		renderLeaderboardTab()
 	end
 end
 
@@ -1953,12 +3174,16 @@ local function runMinigame(prompt)
 	local promptBaitData = getBaitData(promptBaitId)
 	local promptBaitName = promptBait.name or promptBaitData.displayName
 	local promptBaitText = "Bait: " .. promptBaitName .. " (" .. getBaitCountText(promptBaitId, promptBait.remaining) .. ")"
+	local castText = prompt.cast and prompt.cast.displayName and ("\nCast: " .. prompt.cast.displayName) or ""
 	local minigameConfig = prompt.minigame or GameConfig.getFishingMinigameConfig(fish.rarity or "Common", state and state.EquippedRod or "WoodenRod")
 	local difficulty = minigameConfig.difficulty or GameConfig.FishingMinigame.RarityDifficulty.Common
 	local random = Random.new(math.floor((os.clock() * 100000) % 2147483647))
 
 	minigameRunning = true
+	CastPower.running = false
+	CastPower.activeConfig = nil
 	setMinigameVisible(true)
+	CastPower.content.Visible = false
 	catchButton.Visible = false
 	timingBar.Visible = false
 	zone.Visible = false
@@ -1969,7 +3194,7 @@ local function runMinigame(prompt)
 	minigameText.Text = isAutoFish and "AutoFish is waiting for a bite..." or "Waiting for a bite..."
 	minigameFishInfo.Text = "Something is biting..."
 	minigameProgressText.Text = "Progress --"
-	minigameInstruction.Text = promptBaitText
+	minigameInstruction.Text = promptBaitText .. castText
 	progressFill.Size = UDim2.new(1, 0, 0, 0)
 	forcePureWhiteText(minigameText)
 
@@ -1985,12 +3210,14 @@ local function runMinigame(prompt)
 	local barVelocity = 0
 	local fishY = random:NextNumber(0.20, 0.80)
 	local fishTarget = random:NextNumber(0.15, 0.85)
+	local fishVelocity = 0
 	local progress = math.clamp(tonumber(minigameConfig.startProgress) or 0.34, 0.08, 0.86)
 	local minSuccessDuration = tonumber(minigameConfig.minSuccessDuration) or 1.75
 	local maxDuration = tonumber(minigameConfig.maxDuration) or 35
 	local gameStartedAt = os.clock()
 	local nextDecisionAt = gameStartedAt + random:NextNumber(difficulty.turnIntervalMin or 1, difficulty.turnIntervalMax or 2)
 	local pauseUntil = 0
+	local burstUntil = 0
 	local holding = false
 	local finished = false
 
@@ -2001,7 +3228,7 @@ local function runMinigame(prompt)
 	minigameText.Text = isAutoFish and "AutoFish is reeling..." or "Keep the fish inside the green bar!"
 	minigameFishInfo.Text = string.format("%s [%s]\nValue: %d | XP: %d", fish.name or "Fish", fish.rarity or "Common", fish.value or 0, fish.xp or 0)
 	minigameProgressText.Text = string.format("Progress %d%%", math.floor(progress * 100 + 0.5))
-	minigameInstruction.Text = promptBaitText .. "\n" .. (isAutoFish and "AutoFish is handling this catch." or "Hold mouse, tap, or Space to lift the green bar. Release to let it fall.")
+	minigameInstruction.Text = promptBaitText .. castText .. "\n" .. (isAutoFish and "AutoFish is handling this catch." or "Hold mouse, tap, or Space to lift the green bar. Release to let it fall.")
 	forcePureWhiteText(minigameText)
 
 	local renderConnection
@@ -2067,6 +3294,24 @@ local function runMinigame(prompt)
 		end)
 	end
 
+	local function chooseFishTarget(fromY, preferFarTarget)
+		if preferFarTarget then
+			local jumpMin = tonumber(difficulty.jumpMin) or 0.12
+			local jumpMax = math.max(jumpMin, tonumber(difficulty.jumpMax) or jumpMin)
+			local direction = random:NextInteger(0, 1) == 0 and -1 or 1
+			local distance = random:NextNumber(jumpMin, jumpMax)
+			local target = fromY + (direction * distance)
+
+			if target < 0.08 or target > 0.92 then
+				target = fromY - (direction * distance)
+			end
+
+			return math.clamp(target, 0.08, 0.92)
+		end
+
+		return random:NextNumber(0.08, 0.92)
+	end
+
 	renderConnection = RunService.RenderStepped:Connect(function(deltaTime)
 		if not minigameRunning or finished then
 			return
@@ -2078,31 +3323,54 @@ local function runMinigame(prompt)
 		if now >= nextDecisionAt then
 			local pauseChance = difficulty.pauseChance or 0
 			local jumpChance = difficulty.jumpChance or 0
+			local burstChance = difficulty.burstChance or 0
 
-			if jumpChance > 0 and random:NextNumber() < jumpChance then
-				fishY = random:NextNumber(0.08, 0.92)
-			end
+			fishTarget = chooseFishTarget(fishY, jumpChance > 0 and random:NextNumber() < jumpChance)
 
 			if pauseChance > 0 and random:NextNumber() < pauseChance then
 				pauseUntil = now + random:NextNumber(difficulty.pauseMin or 0.12, difficulty.pauseMax or 0.45)
 			end
 
-			fishTarget = random:NextNumber(0.08, 0.92)
+			if burstChance > 0 and random:NextNumber() < burstChance then
+				burstUntil = now + random:NextNumber(difficulty.burstMin or 0.18, difficulty.burstMax or 0.38)
+			end
+
 			nextDecisionAt = now + random:NextNumber(difficulty.turnIntervalMin or 1, difficulty.turnIntervalMax or 2)
 		end
 
+		local targetVelocity = 0
 		if now >= pauseUntil then
 			local distance = fishTarget - fishY
+			local targetSlack = tonumber(difficulty.targetSlack) or 0.025
+			if math.abs(distance) < targetSlack then
+				fishTarget = chooseFishTarget(fishY, false)
+				distance = fishTarget - fishY
+			end
+
 			local direction = distance >= 0 and 1 or -1
 			local jitter = random:NextNumber(-(difficulty.jitter or 0), difficulty.jitter or 0)
-			fishY += (direction * (difficulty.moveSpeed or 0.25) + jitter) * deltaTime
-
-			if math.abs(distance) < 0.025 then
-				fishTarget = random:NextNumber(0.08, 0.92)
+			local speed = tonumber(difficulty.moveSpeed) or 0.25
+			if now < burstUntil then
+				speed *= tonumber(difficulty.burstMultiplier) or 1.35
 			end
+
+			targetVelocity = (direction * speed) + jitter
 		end
 
-		fishY = math.clamp(fishY, 0.04, 0.96)
+		local acceleration = tonumber(difficulty.acceleration) or 6
+		local velocityBlend = math.min(1, acceleration * deltaTime)
+		fishVelocity += (targetVelocity - fishVelocity) * velocityBlend
+		fishY += fishVelocity * deltaTime
+
+		if fishY <= 0.04 then
+			fishY = 0.04
+			fishVelocity = math.abs(fishVelocity) * 0.35
+			fishTarget = math.max(fishTarget, 0.16)
+		elseif fishY >= 0.96 then
+			fishY = 0.96
+			fishVelocity = -math.abs(fishVelocity) * 0.35
+			fishTarget = math.min(fishTarget, 0.84)
+		end
 
 		if isAutoFish then
 			local targetTop = math.clamp(fishY - (barSize / 2), 0, maxBarTop)
@@ -2171,6 +3439,11 @@ end)
 FishingPrompt.OnClientEvent:Connect(function(prompt)
 	if prompt.autoFish then
 		showToast("AutoFish is catching...")
+	elseif prompt.cast and prompt.cast.displayName then
+		if prompt.cast.sparkle then
+			CastPower.showSparkle()
+		end
+		showToast(prompt.cast.displayName .. " Cast! Fish is biting!")
 	else
 		showToast("Fish is biting. Keep it in the green bar!")
 	end
@@ -2186,6 +3459,9 @@ Notice.OnClientEvent:Connect(function(message)
 	showToast(message)
 	fishingBusy = false
 	minigameRunning = false
+	CastPower.running = false
+	CastPower.activeConfig = nil
+	CastPower.content.Visible = false
 	setMinigameVisible(false)
 	renderContent()
 end)
@@ -2195,7 +3471,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		return
 	end
 
-	if minigameRunning then
+	if minigameRunning or CastPower.running then
 		return
 	end
 

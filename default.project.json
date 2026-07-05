@@ -1,4 +1,4 @@
-﻿{
+{
     "name":  "Stop it and Stop it",
     "tree":  {
                  "$className":  "DataModel",
@@ -17,6 +17,9 @@
                                                                   "StartFishing":  {
                                                                                        "$className":  "RemoteEvent"
                                                                                    },
+                                                                  "GetCastConfig":  {
+                                                                                        "$className":  "RemoteFunction"
+                                                                                    },
                                                                   "FinishMinigame":  {
                                                                                          "$className":  "RemoteEvent"
                                                                                      },
@@ -27,6 +30,12 @@
                                                                                  "$className":  "RemoteEvent"
                                                                              },
                                                                   "BaitAction":  {
+                                                                                     "$className":  "RemoteEvent"
+                                                                                 },
+                                                                  "QuestAction":  {
+                                                                                      "$className":  "RemoteEvent"
+                                                                                  },
+                                                                  "ShopAction":  {
                                                                                      "$className":  "RemoteEvent"
                                                                                  },
                                                                   "UnlockBiome":  {

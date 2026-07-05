@@ -185,7 +185,7 @@ function Service.ensureBoard()
 	title.BackgroundTransparency = 1
 	title.Position = UDim2.fromScale(0.04, 0.04)
 	title.Size = UDim2.fromScale(0.92, 0.2)
-	title.Text = "TOP FISH CAUGHT"
+	title.Text = "Leaderboard - Most Fish Caught"
 	title.TextColor3 = Color3.fromRGB(255, 238, 170)
 	title.TextStrokeTransparency = 0
 	title.TextStrokeColor3 = Color3.fromRGB(10, 18, 28)

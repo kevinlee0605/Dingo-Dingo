@@ -3,6 +3,7 @@
 
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local function isInsideFishyFishWorld(instance)
 	local current = instance.Parent
@@ -96,9 +97,46 @@ local solidSmallDecorFolders = {
 }
 
 local function makeSmallDecorSolid(root)
+	local function makeAnimalBlocker(target)
+		local cframe
+		local size
+		if target:IsA("Model") then
+			cframe, size = target:GetBoundingBox()
+		elseif target:IsA("BasePart") then
+			cframe = target.CFrame
+			size = target.Size
+		else
+			return
+		end
+
+		local blockerName = target.Name .. "_CollisionBlocker"
+		local blocker = root:FindFirstChild(blockerName)
+		if not blocker then
+			blocker = Instance.new("Part")
+			blocker.Name = blockerName
+			blocker.Parent = root
+		end
+
+		local blockerHeight = 5
+		local bottomY = cframe.Position.Y - (size.Y / 2)
+		blocker.Anchored = true
+		blocker.Size = Vector3.new(math.max(size.X + 1.2, 4), blockerHeight, math.max(size.Z + 1.2, 4))
+		blocker.CFrame = CFrame.new(cframe.Position.X, bottomY + (blockerHeight / 2), cframe.Position.Z)
+		blocker.Transparency = 1
+		blocker.Color = Color3.fromRGB(255, 0, 255)
+		blocker.Material = Enum.Material.SmoothPlastic
+		blocker.CanCollide = true
+		blocker.CanTouch = false
+		blocker.CanQuery = true
+		pcall(function()
+			blocker.CollisionGroup = "Default"
+		end)
+	end
+
 	for _, descendant in ipairs(root:GetDescendants()) do
 		if descendant:IsA("BasePart") then
 			local helperPart = descendant.Name == "PrimaryPart"
+				or string.find(descendant.Name, "_CollisionBlocker") ~= nil
 				or descendant.Transparency >= 0.95
 				or descendant.Material == Enum.Material.ForceField
 
@@ -108,6 +146,15 @@ local function makeSmallDecorSolid(root)
 			pcall(function()
 				descendant.CollisionGroup = "Default"
 			end)
+		end
+	end
+
+	for _, descendant in ipairs(root:GetDescendants()) do
+		if descendant.Name == "SmallCrab"
+			or descendant.Name == "SmallTurtle"
+			or descendant.Name == "OnePieceSmallCrab"
+			or descendant.Name == "OnePieceSmallTurtle" then
+			makeAnimalBlocker(descendant)
 		end
 	end
 end
@@ -282,6 +329,35 @@ local function applySoftLightingProfile()
 	end
 
 	print(("Soft lighting patch: evened lobby light and softened %d local lights / %d neon lamp parts."):format(lightCount, neonCount))
+end
+
+local function applyBeginnerPondArea()
+	local shared = ReplicatedStorage:FindFirstChild("Shared")
+	local builderModule = shared and shared:FindFirstChild("BeginnerPondBuilder")
+	if not builderModule then
+		warn("Beginner Pond editor patch: BeginnerPondBuilder is not synced yet. Connect Rojo, sync source, then run this patch again.")
+		return
+	end
+
+	local world = Workspace:FindFirstChild("FishyFishWorld")
+	if not world then
+		world = Instance.new("Folder")
+		world.Name = "FishyFishWorld"
+		world.Parent = Workspace
+	end
+
+	local ok, builder = pcall(require, builderModule)
+	if not ok or type(builder) ~= "table" or type(builder.build) ~= "function" then
+		warn("Beginner Pond editor patch: could not load BeginnerPondBuilder.")
+		return
+	end
+
+	builder.build(world, {
+		position = Vector3.new(0, 8, 0),
+		color = Color3.fromRGB(74, 163, 104),
+	})
+
+	print("Beginner Pond editor patch: rebuilt BeginnerPondArea to match Play mode.")
 end
 
 local function applyLimestoneLobbySafetyBorder()
@@ -1154,8 +1230,8 @@ local function applySeasideRodShopKeeper()
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "BuyRodPrompt"
-	prompt.ActionText = "Browse Rods"
-	prompt.ObjectText = "Rod Seller"
+	prompt.ActionText = "Browse Supplies"
+	prompt.ObjectText = "Supply Seller"
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.HoldDuration = 0.25
 	prompt.MaxActivationDistance = 12
@@ -1164,6 +1240,52 @@ local function applySeasideRodShopKeeper()
 
 	npc.PrimaryPart = body
 	print("Rod shop patch: placed RodShopKeeperNPC behind the counter in " .. shop:GetFullName() .. ".")
+end
+
+local function applySupplyShopAndLeaderboardLabels()
+	local shop = findSavedModel("SeasideRodShop")
+	if shop then
+		for _, descendant in ipairs(shop:GetDescendants()) do
+			if descendant:IsA("TextLabel") or descendant:IsA("TextButton") then
+				if descendant.Text == "ROD SHOP" or descendant.Text == "Rod & Bait Shop" then
+					descendant.Text = "SUPPLY SHOP"
+				elseif descendant.Text == "RODS\nBAIT\nTACKLE" then
+					descendant.Text = "RODS\nBAIT\nSUPPLIES"
+				end
+			elseif descendant:IsA("ProximityPrompt") and descendant.Name == "BuyRodPrompt" then
+				descendant.ActionText = "Browse Supplies"
+				descendant.ObjectText = "Supply Seller"
+			elseif descendant:IsA("BasePart") and descendant:GetAttribute("InteractText") == "Open Rod Shop" then
+				descendant:SetAttribute("InteractText", "Open Supply Shop")
+			end
+		end
+	end
+
+	for _, descendant in ipairs(workspace:GetDescendants()) do
+		if descendant:IsA("TextLabel") and (descendant.Text:match("^Leaderboard") or descendant.Text:match("^TOP FISH CAUGHT")) then
+			local rows = descendant.Text:match("\n.*") or ""
+			descendant.Text = "Leaderboard - Most Fish Caught" .. rows
+		end
+	end
+
+	print("Shop label patch: renamed rod shop visuals to Supply Shop and updated leaderboard title.")
+end
+
+local function applyCastleShop()
+	local serviceScript = game:GetService("ServerScriptService"):FindFirstChild("CastleShopService")
+	if not serviceScript then
+		warn("Castle shop patch: CastleShopService is not synced into ServerScriptService yet.")
+		return
+	end
+
+	local success, service = pcall(require, serviceScript)
+	if not success or type(service) ~= "table" or type(service.build) ~= "function" then
+		warn("Castle shop patch: could not load CastleShopService.")
+		return
+	end
+
+	service.build()
+	print("Castle shop patch: built CastleShop.")
 end
 
 local function applySeasideShopDisplayAquarium()
@@ -1419,12 +1541,13 @@ local function applySeasideShopDisplayAquarium()
 end
 
 local function applyLimestoneLobbySmallBeachDecor()
-	local lobby = Workspace:FindFirstChild("LobbyArea", true)
+	local lobby = findSavedLobbyArea()
 	local parent = lobby or Workspace
 
-	local old = parent:FindFirstChild("LimestoneLobbySmallBeachDecor")
-	if old then
-		old:Destroy()
+	for _, descendant in ipairs(Workspace:GetDescendants()) do
+		if descendant.Name == "LimestoneLobbySmallBeachDecor" then
+			descendant:Destroy()
+		end
 	end
 
 	local decorFolder = Instance.new("Folder")
@@ -1486,8 +1609,10 @@ local function applyLimestoneLobbySmallBeachDecor()
 	local blue = Color3.fromRGB(40, 130, 230)
 	local yellow = Color3.fromRGB(245, 210, 65)
 	local darkLine = Color3.fromRGB(40, 40, 45)
+	local sandColor = Color3.fromRGB(221, 196, 135)
+	local sandShadow = Color3.fromRGB(188, 158, 95)
 
-	local volleyballPosition = Vector3.new(-58, groundY(-58, -42), -42)
+	local volleyballPosition = Vector3.new(-182, groundY(-182, -540), -540)
 	local volleyball, volleyballOrigin = makeModel("SmallBeachVolleyball", volleyballPosition, -18)
 	local ballFolder = makeFolder(volleyball, "Ball")
 	local panelFolder = makeFolder(volleyball, "RoundedColorPanels")
@@ -1512,13 +1637,34 @@ local function applyLimestoneLobbySmallBeachDecor()
 	sideSeam.Shape = Enum.PartType.Ball
 	volleyball.PrimaryPart = makePart(primaryFolder, "PrimaryPart", Vector3.new(0.4, 0.4, 0.4), volleyballOrigin, Vector3.new(0, 1.1, 0), Color3.fromRGB(255, 0, 255), Enum.Material.ForceField, 1, false)
 
+	local sandcastlePosition = Vector3.new(-208, groundY(-208, -548), -548)
+	local sandcastle, sandcastleOrigin = makeModel("SmallSandcastle", sandcastlePosition, 8)
+	local castleFolder = makeFolder(sandcastle, "Castle")
+	primaryFolder = makeFolder(sandcastle, "PrimaryPartFolder")
+
+	makePart(castleFolder, "CastleBase", Vector3.new(4.8, 0.75, 3.8), sandcastleOrigin, Vector3.new(0, 0.38, 0), sandShadow, Enum.Material.Sand, 0, false)
+	makePart(castleFolder, "MainKeep", Vector3.new(2.1, 1.8, 1.8), sandcastleOrigin, Vector3.new(0, 1.35, 0), sandColor, Enum.Material.Sand, 0, false)
+	makePart(castleFolder, "KeepTop", Vector3.new(2.35, 0.35, 2.05), sandcastleOrigin, Vector3.new(0, 2.42, 0), sandShadow, Enum.Material.Sand, 0, false)
+	makePart(castleFolder, "LeftTower", Vector3.new(1.05, 2.1, 1.05), sandcastleOrigin, Vector3.new(-1.85, 1.45, -0.85), sandColor, Enum.Material.Sand, 0, false)
+	makePart(castleFolder, "RightTower", Vector3.new(1.05, 2.1, 1.05), sandcastleOrigin, Vector3.new(1.85, 1.45, -0.85), sandColor, Enum.Material.Sand, 0, false)
+	makePart(castleFolder, "BackTower", Vector3.new(1.0, 1.9, 1.0), sandcastleOrigin, Vector3.new(0, 1.3, 1.25), sandColor, Enum.Material.Sand, 0, false)
+	makePart(castleFolder, "LeftTowerCap", Vector3.new(1.25, 0.3, 1.25), sandcastleOrigin, Vector3.new(-1.85, 2.65, -0.85), sandShadow, Enum.Material.Sand, 0, false)
+	makePart(castleFolder, "RightTowerCap", Vector3.new(1.25, 0.3, 1.25), sandcastleOrigin, Vector3.new(1.85, 2.65, -0.85), sandShadow, Enum.Material.Sand, 0, false)
+	makePart(castleFolder, "BackTowerCap", Vector3.new(1.18, 0.3, 1.18), sandcastleOrigin, Vector3.new(0, 2.38, 1.25), sandShadow, Enum.Material.Sand, 0, false)
+	for notchIndex, notchX in ipairs({ -0.75, 0, 0.75 }) do
+		makePart(castleFolder, "KeepCrenel" .. tostring(notchIndex), Vector3.new(0.38, 0.42, 0.38), sandcastleOrigin, Vector3.new(notchX, 2.78, -0.78), sandColor, Enum.Material.Sand, 0, false)
+	end
+	makePart(castleFolder, "Door", Vector3.new(0.62, 0.95, 0.18), sandcastleOrigin, Vector3.new(0, 0.95, -0.92), sandShadow, Enum.Material.Sand, 0, false)
+	makePart(castleFolder, "FlagPole", Vector3.new(0.12, 1.05, 0.12), sandcastleOrigin, Vector3.new(0, 3.28, 0), Color3.fromRGB(95, 76, 52), Enum.Material.Wood, 0, false)
+	makePart(castleFolder, "Flag", Vector3.new(0.85, 0.42, 0.08), sandcastleOrigin, Vector3.new(0.46, 3.48, 0), Color3.fromRGB(240, 70, 55), Enum.Material.SmoothPlastic, 0, false)
+	sandcastle.PrimaryPart = makePart(primaryFolder, "PrimaryPart", Vector3.new(0.4, 0.4, 0.4), sandcastleOrigin, Vector3.new(0, 1.3, 0), Color3.fromRGB(255, 0, 255), Enum.Material.ForceField, 1, false)
+
 	local bucketColor = Color3.fromRGB(240, 70, 55)
 	local bucketDark = Color3.fromRGB(185, 45, 38)
 	local rimColor = Color3.fromRGB(255, 220, 85)
 	local handleColor = Color3.fromRGB(235, 235, 225)
-	local sandColor = Color3.fromRGB(221, 196, 135)
 
-	local bucketPosition = Vector3.new(-51, groundY(-51, -46), -46)
+	local bucketPosition = Vector3.new(-196, groundY(-196, -548), -548)
 	local bucket, bucketOrigin = makeModel("SmallBeachBucket", bucketPosition, 12)
 	local bucketFolder = makeFolder(bucket, "Bucket")
 	local handleFolder = makeFolder(bucket, "Handle")
@@ -1542,7 +1688,7 @@ local function applyLimestoneLobbySmallBeachDecor()
 	local gripColor = Color3.fromRGB(235, 80, 65)
 	local bladeColor = Color3.fromRGB(60, 150, 230)
 	local bladeDark = Color3.fromRGB(35, 100, 180)
-	local shovelPosition = Vector3.new(-46, groundY(-46, -50) + 0.14, -50)
+	local shovelPosition = Vector3.new(-186, groundY(-186, -553) + 0.14, -553)
 	local shovel, shovelOrigin = makeModel("SmallBeachShovel", shovelPosition, -24)
 	local shovelFolder = makeFolder(shovel, "Shovel")
 	primaryFolder = makeFolder(shovel, "PrimaryPartFolder")
@@ -1577,11 +1723,11 @@ local function applyLimestoneLobbySmallBeachDecor()
 	makePart(shovelFolder, "BladeShine", Vector3.new(0.12, 0.2, 0.48), shovelOrigin, Vector3.new(1.23, 0.02, -0.18), Color3.fromRGB(140, 210, 255), Enum.Material.SmoothPlastic, 0, false)
 	shovel.PrimaryPart = makePart(primaryFolder, "PrimaryPart", Vector3.new(0.4, 0.4, 0.4), shovelOrigin, Vector3.new(0.3, 0, 0), Color3.fromRGB(255, 0, 255), Enum.Material.ForceField, 1, false)
 
-	print("Limestone lobby beach decor patch: placed volleyball, bucket, and shovel.")
+	print("Limestone lobby beach decor patch: placed volleyball, sandcastle, bucket, and shovel.")
 end
 
 local function applyLimestoneLobbySmallAnimalDecor()
-	local lobby = Workspace:FindFirstChild("LobbyArea", true)
+	local lobby = findSavedLobbyArea()
 	local parent = lobby or Workspace
 
 	for _, descendant in ipairs(parent:GetDescendants()) do
@@ -1590,9 +1736,10 @@ local function applyLimestoneLobbySmallAnimalDecor()
 		end
 	end
 
-	local old = parent:FindFirstChild("LimestoneLobbySmallAnimalDecor")
-	if old then
-		old:Destroy()
+	for _, descendant in ipairs(Workspace:GetDescendants()) do
+		if descendant.Name == "LimestoneLobbySmallAnimalDecor" then
+			descendant:Destroy()
+		end
 	end
 
 	local decorFolder = Instance.new("Folder")
@@ -1668,7 +1815,7 @@ local function applyLimestoneLobbySmallAnimalDecor()
 		return segment
 	end
 
-	local turtle, turtleOrigin = makeModel("SmallTurtle", Vector3.new(-64, groundY(-64, -38) + 0.05, -38), 22)
+	local turtle, turtleOrigin = makeModel("SmallTurtle", Vector3.new(-286, groundY(-286, -520) + 0.05, -520), 22)
 	local turtleBody = makeFolder(turtle, "CompactBody")
 	local turtlePrimary = makeFolder(turtle, "PrimaryPartFolder")
 	local shellColor = Color3.fromRGB(85, 120, 70)
@@ -1691,7 +1838,7 @@ local function applyLimestoneLobbySmallAnimalDecor()
 	makePart(turtleBody, "RightSideColorPatch", Vector3.new(0.75, 0.08, 0.2), turtleOrigin, Vector3.new(0, 0.55, 0.72), turtleSkin, Enum.Material.SmoothPlastic, 0, false)
 	turtle.PrimaryPart = makePart(turtlePrimary, "PrimaryPart", Vector3.new(0.45, 0.45, 0.45), turtleOrigin, Vector3.new(0, 0.68, 0), Color3.fromRGB(255, 0, 255), Enum.Material.ForceField, 1, false)
 
-	local crab, crabOrigin = makeModel("SmallCrab", Vector3.new(-69, groundY(-69, -45) + 0.05, -45), -16)
+	local crab, crabOrigin = makeModel("SmallCrab", Vector3.new(-300, groundY(-300, -538) + 0.05, -538), -16)
 	local crabBody = makeFolder(crab, "CompactBody")
 	local crabPrimary = makeFolder(crab, "PrimaryPartFolder")
 	local crabColor = Color3.fromRGB(205, 85, 55)
@@ -1712,13 +1859,13 @@ local function applyLimestoneLobbySmallAnimalDecor()
 end
 
 local function applyLimestoneLobbyOnePieceBeachDecor()
-	local lobby = Workspace:FindFirstChild("LobbyArea", true)
+	local lobby = findSavedLobbyArea()
 	local parent = lobby or Workspace
 
 	local defaults = {
-		OnePieceSmallCrab = Vector3.new(-69, 3, -45),
-		OnePieceSmallTurtle = Vector3.new(-64, 3, -38),
-		OnePieceSmallBeachVolleyball = Vector3.new(-58, 3, -42),
+		OnePieceSmallCrab = Vector3.new(-300, 3, -538),
+		OnePieceSmallTurtle = Vector3.new(-286, 3, -520),
+		OnePieceSmallBeachVolleyball = Vector3.new(-182, 3, -540),
 	}
 
 	local function savedPosition(names, fallback)
@@ -1728,11 +1875,13 @@ local function applyLimestoneLobbyOnePieceBeachDecor()
 				local ok, pivot = pcall(function()
 					return existing:GetPivot()
 				end)
-				if ok then
+				if ok and pivot.Position.X >= -325 and pivot.Position.X <= -15 and pivot.Position.Z >= -605 and pivot.Position.Z <= -300 then
 					return pivot.Position
 				end
 			elseif existing and existing:IsA("BasePart") then
-				return existing.Position
+				if existing.Position.X >= -325 and existing.Position.X <= -15 and existing.Position.Z >= -605 and existing.Position.Z <= -300 then
+					return existing.Position
+				end
 			end
 		end
 
@@ -1939,18 +2088,19 @@ local function applyLimestoneLobbyOnePieceBeachDecor()
 end
 
 applySoftLightingProfile()
+applyBeginnerPondArea()
 applyFountainBrickPlaza()
 applyFountainWarpTrigger()
 applyShopWoodSpacing()
 applySeasideRodShopMirror()
 applySeasideShopFishmonger()
 applySeasideRodShopKeeper()
+applySupplyShopAndLeaderboardLabels()
+applyCastleShop()
 applySeasideShopDisplayAquarium()
 applyLimestoneLobbySafetyBorder()
 applyLimestoneLobbyPathLights()
 applyLimestoneLobbySmallBeachDecor()
-applyLimestoneLobbySmallAnimalDecor()
-applyLimestoneLobbyOnePieceBeachDecor()
 applySmallDecorCollision()
 applyLimestoneLobbySpawn()
 

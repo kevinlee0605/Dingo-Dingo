@@ -1,6 +1,7 @@
 # Generated Roblox place files
 *.rbxlx
 *.rbxl
+logs/
 
 # Roblox Studio lock files
 /*.rbxlx.lock

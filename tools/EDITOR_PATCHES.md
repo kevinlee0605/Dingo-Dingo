@@ -14,5 +14,6 @@ be generated during Play, also add an editor preview or an editor patch here.
 Current patches:
 
 - `apply_fountain_brick_plaza.lua` updates saved `FountainPlazaTile` parts to the brick style.
+- `bake_beginner_pond_editor.lua` bakes the generated Beginner Pond into real editable Workspace parts in Studio edit mode. Use it after pulling source if the editor pond does not match Play/Test.
 - `run_editor_patches.lua` runs all current editor patches in one paste, including the fountain brick style, fountain biome-warp trigger, shop wood spacing fixes, the seaside shop fishmonger NPC, the rod shop NPC, and the seaside shop display aquarium.
 - `add_lobby_aquarium_warp.lua` is a one-off fallback patch for creating the aquarium warp in Studio if Rojo syncing is not available. The current aquarium warp is also Rojo-synced as `Workspace.LobbyAquariumWarp`.
