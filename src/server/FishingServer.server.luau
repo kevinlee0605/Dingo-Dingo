@@ -15,16 +15,23 @@ end
 local function shouldStoreEarlyRodModel(name)
 	local normalized = normalizeEarlyRodName(name)
 	return normalized == "woodenrodmk411"
+		or normalized == "woodenrodsplit"
 		or normalized == "woodenrodmk4"
 		or normalized == "woodenrodmk3"
 		or normalized == "woodenrod"
 		or normalized == "wooden"
+		or normalized == "ironrodsplit"
+		or normalized == "ironrodsplit2"
 		or normalized == "ironrod11"
 		or normalized == "ironrod"
 		or normalized == "iron"
+		or normalized == "emeraldrodsplit"
+		or normalized == "emeraldrodsplit2"
 		or normalized == "emeraldrod11"
 		or normalized == "emeraldrod"
 		or normalized == "emerald"
+		or normalized == "goldenrodsplit"
+		or normalized == "goldenrodsplit2"
 		or normalized == "goldenrod11"
 		or normalized == "goldenrod"
 		or normalized == "goldrod"
@@ -32,6 +39,50 @@ local function shouldStoreEarlyRodModel(name)
 		or normalized == "oceanrod11"
 		or normalized == "oceanrod"
 		or normalized == "ocean"
+end
+
+local function isImportedSplitRodModel(instance)
+	if not instance:IsA("Model") then
+		return false
+	end
+
+	local normalized = normalizeEarlyRodName(instance.Name)
+	if normalized == "goldenrodsplit" or normalized == "goldenrodsplit2" then
+		return true
+	end
+
+	if normalized == "emeraldrodsplit" or normalized == "emeraldrodsplit2" then
+		return true
+	end
+
+	return instance:FindFirstChild("Rod_Body", true) ~= nil
+		and instance:FindFirstChild("Rod_Bobber", true) ~= nil
+		and instance:FindFirstChild("Rod_String", true) ~= nil
+end
+
+local function getImportedSplitRodTemplateName(instance)
+	if not isImportedSplitRodModel(instance) then
+		return nil
+	end
+
+	local normalized = normalizeEarlyRodName(instance.Name)
+	if normalized == "ironrodsplit" or normalized == "ironrodsplit2" then
+		return "IronRod_Split"
+	end
+
+	if normalized == "goldenrodsplit" or normalized == "goldenrodsplit2" then
+		return "GoldenRod_Split"
+	end
+
+	if normalized == "emeraldrodsplit" or normalized == "emeraldrodsplit2" then
+		return "EmeraldRod_Split"
+	end
+
+	if normalized == "woodenrodsplit" or normalized == "scene" then
+		return "WoodenRod_split"
+	end
+
+	return nil
 end
 
 local function disablePhysicsForSourceModel(instance)
@@ -52,10 +103,6 @@ end
 
 local function removeWorkspaceModelsFolder()
 	local models = workspace:FindFirstChild("Models")
-	if not models then
-		return
-	end
-
 	local storage = ServerStorage:FindFirstChild(EARLY_ROD_TEMPLATE_FOLDER_NAME)
 	if not storage then
 		storage = Instance.new("Folder")
@@ -65,19 +112,35 @@ local function removeWorkspaceModelsFolder()
 
 	local moved = {}
 	local function moveRodSource(instance)
-		if moved[instance] or not shouldStoreEarlyRodModel(instance.Name) then
+		if moved[instance] then
+			return
+		end
+
+		local splitTemplateName = getImportedSplitRodTemplateName(instance)
+		if not shouldStoreEarlyRodModel(instance.Name) and not splitTemplateName then
 			return
 		end
 
 		if instance:IsA("Model") or instance:IsA("BasePart") then
 			moved[instance] = true
+			if splitTemplateName then
+				instance.Name = splitTemplateName
+			end
 			disablePhysicsForSourceModel(instance)
 			instance.Parent = storage
 		end
 	end
 
-	for _, child in ipairs(models:GetChildren()) do
-		moveRodSource(child)
+	if models then
+		for _, child in ipairs(models:GetChildren()) do
+			moveRodSource(child)
+		end
+	end
+
+	for _, child in ipairs(workspace:GetChildren()) do
+		if child ~= models then
+			moveRodSource(child)
+		end
 	end
 end
 
@@ -148,20 +211,22 @@ local AQUARIUM_LAND_MARGIN = 180
 local AQUARIUM_MIN_SHOWCASE_SLOTS = 1000
 local AQUARIUM_LAND_TILE_SIZE = 180
 
-local AUTO_FISH_MIN_WAIT = 11
-local AUTO_FISH_MAX_WAIT = 18
-local TESTING_START_COINS = 100000
-local TESTING_START_LEVEL = GameConfig.MAX_LEVEL
-local STUDIO_GIVE_BEGINNER_FISH_IN_BAG = true
+local RuntimeConfig = {
+	autoFishMinWait = 11,
+	autoFishMaxWait = 18,
+	testingStartCoins = 100000,
+	testingStartLevel = GameConfig.MAX_LEVEL,
+	studioGiveBeginnerFishInBag = true,
+}
 
 -- Optional fallback: paste a single uploaded rod MeshId here if you prefer an asset-id based rod.
 local WOODEN_ROD_MESH_ID = ""
 local ROD_TEMPLATE_FOLDER_NAME = "FishyFishModelTemplates"
 local ROD_TEMPLATE_NAMES_BY_ROD = {
-	WoodenRod = { "woodenrodmk411", "WoodenRodMk411", "woodenrodmk4", "WoodenRodMk4", "WoodenRodMk3", "woodenrodmk3", "WoodenRod", "woodenrod", "wooden_rod" },
-	IronRod = { "ironrod11", "IronRod11", "IronRod", "ironrod", "Iron Rod", "iron rod", "iron_rod" },
-	GoldenRod = { "goldenrod11", "GoldenRod11", "GoldenRod", "goldenrod", "Golden Rod", "golden rod", "golden_rod" },
-	EmeraldRod = { "emeraldrod11", "EmeraldRod11", "EmeraldRod", "emeraldrod", "Emerald Rod", "emerald rod", "emerald_rod" },
+	WoodenRod = { "WoodenRod_split", "woodenrodsplit", "woodenrodmk411", "WoodenRodMk411", "woodenrodmk4", "WoodenRodMk4", "WoodenRodMk3", "woodenrodmk3", "WoodenRod", "woodenrod", "wooden_rod" },
+	IronRod = { "IronRod_Split", "IronRod_Split2", "ironrodsplit", "ironrodsplit2", "ironrod11", "IronRod11", "IronRod", "ironrod", "Iron Rod", "iron rod", "iron_rod" },
+	GoldenRod = { "GoldenRod_Split", "GoldenRod_Split2", "goldenrodsplit", "goldenrodsplit2", "goldenrod11", "GoldenRod11", "GoldenRod", "goldenrod", "Golden Rod", "golden rod", "golden_rod" },
+	EmeraldRod = { "EmeraldRod_Split", "EmeraldRod_Split2", "emeraldrodsplit", "emeraldrodsplit2", "emeraldrod11", "EmeraldRod11", "EmeraldRod", "emeraldrod", "Emerald Rod", "emerald rod", "emerald_rod" },
 	OceanRod = { "ocean rod11", "Ocean Rod11", "oceanrod11", "OceanRod11", "OceanRod", "oceanrod", "Ocean Rod", "ocean rod", "ocean_rod" },
 }
 local ROD_VISUAL_LENGTH = 3.9
@@ -973,7 +1038,7 @@ local function makeInventoryFishEntry(fish, biomeId, score)
 end
 
 local function giveStudioBeginnerFishInBag(data)
-	if not STUDIO_GIVE_BEGINNER_FISH_IN_BAG or not RunService:IsStudio() then
+	if not RuntimeConfig.studioGiveBeginnerFishInBag or not RunService:IsStudio() then
 		return false
 	end
 
@@ -1124,8 +1189,8 @@ end
 
 local function makeDefaultData()
 	local data = {
-		Coins = TESTING_START_COINS,
-		XP = getTotalXPForLevel(TESTING_START_LEVEL),
+		Coins = RuntimeConfig.testingStartCoins,
+		XP = getTotalXPForLevel(RuntimeConfig.testingStartLevel),
 		Level = 1,
 		LevelProgressXP = 0,
 		NextLevelXP = GameConfig.getXPForNextLevel(1),
@@ -1170,8 +1235,8 @@ local function sanitizeLoadedData(loaded)
 		return data
 	end
 
-	data.Coins = math.max(tonumber(loaded.Coins) or data.Coins, TESTING_START_COINS)
-	data.XP = math.max(tonumber(loaded.XP) or data.XP, getTotalXPForLevel(TESTING_START_LEVEL))
+	data.Coins = math.max(tonumber(loaded.Coins) or data.Coins, RuntimeConfig.testingStartCoins)
+	data.XP = math.max(tonumber(loaded.XP) or data.XP, getTotalXPForLevel(RuntimeConfig.testingStartLevel))
 	data.Inventory = type(loaded.Inventory) == "table" and loaded.Inventory or data.Inventory
 	syncFishSerials(data)
 	data.BackpackSize = tonumber(loaded.BackpackSize) or data.BackpackSize
@@ -1564,10 +1629,29 @@ local function getRodTemplateCandidate(instance)
 	return nil
 end
 
-local function storeRodTemplate(template, rodId)
+function fishyFishGetRodTemplatePriority(template)
+	if getImportedSplitRodTemplateName(template) then
+		return 100
+	end
+
+	local normalized = normalizeTemplateName(template.Name)
+	if string.find(normalized, "split") then
+		return 100
+	end
+
+	return 0
+end
+
+local function storeRodTemplate(template, rodId, priority)
 	local folder = getRodTemplateFolder()
 	local stored = folder:FindFirstChild(rodId)
+	priority = tonumber(priority) or fishyFishGetRodTemplatePriority(template)
 	if stored and stored ~= template then
+		local storedPriority = tonumber(stored:GetAttribute("TemplatePriority")) or 0
+		if storedPriority > priority then
+			return stored
+		end
+
 		stored:Destroy()
 	end
 
@@ -1580,6 +1664,39 @@ local function storeRodTemplate(template, rodId)
 	end
 
 	model.Name = rodId
+	model:SetAttribute("TemplatePriority", priority)
+	prepareStoredRodTemplate(model)
+	model.Parent = folder
+	model:PivotTo(CFrame.new(0, -1000, 0))
+	return model
+end
+
+function fishyFishCloneRodTemplateIntoCache(template, rodId, priority)
+	local folder = getRodTemplateFolder()
+	local stored = folder:FindFirstChild(rodId)
+	priority = tonumber(priority) or fishyFishGetRodTemplatePriority(template)
+	if stored then
+		local storedPriority = tonumber(stored:GetAttribute("TemplatePriority")) or 0
+		if storedPriority > priority then
+			return stored
+		end
+
+		stored:Destroy()
+	end
+
+	local model
+	if template:IsA("Model") then
+		model = template:Clone()
+	elseif template:IsA("BasePart") then
+		model = Instance.new("Model")
+		template:Clone().Parent = model
+	else
+		return nil
+	end
+
+	model.Name = rodId
+	model:SetAttribute("TemplatePriority", priority)
+	model:SetAttribute("SourceTemplateName", template.Name)
 	prepareStoredRodTemplate(model)
 	model.Parent = folder
 	model:PivotTo(CFrame.new(0, -1000, 0))
@@ -1590,13 +1707,25 @@ local function cacheRodTemplates()
 	local folder = getRodTemplateFolder()
 
 	for _, container in ipairs({ workspace, ReplicatedStorage }) do
+		for _, descendant in ipairs(container:GetDescendants()) do
+			local splitTemplateName = getImportedSplitRodTemplateName(descendant)
+			if splitTemplateName then
+				local rodId = getRodIdForTemplate({ Name = splitTemplateName })
+				if rodId then
+					fishyFishCloneRodTemplateIntoCache(descendant, rodId, 100)
+				end
+			end
+		end
+
 		for rodId, templateNames in pairs(ROD_TEMPLATE_NAMES_BY_ROD) do
-			for _, templateName in ipairs(templateNames) do
-				local candidate = container:FindFirstChild(templateName, true)
-				local template = candidate and getRodTemplateCandidate(candidate)
-				if template then
-					storeRodTemplate(template, rodId)
-					break
+			if not folder:FindFirstChild(rodId) then
+				for _, templateName in ipairs(templateNames) do
+					local candidate = container:FindFirstChild(templateName, true)
+					local template = candidate and getRodTemplateCandidate(candidate)
+					if template then
+						storeRodTemplate(template, rodId)
+						break
+					end
 				end
 			end
 		end
@@ -1618,7 +1747,12 @@ local function watchRodTemplateModels()
 
 		local rodId = getRodIdForTemplate(template) or getRodIdForTemplate(instance)
 		if rodId then
-			storeRodTemplate(template, rodId)
+			local splitTemplateName = getImportedSplitRodTemplateName(template)
+			if splitTemplateName then
+				fishyFishCloneRodTemplateIntoCache(template, rodId, 100)
+			else
+				storeRodTemplate(template, rodId)
+			end
 		end
 	end
 
@@ -1635,6 +1769,31 @@ end
 
 local function findRodTemplate(rodId)
 	local folder = getRodTemplateFolder()
+
+	if rodId == "GoldenRod" then
+		for _, container in ipairs({ workspace, ReplicatedStorage, ServerStorage }) do
+			for _, templateName in ipairs({ "GoldenRod_Split", "GoldenRod_Split2", "goldenrodsplit", "goldenrodsplit2" }) do
+				local candidate = container:FindFirstChild(templateName, true)
+				local template = candidate and getRodTemplateCandidate(candidate)
+				if template then
+					return fishyFishCloneRodTemplateIntoCache(template, rodId, 1000)
+				end
+			end
+		end
+	end
+
+	if rodId == "EmeraldRod" then
+		for _, container in ipairs({ workspace, ReplicatedStorage, ServerStorage }) do
+			for _, templateName in ipairs({ "EmeraldRod_Split", "EmeraldRod_Split2", "emeraldrodsplit", "emeraldrodsplit2" }) do
+				local candidate = container:FindFirstChild(templateName, true)
+				local template = candidate and getRodTemplateCandidate(candidate)
+				if template then
+					return fishyFishCloneRodTemplateIntoCache(template, rodId, 1000)
+				end
+			end
+		end
+	end
+
 	cacheRodTemplates()
 
 	for _, container in ipairs({ ServerStorage, ReplicatedStorage, workspace }) do
@@ -1709,6 +1868,31 @@ local function getRodTipPoint(minPoint, maxPoint)
 	else
 		return Vector3.new(center.X, center.Y, maxPoint.Z)
 	end
+end
+
+local function getBoundsCenter(minPoint, maxPoint)
+	return (minPoint + maxPoint) * 0.5
+end
+
+local function getLongestBoundsAxis(minPoint, maxPoint)
+	local size = maxPoint - minPoint
+	return math.max(size.X, size.Y, size.Z)
+end
+
+local function getRodAlignmentPartGroups(baseParts)
+	local handleParts = {}
+	local bodyParts = {}
+
+	for _, part in ipairs(baseParts) do
+		local normalizedName = normalizeTemplateName(part.Name)
+		if normalizedName == "rodhandle" or string.find(normalizedName, "handle") or string.find(normalizedName, "grip") then
+			table.insert(handleParts, part)
+		elseif normalizedName == "rodbody" or string.find(normalizedName, "body") or string.find(normalizedName, "shaft") then
+			table.insert(bodyParts, part)
+		end
+	end
+
+	return handleParts, bodyParts
 end
 
 local function getClosestRodPart(baseParts, position)
@@ -1892,9 +2076,23 @@ local function attachRodTemplateToTool(tool, handle, template, rodId)
 	end
 
 	local pivot = visual:GetPivot()
-	local minPoint, maxPoint = getTemplateLocalBounds(baseParts, pivot)
-	local gripPoint, largestAxis = getRodGripPoint(minPoint, maxPoint)
-	local tipPoint = getRodTipPoint(minPoint, maxPoint)
+	local handleParts, bodyParts = getRodAlignmentPartGroups(baseParts)
+	local sizeParts = #bodyParts > 0 and bodyParts or baseParts
+	local gripParts = #handleParts > 0 and handleParts or sizeParts
+	local tipParts = #bodyParts > 0 and bodyParts or baseParts
+
+	local sizeMinPoint, sizeMaxPoint = getTemplateLocalBounds(sizeParts, pivot)
+	local gripMinPoint, gripMaxPoint = getTemplateLocalBounds(gripParts, pivot)
+	local tipMinPoint, tipMaxPoint = getTemplateLocalBounds(tipParts, pivot)
+	local fallbackGripPoint = nil
+	local fallbackLargestAxis = nil
+	fallbackGripPoint, fallbackLargestAxis = getRodGripPoint(sizeMinPoint, sizeMaxPoint)
+	local gripPoint = #handleParts > 0 and getBoundsCenter(gripMinPoint, gripMaxPoint) or fallbackGripPoint
+	local largestAxis = getLongestBoundsAxis(sizeMinPoint, sizeMaxPoint)
+	if largestAxis <= 0 then
+		largestAxis = fallbackLargestAxis
+	end
+	local tipPoint = getRodTipPoint(tipMinPoint, tipMaxPoint)
 	local scale = 1
 	if largestAxis > 0 then
 		scale = math.clamp(ROD_VISUAL_LENGTH / largestAxis, 0.01, ROD_MAX_TEMPLATE_SCALE)
@@ -5364,7 +5562,9 @@ local function makeFishingMinigamePrompt(biomeId, biteDelay, fish, rodId, sessio
 	}
 end
 
-local function getPlayerRoot(player)
+local Travel = {}
+
+function Travel.getPlayerRoot(player)
 	local character = player.Character
 	if not character then
 		return nil
@@ -5372,8 +5572,6 @@ local function getPlayerRoot(player)
 
 	return character:FindFirstChild("HumanoidRootPart")
 end
-
-local Travel = {}
 
 function Travel.getCastResult(castPower)
 	return CastConfigService.getCastResult(castPower)
@@ -5557,7 +5755,7 @@ function Travel.getLobbyTeleportPosition()
 end
 
 getPlayerFishingBiome = function(player)
-	local root = getPlayerRoot(player)
+	local root = Travel.getPlayerRoot(player)
 	if not root then
 		return nil
 	end
@@ -5566,7 +5764,7 @@ getPlayerFishingBiome = function(player)
 end
 
 getPlayerTravelLocation = function(player)
-	local root = getPlayerRoot(player)
+	local root = Travel.getPlayerRoot(player)
 	if not root then
 		return nil
 	end
@@ -5614,7 +5812,7 @@ function startAutoFish(player)
 
 			local rod = getRodData(data)
 			local baitPreview = Bait.getData(Bait.getEquippedId(data))
-			local waitTime = Random.new():NextNumber(AUTO_FISH_MIN_WAIT, AUTO_FISH_MAX_WAIT)
+			local waitTime = Random.new():NextNumber(RuntimeConfig.autoFishMinWait, RuntimeConfig.autoFishMaxWait)
 				* math.max(0.85, rod.speed)
 				* math.max(0.75, tonumber(baitPreview.biteSpeedMultiplier) or 1)
 			task.wait(waitTime)
@@ -5709,7 +5907,7 @@ local function canUnlockBiome(data, biomeId)
 end
 
 function teleportPlayer(player, target)
-	local root = getPlayerRoot(player)
+	local root = Travel.getPlayerRoot(player)
 	if not root then
 		return
 	end
@@ -5748,7 +5946,7 @@ function teleportPlayerToAquariumOwner(player, ownerPlayer)
 
 	refreshPlayerAquarium(ownerPlayer)
 
-	local root = getPlayerRoot(player)
+	local root = Travel.getPlayerRoot(player)
 	if not root then
 		return
 	end

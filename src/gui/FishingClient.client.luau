@@ -1891,7 +1891,7 @@ function CastPower.run(biomeId)
 	return true
 end
 
-local function startManualFishing()
+function startManualFishing()
 	if fishingBusy or not state then
 		return
 	end
@@ -1913,6 +1913,7 @@ end
 
 local function refreshCenterControls()
 	local biomeId = getActiveFishingBiomeId()
+
 	if not state or not biomeId then
 		centerControls.Visible = false
 		centerTitle.Text = "Beginner Pond"
@@ -2637,18 +2638,18 @@ local function renderQuestsTab()
 	end
 end
 
-local function getMonetizationState()
+function fishyFishGetMonetizationState()
 	return state and state.Monetization or {}
 end
 
-local function ownsGamePass(passKey)
-	local monetization = getMonetizationState()
+function fishyFishOwnsGamePass(passKey)
+	local monetization = fishyFishGetMonetizationState()
 	local owned = monetization.OwnedGamePasses or {}
 	return owned[passKey] == true
 end
 
-local function copyAquariumDesignWith(changes)
-	local monetization = getMonetizationState()
+function fishyFishCopyAquariumDesignWith(changes)
+	local monetization = fishyFishGetMonetizationState()
 	local current = monetization.AquariumPreviewDesign or monetization.AquariumDesign or MonetizationConfig.AquariumDesigner.defaultDesign
 	local design = {
 		theme = current.theme,
@@ -2681,7 +2682,7 @@ local function copyAquariumDesignWith(changes)
 	return design
 end
 
-local function makeShopIcon(parent, text, color)
+function fishyFishMakeShopIcon(parent, text, color)
 	local icon = Instance.new("Frame")
 	icon.Position = UDim2.new(0, 10, 0, 12)
 	icon.Size = UDim2.new(0, 54, 0, 54)
@@ -2697,7 +2698,7 @@ local function makeShopIcon(parent, text, color)
 	return icon
 end
 
-local function renderShopSubTabs()
+function fishyFishRenderShopSubTabs()
 	local selector = Instance.new("Frame")
 	selector.Size = UDim2.new(1, -8, 0, 38)
 	selector.BackgroundTransparency = 1
@@ -2720,9 +2721,9 @@ local function renderShopSubTabs()
 	end
 end
 
-local function renderRobuxItem(itemKey, item, purchaseAction, owned, iconText, iconColor)
+function fishyFishRenderRobuxItem(itemKey, item, purchaseAction, owned, iconText, iconColor)
 	local card = makeCard(content, 104)
-	makeShopIcon(card, iconText, iconColor)
+	fishyFishMakeShopIcon(card, iconText, iconColor)
 
 	local name = makeText(card, item.name, 15, Color3.fromRGB(255, 255, 255), true)
 	name.Position = UDim2.new(0, 76, 0, 8)
@@ -2752,10 +2753,10 @@ local function renderRobuxItem(itemKey, item, purchaseAction, owned, iconText, i
 	end
 end
 
-local function renderShopGamePasses()
-	local monetization = getMonetizationState()
+function fishyFishRenderShopGamePasses()
+	local monetization = fishyFishGetMonetizationState()
 	local reward = makeCard(content, 92)
-	makeShopIcon(reward, "VIP", Color3.fromRGB(255, 181, 36))
+	fishyFishMakeShopIcon(reward, "VIP", Color3.fromRGB(255, 181, 36))
 	local title = makeText(reward, "VIP Daily Reward", 16, Color3.fromRGB(255, 255, 255), true)
 	title.Position = UDim2.new(0, 76, 0, 10)
 	title.Size = UDim2.new(1, -194, 0, 22)
@@ -2772,22 +2773,22 @@ local function renderShopGamePasses()
 
 	for _, passKey in ipairs({ "VipAngler", "AquariumDesigner" }) do
 		local pass = MonetizationConfig.GamePasses[passKey]
-		renderRobuxItem(passKey, pass, function(key)
+		fishyFishRenderRobuxItem(passKey, pass, function(key)
 			fireShopAction("PromptGamePass", "GamePass", key)
-		end, ownsGamePass(passKey), passKey == "VipAngler" and "VIP" or "AQUA", passKey == "VipAngler" and Color3.fromRGB(255, 181, 36) or Color3.fromRGB(58, 174, 205))
+		end, fishyFishOwnsGamePass(passKey), passKey == "VipAngler" and "VIP" or "AQUA", passKey == "VipAngler" and Color3.fromRGB(255, 181, 36) or Color3.fromRGB(58, 174, 205))
 	end
 end
 
-local function renderShopBait()
+function fishyFishRenderShopBait()
 	for _, productKey in ipairs(MonetizationConfig.DeveloperProductOrder) do
 		local product = MonetizationConfig.DeveloperProducts[productKey]
-		renderRobuxItem(productKey, product, function(key)
+		fishyFishRenderRobuxItem(productKey, product, function(key)
 			fireShopAction("PromptProduct", "Product", key)
 		end, false, "BAIT", Color3.fromRGB(116, 94, 255))
 	end
 end
 
-local function renderShopStorage()
+function fishyFishRenderShopStorage()
 	local summary = makeCard(content, 74)
 	local heading = makeText(summary, "Fish Bag Storage", 16, Color3.fromRGB(255, 255, 255), true)
 	heading.Position = UDim2.new(0, 12, 0, 10)
@@ -2798,20 +2799,20 @@ local function renderShopStorage()
 
 	for _, passKey in ipairs({ "SmallBag", "MediumBag", "LargeBag" }) do
 		local pass = MonetizationConfig.GamePasses[passKey]
-		renderRobuxItem(passKey, pass, function(key)
+		fishyFishRenderRobuxItem(passKey, pass, function(key)
 			fireShopAction("PromptGamePass", "GamePass", key)
-		end, ownsGamePass(passKey), "+" .. tostring(pass.bonusSlots or 0), Color3.fromRGB(76, 160, 92))
+		end, fishyFishOwnsGamePass(passKey), "+" .. tostring(pass.bonusSlots or 0), Color3.fromRGB(76, 160, 92))
 	end
 end
 
-local function renderAquariumDesignerControls()
-	local monetization = getMonetizationState()
-	local ownsDesigner = ownsGamePass("AquariumDesigner")
+function fishyFishRenderAquariumDesignerControls()
+	local monetization = fishyFishGetMonetizationState()
+	local ownsDesigner = fishyFishOwnsGamePass("AquariumDesigner")
 	local currentDesign = monetization.AquariumPreviewDesign or monetization.AquariumDesign or MonetizationConfig.AquariumDesigner.defaultDesign
 	local aquariumLevel = (state and state.Aquarium and tonumber(state.Aquarium.Level)) or 1
 
 	local summary = makeCard(content, 96)
-	makeShopIcon(summary, ownsDesigner and "OPEN" or "LOCK", ownsDesigner and Color3.fromRGB(58, 174, 205) or Color3.fromRGB(96, 106, 122))
+	fishyFishMakeShopIcon(summary, ownsDesigner and "OPEN" or "LOCK", ownsDesigner and Color3.fromRGB(58, 174, 205) or Color3.fromRGB(96, 106, 122))
 	local heading = makeText(summary, "Aquarium Designer", 16, Color3.fromRGB(255, 255, 255), true)
 	heading.Position = UDim2.new(0, 76, 0, 8)
 	heading.Size = UDim2.new(1, -194, 0, 22)
@@ -2830,7 +2831,7 @@ local function renderAquariumDesignerControls()
 	local function renderDesignOption(kind, id, item, labelPrefix)
 		local premium = item.premium == true
 		local card = makeCard(content, 124)
-		makeShopIcon(card, premium and "LOCK" or "FREE", premium and Color3.fromRGB(255, 181, 36) or Color3.fromRGB(58, 174, 205))
+		fishyFishMakeShopIcon(card, premium and "LOCK" or "FREE", premium and Color3.fromRGB(255, 181, 36) or Color3.fromRGB(58, 174, 205))
 		local name = makeText(card, (labelPrefix or "") .. item.name, 15, Color3.fromRGB(255, 255, 255), true)
 		name.Position = UDim2.new(0, 76, 0, 8)
 		name.Size = UDim2.new(1, -96, 0, 22)
@@ -2847,7 +2848,7 @@ local function renderAquariumDesignerControls()
 		preview.Size = UDim2.new(0, 84, 0, 32)
 		preview.TextSize = 12
 		preview.MouseButton1Click:Connect(function()
-			fireShopAction("PreviewAquariumDesign", "Aquarium", kind, copyAquariumDesignWith({ [kind] = id }))
+			fireShopAction("PreviewAquariumDesign", "Aquarium", kind, fishyFishCopyAquariumDesignWith({ [kind] = id }))
 		end)
 
 		local apply = makeButton(card, premium and "Apply" or "Apply", premium and Color3.fromRGB(28, 160, 92) or Color3.fromRGB(28, 160, 92))
@@ -2855,7 +2856,7 @@ local function renderAquariumDesignerControls()
 		apply.Size = UDim2.new(0, 88, 0, 32)
 		apply.TextSize = 12
 		apply.MouseButton1Click:Connect(function()
-			fireShopAction("ApplyAquariumDesign", "Aquarium", kind, copyAquariumDesignWith({ [kind] = id }))
+			fireShopAction("ApplyAquariumDesign", "Aquarium", kind, fishyFishCopyAquariumDesignWith({ [kind] = id }))
 		end)
 	end
 
@@ -2875,7 +2876,7 @@ local function renderAquariumDesignerControls()
 	end
 
 	local signCard = makeCard(content, 104)
-	makeShopIcon(signCard, "TEXT", Color3.fromRGB(255, 181, 36))
+	fishyFishMakeShopIcon(signCard, "TEXT", Color3.fromRGB(255, 181, 36))
 	local signTitle = makeText(signCard, "Display Sign Text", 15, Color3.fromRGB(255, 255, 255), true)
 	signTitle.Position = UDim2.new(0, 76, 0, 8)
 	signTitle.Size = UDim2.new(1, -194, 0, 22)
@@ -2897,7 +2898,7 @@ local function renderAquariumDesignerControls()
 	applySign.Size = UDim2.new(0, 88, 0, 26)
 	applySign.TextSize = 12
 	applySign.MouseButton1Click:Connect(function()
-		fireShopAction("ApplyAquariumDesign", "Aquarium", "signText", copyAquariumDesignWith({ signText = signBox.Text }))
+		fireShopAction("ApplyAquariumDesign", "Aquarium", "signText", fishyFishCopyAquariumDesignWith({ signText = signBox.Text }))
 	end)
 
 	local decorHeader = makeText(content, "Fixed Decoration Slots", 16, Color3.fromRGB(255, 255, 255), true)
@@ -2951,7 +2952,7 @@ local function renderAquariumDesignerControls()
 				button.TextColor3 = Color3.fromRGB(160, 171, 190)
 			else
 				button.MouseButton1Click:Connect(function()
-					fireShopAction("PreviewAquariumDesign", "Aquarium", slotId, copyAquariumDesignWith({
+					fireShopAction("PreviewAquariumDesign", "Aquarium", slotId, fishyFishCopyAquariumDesignWith({
 						decorations = {
 							[slotId] = decorationId,
 						},
@@ -2981,16 +2982,16 @@ local function renderAquariumDesignerControls()
 end
 
 local function renderShopTab()
-	renderShopSubTabs()
+	fishyFishRenderShopSubTabs()
 
 	if activeShopTab == "Game Passes" then
-		renderShopGamePasses()
+		fishyFishRenderShopGamePasses()
 	elseif activeShopTab == "Bait" then
-		renderShopBait()
+		fishyFishRenderShopBait()
 	elseif activeShopTab == "Aquarium" then
-		renderAquariumDesignerControls()
+		fishyFishRenderAquariumDesignerControls()
 	elseif activeShopTab == "Storage" then
-		renderShopStorage()
+		fishyFishRenderShopStorage()
 	end
 end
 
