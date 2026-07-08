@@ -2866,15 +2866,6 @@ function fishyFishRenderAquariumDesignerControls()
 		renderDesignOption("theme", themeId, MonetizationConfig.AquariumDesigner.themes[themeId])
 	end
 
-	local colorHeader = makeText(content, "Colors", 16, Color3.fromRGB(255, 255, 255), true)
-	colorHeader.Size = UDim2.new(1, -8, 0, 28)
-	for _, colorId in ipairs(MonetizationConfig.AquariumDesigner.backgroundColorOrder) do
-		renderDesignOption("backgroundColor", colorId, MonetizationConfig.AquariumDesigner.backgroundColors[colorId], "Background: ")
-	end
-	for _, colorId in ipairs(MonetizationConfig.AquariumDesigner.lightingColorOrder) do
-		renderDesignOption("lightingColor", colorId, MonetizationConfig.AquariumDesigner.lightingColors[colorId], "Light: ")
-	end
-
 	local signCard = makeCard(content, 104)
 	fishyFishMakeShopIcon(signCard, "TEXT", Color3.fromRGB(255, 181, 36))
 	local signTitle = makeText(signCard, "Display Sign Text", 15, Color3.fromRGB(255, 255, 255), true)
