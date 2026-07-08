@@ -514,7 +514,6 @@ GameConfig.Biomes = {
 		icon = "Ocean",
 		unlockLevel = 25,
 		cost = 50000,
-		requiredRod = "OceanRod",
 		position = Vector3.new(360, 8, 0),
 		color = Color3.fromRGB(45, 105, 210),
 		fish = {

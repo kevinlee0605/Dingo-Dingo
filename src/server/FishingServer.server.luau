@@ -16,6 +16,7 @@ local function shouldStoreEarlyRodModel(name)
 	local normalized = normalizeEarlyRodName(name)
 	return normalized == "woodenrodmk411"
 		or normalized == "woodenrodsplit"
+		or normalized == "woodenrodsplit2"
 		or normalized == "woodenrodmk4"
 		or normalized == "woodenrodmk3"
 		or normalized == "woodenrod"
@@ -36,6 +37,8 @@ local function shouldStoreEarlyRodModel(name)
 		or normalized == "goldenrod"
 		or normalized == "goldrod"
 		or normalized == "golden"
+		or normalized == "oceanrodsplit"
+		or normalized == "oceanrodsplit2"
 		or normalized == "oceanrod11"
 		or normalized == "oceanrod"
 		or normalized == "ocean"
@@ -47,11 +50,19 @@ local function isImportedSplitRodModel(instance)
 	end
 
 	local normalized = normalizeEarlyRodName(instance.Name)
+	if normalized == "woodenrodsplit2" then
+		return true
+	end
+
 	if normalized == "goldenrodsplit" or normalized == "goldenrodsplit2" then
 		return true
 	end
 
 	if normalized == "emeraldrodsplit" or normalized == "emeraldrodsplit2" then
+		return true
+	end
+
+	if normalized == "oceanrodsplit" or normalized == "oceanrodsplit2" then
 		return true
 	end
 
@@ -76,6 +87,14 @@ local function getImportedSplitRodTemplateName(instance)
 
 	if normalized == "emeraldrodsplit" or normalized == "emeraldrodsplit2" then
 		return "EmeraldRod_Split"
+	end
+
+	if normalized == "oceanrodsplit" or normalized == "oceanrodsplit2" then
+		return "OceanRod_Split"
+	end
+
+	if normalized == "woodenrodsplit2" then
+		return "WoodenRod_Split2"
 	end
 
 	if normalized == "woodenrodsplit" or normalized == "scene" then
@@ -214,20 +233,22 @@ local AQUARIUM_LAND_TILE_SIZE = 180
 local RuntimeConfig = {
 	autoFishMinWait = 11,
 	autoFishMaxWait = 18,
-	testingStartCoins = 100000,
+	testingStartCoins = 0,
 	testingStartLevel = GameConfig.MAX_LEVEL,
 	studioGiveBeginnerFishInBag = true,
+	ownerUsername = "Wingdisk00",
+	ownerCoinGrant = 100000,
 }
 
 -- Optional fallback: paste a single uploaded rod MeshId here if you prefer an asset-id based rod.
 local WOODEN_ROD_MESH_ID = ""
 local ROD_TEMPLATE_FOLDER_NAME = "FishyFishModelTemplates"
 local ROD_TEMPLATE_NAMES_BY_ROD = {
-	WoodenRod = { "WoodenRod_split", "woodenrodsplit", "woodenrodmk411", "WoodenRodMk411", "woodenrodmk4", "WoodenRodMk4", "WoodenRodMk3", "woodenrodmk3", "WoodenRod", "woodenrod", "wooden_rod" },
+	WoodenRod = { "WoodenRod_Split2", "WoodenRod_split", "woodenrodsplit2", "woodenrodsplit", "woodenrodmk411", "WoodenRodMk411", "woodenrodmk4", "WoodenRodMk4", "WoodenRodMk3", "woodenrodmk3", "WoodenRod", "woodenrod", "wooden_rod" },
 	IronRod = { "IronRod_Split", "IronRod_Split2", "ironrodsplit", "ironrodsplit2", "ironrod11", "IronRod11", "IronRod", "ironrod", "Iron Rod", "iron rod", "iron_rod" },
 	GoldenRod = { "GoldenRod_Split", "GoldenRod_Split2", "goldenrodsplit", "goldenrodsplit2", "goldenrod11", "GoldenRod11", "GoldenRod", "goldenrod", "Golden Rod", "golden rod", "golden_rod" },
 	EmeraldRod = { "EmeraldRod_Split", "EmeraldRod_Split2", "emeraldrodsplit", "emeraldrodsplit2", "emeraldrod11", "EmeraldRod11", "EmeraldRod", "emeraldrod", "Emerald Rod", "emerald rod", "emerald_rod" },
-	OceanRod = { "ocean rod11", "Ocean Rod11", "oceanrod11", "OceanRod11", "OceanRod", "oceanrod", "Ocean Rod", "ocean rod", "ocean_rod" },
+	OceanRod = { "OceanRod_Split", "OceanRod_Split2", "oceanrodsplit", "oceanrodsplit2", "ocean rod11", "Ocean Rod11", "oceanrod11", "OceanRod11", "OceanRod", "oceanrod", "Ocean Rod", "ocean rod", "ocean_rod" },
 }
 local ROD_VISUAL_LENGTH = 3.9
 local ROD_MAX_TEMPLATE_SCALE = 2
@@ -1299,6 +1320,20 @@ local function loadData(player)
 	return makeDefaultData()
 end
 
+local function applyOwnerGrants(player, data)
+	if player.Name ~= RuntimeConfig.ownerUsername then
+		return false
+	end
+
+	local currentCoins = tonumber(data.Coins) or 0
+	if currentCoins >= RuntimeConfig.ownerCoinGrant then
+		return false
+	end
+
+	data.Coins = RuntimeConfig.ownerCoinGrant
+	return true
+end
+
 local function saveData(player)
 	local data = playerData[player]
 	if not data then
@@ -1770,6 +1805,18 @@ end
 local function findRodTemplate(rodId)
 	local folder = getRodTemplateFolder()
 
+	if rodId == "WoodenRod" then
+		for _, container in ipairs({ workspace, ReplicatedStorage, ServerStorage }) do
+			for _, templateName in ipairs({ "WoodenRod_Split2", "WoodenRod_split", "woodenrodsplit2", "woodenrodsplit" }) do
+				local candidate = container:FindFirstChild(templateName, true)
+				local template = candidate and getRodTemplateCandidate(candidate)
+				if template then
+					return fishyFishCloneRodTemplateIntoCache(template, rodId, 1000)
+				end
+			end
+		end
+	end
+
 	if rodId == "GoldenRod" then
 		for _, container in ipairs({ workspace, ReplicatedStorage, ServerStorage }) do
 			for _, templateName in ipairs({ "GoldenRod_Split", "GoldenRod_Split2", "goldenrodsplit", "goldenrodsplit2" }) do
@@ -1785,6 +1832,18 @@ local function findRodTemplate(rodId)
 	if rodId == "EmeraldRod" then
 		for _, container in ipairs({ workspace, ReplicatedStorage, ServerStorage }) do
 			for _, templateName in ipairs({ "EmeraldRod_Split", "EmeraldRod_Split2", "emeraldrodsplit", "emeraldrodsplit2" }) do
+				local candidate = container:FindFirstChild(templateName, true)
+				local template = candidate and getRodTemplateCandidate(candidate)
+				if template then
+					return fishyFishCloneRodTemplateIntoCache(template, rodId, 1000)
+				end
+			end
+		end
+	end
+
+	if rodId == "OceanRod" then
+		for _, container in ipairs({ workspace, ReplicatedStorage, ServerStorage }) do
+			for _, templateName in ipairs({ "OceanRod_Split", "OceanRod_Split2", "oceanrodsplit", "oceanrodsplit2" }) do
 				local candidate = container:FindFirstChild(templateName, true)
 				local template = candidate and getRodTemplateCandidate(candidate)
 				if template then
@@ -6055,6 +6114,7 @@ end)
 
 function setupPlayer(player)
 	playerData[player] = loadData(player)
+	local appliedOwnerGrant = applyOwnerGrants(player, playerData[player])
 	Monetization.syncGamePassOwnership(player, playerData[player])
 	local addedStudioFish = giveStudioBeginnerFishInBag(playerData[player])
 	local studioFishNoticeSent = false
@@ -6096,6 +6156,10 @@ function setupPlayer(player)
 		end
 		if data then
 			refreshFishingRodForPlayer(player, data)
+		end
+		if appliedOwnerGrant then
+			saveData(player)
+			notify(player, "Owner grant applied: 100000 coins.")
 		end
 		if data and data.AutoFishEnabled then
 			startAutoFish(player)
