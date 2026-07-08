@@ -89,44 +89,6 @@
                                                                              }
                                                          }
                                  },
-                 "Lighting":  {
-                                  "$properties":  {
-                                                      "Ambient":  [
-                                                                      118,
-                                                                      116,
-                                                                      108
-                                                                  ],
-                                                      "Brightness":  1.35,
-                                                      "EnvironmentDiffuseScale":  0.62,
-                                                      "EnvironmentSpecularScale":  0.02,
-                                                      "ExposureCompensation":  -0.18,
-                                                      "GlobalShadows":  false,
-                                                      "OutdoorAmbient":  [
-                                                                             142,
-                                                                             138,
-                                                                             125
-                                                                         ],
-                                                      "Outlines":  false,
-                                                      "Technology":  "Voxel"
-                                                  },
-                                  "MapBloom":  {
-                                                   "$className":  "BloomEffect",
-                                                   "$properties":  {
-                                                                       "Enabled":  false,
-                                                                       "Intensity":  0.02,
-                                                                       "Size":  8,
-                                                                       "Threshold":  2.25
-                                                                   }
-                                               },
-                                  "MapSunRays":  {
-                                                     "$className":  "SunRaysEffect",
-                                                     "$properties":  {
-                                                                         "Enabled":  false,
-                                                                         "Intensity":  0.02,
-                                                                         "Spread":  0.05
-                                                                     }
-                                                 }
-                              },
                  "SoundService":  {
                                       "$properties":  {
                                                           "RespectFilteringEnabled":  true

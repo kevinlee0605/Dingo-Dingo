@@ -10,10 +10,9 @@ Rojo currently syncs:
 - `ServerScriptService`
 - `StarterGui`
 - `StarterPack`
-- `Lighting`
 - `SoundService`
 
-Rojo does **not** currently own most `Workspace` map objects. That means the visible map in Studio is saved in the Roblox place file, while game code lives in GitHub.
+Rojo does **not** currently own `Lighting` or most `Workspace` map objects. That means the visible map and lighting in Studio are saved in the Roblox place file, while game code lives in GitHub.
 
 ## Before Connecting Rojo
 
