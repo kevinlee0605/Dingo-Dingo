@@ -287,7 +287,7 @@ FishCaughtLeaderboard.configure({
 
 local AquariumLayout = {
 	AreaOrigin = Vector3.new(-150, 0, -705),
-	ViewOffset = Vector3.new(0, 21.9, 36.94),
+	ViewOffset = Vector3.new(0, 24.7, 36.94),
 	HubTeleportOffset = Vector3.new(0, 19, -32.4),
 	LandTileSize = 180,
 }
@@ -4211,7 +4211,8 @@ local function buildAquariumSlotModel(slot, ownerPlayer, ownerData)
 	end
 	model.Parent = folder
 
-	local base = makePart(model, "AquariumBase", Vector3.new(dimensions.baseWidth, 1, dimensions.baseDepth), origin + Vector3.new(0, 0.8, 0), Color3.fromRGB(74, 82, 88), Enum.Material.Metal)
+	local baseDrop = 2.8
+	local base = makePart(model, "AquariumBase", Vector3.new(dimensions.baseWidth, 1, dimensions.baseDepth), origin + Vector3.new(0, 0.8 - baseDrop, 0), Color3.fromRGB(74, 82, 88), Enum.Material.Metal)
 	makePart(model, "AquariumBaseTopPlate", Vector3.new(dimensions.baseWidth - 1.4, 0.18, dimensions.baseDepth - 1.4), origin + Vector3.new(0, 1.39, 0), Color3.fromRGB(132, 142, 150), Enum.Material.Metal)
 
 	local halfWidth = dimensions.tankWidth / 2
