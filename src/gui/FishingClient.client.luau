@@ -1943,11 +1943,10 @@ end
 
 local aquariumViewerFallbackButton = makeButton(screenGui, "Open Viewer", Color3.fromRGB(53, 130, 246))
 local aquariumViewerMobileLayout = UserInputService.TouchEnabled
-	or (workspace.CurrentCamera ~= nil and workspace.CurrentCamera.ViewportSize.X < 720)
 local aquariumViewerButtonWidth = aquariumViewerMobileLayout and 158 or 146
 local aquariumViewerButtonHeight = aquariumViewerMobileLayout and 52 or 48
-aquariumViewerFallbackButton.AnchorPoint = Vector2.new(0.5, 1)
-aquariumViewerFallbackButton.Position = UDim2.new(1, -(18 + aquariumViewerButtonWidth / 2), 1, -(34 + aquariumViewerButtonHeight))
+aquariumViewerFallbackButton.AnchorPoint = Vector2.new(1, 1)
+aquariumViewerFallbackButton.Position = UDim2.new(1, -18, 1, -(34 + aquariumViewerButtonHeight))
 aquariumViewerFallbackButton.Size = UDim2.fromOffset(aquariumViewerButtonWidth, aquariumViewerButtonHeight)
 aquariumViewerFallbackButton.TextSize = 14
 aquariumViewerFallbackButton.ZIndex = 31

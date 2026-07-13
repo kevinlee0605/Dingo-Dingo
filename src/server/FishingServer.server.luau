@@ -286,9 +286,9 @@ FishCaughtLeaderboard.configure({
 })
 
 local AquariumLayout = {
-	AreaOrigin = Vector3.new(6000, 0, 6000),
-	ViewOffset = Vector3.new(0, 0, 28),
-	HubTeleportOffset = Vector3.new(0, 5, -32),
+	AreaOrigin = Vector3.new(-150, 0, -705),
+	ViewOffset = Vector3.new(0, 21.9, 36.94),
+	HubTeleportOffset = Vector3.new(0, 19, -32.4),
 	LandTileSize = 180,
 }
 
@@ -1702,19 +1702,21 @@ local function openBiomeWarpForPlayer(player)
 	OpenBiomeWarp:FireClient(player, getPlayerFishingBiome and getPlayerFishingBiome(player) or nil)
 end
 
-local function connectBiomeWarpFountainTouch(part)
+local function connectBiomeWarpTouch(part)
 	if not part:IsA("BasePart") then
 		return
 	end
 
 	local lowerName = string.lower(part.Name)
+	local isExplicitBiomeWarp = part:GetAttribute("TargetArea") == "BiomeWarp"
+		or part.Name == "IslandWarpTrigger"
 	local isFountainWater = string.find(lowerName, "fountain")
 		and string.find(lowerName, "water")
 		and not string.find(lowerName, "plaza")
 		and not string.find(lowerName, "path")
 		and not string.find(lowerName, "effect")
 		and not string.find(lowerName, "trigger")
-	if not isFountainWater then
+	if not isExplicitBiomeWarp and not isFountainWater then
 		return
 	end
 
@@ -1735,13 +1737,13 @@ local function connectBiomeWarpFountainTouch(part)
 	end)
 end
 
-local function connectBiomeWarpFountainTouches()
+local function connectBiomeWarpTouches()
 	for _, descendant in ipairs(workspace:GetDescendants()) do
-		connectBiomeWarpFountainTouch(descendant)
+		connectBiomeWarpTouch(descendant)
 	end
 end
 
-workspace.DescendantAdded:Connect(connectBiomeWarpFountainTouch)
+workspace.DescendantAdded:Connect(connectBiomeWarpTouch)
 
 local function ensureFountainBiomeWarpTrigger()
 	for _, descendant in ipairs(workspace:GetDescendants()) do
@@ -1750,7 +1752,7 @@ local function ensureFountainBiomeWarpTrigger()
 		end
 	end
 
-	connectBiomeWarpFountainTouches()
+	connectBiomeWarpTouches()
 end
 
 local function setupLeaderstats(player)
@@ -3243,9 +3245,9 @@ end
 local function ensureAquariumSharedLand(folder, minimumSlots)
 	local center = AquariumLayout.AreaOrigin
 	local viewOrigin = getAquariumSlotOrigin(1)
-	local landWidth = 156
-	local northEdge = center.Z - 78
-	local southEdge = center.Z + 76
+	local landWidth = 200
+	local northEdge = center.Z - 88
+	local southEdge = center.Z + 88
 	local boundsDepth = southEdge - northEdge
 	local boundsCenter = Vector3.new(center.X, 0, northEdge + (boundsDepth / 2))
 
@@ -3261,20 +3263,15 @@ local function ensureAquariumSharedLand(folder, minimumSlots)
 	end
 
 	local existing = folder:FindFirstChild("SharedAquariumShowcase")
-	if existing
-		and existing:GetAttribute("HubVersion") == 7
-		and existing:FindFirstChild("AquariumHubSpawn", true)
-		and existing:FindFirstChild("MyAquariumSpawn", true)
-		and existing:FindFirstChild("AquariumHubSafetyFloor", true)
-		and existing:FindFirstChild("AquariumHubKioskPrompt", true)
-		and existing:FindFirstChild("MainAquariumViewingDeck", true)
-	then
+	-- The saved Workspace model is authoritative. Do not regenerate the island
+	-- just because an authored part was intentionally removed in Studio.
+	if existing then
+		local openPrompt = existing:FindFirstChild("OpenAquariumHubPrompt", true)
+		if openPrompt and openPrompt:IsA("ProximityPrompt") then
+			openPrompt.Enabled = false
+		end
 		updateFallSafetyBounds()
 		return existing
-	end
-
-	if existing then
-		existing:Destroy()
 	end
 
 	for _, child in ipairs(folder:GetChildren()) do
@@ -3285,7 +3282,7 @@ local function ensureAquariumSharedLand(folder, minimumSlots)
 
 	local showroom = Instance.new("Model")
 	showroom.Name = "SharedAquariumShowcase"
-	showroom:SetAttribute("HubVersion", 7)
+	showroom:SetAttribute("HubVersion", 9)
 	showroom.Parent = folder
 
 	local sandColor = Color3.fromRGB(238, 224, 158)
@@ -3294,7 +3291,7 @@ local function ensureAquariumSharedLand(folder, minimumSlots)
 	local dockColor = Color3.fromRGB(126, 82, 44)
 	local waterColor = Color3.fromRGB(24, 118, 184)
 
-	local ocean = makePart(showroom, "AquariumIslandOcean", Vector3.new(520, 0.45, 520), center + Vector3.new(0, -1.35, 12), waterColor, Enum.Material.Water)
+	local ocean = makePart(showroom, "AquariumIslandOcean", Vector3.new(200, 0.45, 180), center + Vector3.new(0, -1.35, 12), waterColor, Enum.Material.Water)
 	ocean.Transparency = 0.08
 	ocean.CanCollide = false
 	ocean.CanTouch = false
@@ -3319,7 +3316,6 @@ local function ensureAquariumSharedLand(folder, minimumSlots)
 	end
 
 	makeIslandRows("AquariumViewerIsland", {
-		{ 0, -62, 58, 12 },
 		{ 0, -50, 102, 12 },
 		{ 0, -38, 136, 12 },
 		{ 0, -26, 148, 12 },
@@ -3335,19 +3331,18 @@ local function ensureAquariumSharedLand(folder, minimumSlots)
 	makeGrassPatch("AquariumIslandGrass_TankLeft", Vector3.new(-48, 0.72, 30), Vector3.new(22, 0.24, 18))
 	makeGrassPatch("AquariumIslandGrass_TankRight", Vector3.new(48, 0.72, 30), Vector3.new(22, 0.24, 18))
 
-	makePart(showroom, "AquariumIslandNorthStoneEdge", Vector3.new(70, 1.1, 3), center + Vector3.new(0, 0.35, -69), stoneColor, Enum.Material.Slate)
+	makePart(showroom, "AquariumIslandNorthStoneEdge", Vector3.new(90, 1.1, 3), center + Vector3.new(0, 0.35, -54), stoneColor, Enum.Material.Slate)
 	makePart(showroom, "AquariumIslandWestStoneEdge", Vector3.new(3, 1.1, 64), center + Vector3.new(-76, 0.35, -16), stoneColor, Enum.Material.Slate)
 	makePart(showroom, "AquariumIslandEastStoneEdge", Vector3.new(3, 1.1, 64), center + Vector3.new(76, 0.35, -16), stoneColor, Enum.Material.Slate)
 	makePart(showroom, "AquariumIslandSouthStoneEdge", Vector3.new(70, 1.1, 3), center + Vector3.new(0, 0.35, 52), stoneColor, Enum.Material.Slate)
 
-	local controlDeck = makePart(showroom, "AquariumHubControlDeck", Vector3.new(76, 0.45, 30), center + Vector3.new(0, 0.9, -44), dockColor, Enum.Material.WoodPlanks)
 	local viewingDeck = makePart(showroom, "MainAquariumViewingDeck", Vector3.new(82, 0.55, 50), viewOrigin + Vector3.new(0, 0.95, -2), dockColor, Enum.Material.WoodPlanks)
 	makePart(showroom, "MainAquariumViewingDeckTrim", Vector3.new(88, 0.25, 54), viewOrigin + Vector3.new(0, 1.24, -2), Color3.fromRGB(154, 101, 55), Enum.Material.WoodPlanks)
 	makePart(showroom, "MainAquariumLeftRail", Vector3.new(1, 1.4, 48), viewOrigin + Vector3.new(-44, 2, -2), Color3.fromRGB(86, 58, 36), Enum.Material.Wood)
 	makePart(showroom, "MainAquariumRightRail", Vector3.new(1, 1.4, 48), viewOrigin + Vector3.new(44, 2, -2), Color3.fromRGB(86, 58, 36), Enum.Material.Wood)
 	makePart(showroom, "MainAquariumBackRail", Vector3.new(88, 1.4, 1), viewOrigin + Vector3.new(0, 2, 24), Color3.fromRGB(86, 58, 36), Enum.Material.Wood)
 
-	local path = makePart(showroom, "AquariumHubToDisplayPath", Vector3.new(16, 0.28, 46), center + Vector3.new(0, 1.25, -10), Color3.fromRGB(150, 96, 52), Enum.Material.WoodPlanks)
+	local path = makePart(showroom, "AquariumHubToDisplayPath", Vector3.new(16, 0.28, 52), center + Vector3.new(0, 1.25, -13), Color3.fromRGB(150, 96, 52), Enum.Material.WoodPlanks)
 	path.CanCollide = false
 
 	local hubSpawn = makePart(showroom, "AquariumHubSpawn", Vector3.new(16, 1, 14), center + Vector3.new(0, 1.1, -28), Color3.fromRGB(80, 180, 255), Enum.Material.ForceField)
@@ -3361,55 +3356,26 @@ local function ensureAquariumSharedLand(folder, minimumSlots)
 	viewerSpawn.CanTouch = false
 	viewerSpawn.CanQuery = true
 
-	local pavilion = Instance.new("Model")
-	pavilion.Name = "AquariumHubControlPavilion"
-	pavilion.Parent = showroom
-	local pavilionFloor = makePart(pavilion, "ControlPavilionFloor", Vector3.new(72, 0.5, 28), center + Vector3.new(0, 1.18, -48), stoneColor, Enum.Material.Slate)
-	local pavilionRoof = makePart(pavilion, "ControlPavilionBlueRoof", Vector3.new(80, 1.2, 32), center + Vector3.new(0, 20, -48), Color3.fromRGB(20, 86, 126), Enum.Material.Metal)
-	makePart(pavilion, "ControlPavilionWoodTrim", Vector3.new(84, 1.2, 36), center + Vector3.new(0, 18.8, -48), Color3.fromRGB(110, 76, 42), Enum.Material.Wood)
-	for index, offset in ipairs({
-		Vector3.new(-36, 0, -61),
-		Vector3.new(36, 0, -61),
-		Vector3.new(-36, 0, -35),
-		Vector3.new(36, 0, -35),
-	}) do
-		makePart(pavilion, "ControlPavilionPost_" .. index, Vector3.new(1.4, 17, 1.4), center + offset + Vector3.new(0, 9.3, 0), Color3.fromRGB(96, 68, 42), Enum.Material.Wood)
-	end
-	pavilion.PrimaryPart = pavilionFloor
-
 	local kiosk = Instance.new("Model")
 	kiosk.Name = "AquariumHubKiosk"
-	kiosk.Parent = pavilion
+	kiosk.Parent = showroom
 
-	local kioskBase = makePart(kiosk, "KioskStoneBase", Vector3.new(58, 1.2, 9), center + Vector3.new(0, 2.1, -54), Color3.fromRGB(82, 91, 96), Enum.Material.Slate)
-	local kioskBoard = makePart(kiosk, "KioskMainBoard", Vector3.new(56, 15, 0.8), center + Vector3.new(0, 11, -58), Color3.fromRGB(10, 44, 76), Enum.Material.SmoothPlastic)
+	local kioskBase = makePart(kiosk, "KioskStoneBase", Vector3.new(58, 1.2, 9), center + Vector3.new(0, 2.1, -42), Color3.fromRGB(82, 91, 96), Enum.Material.Slate)
+	local kioskBoard = makePart(kiosk, "KioskMainBoard", Vector3.new(56, 15, 0.8), center + Vector3.new(0, 11, -46), Color3.fromRGB(10, 44, 76), Enum.Material.SmoothPlastic)
 	kioskBoard.CFrame = CFrame.new(kioskBoard.Position) * CFrame.Angles(0, math.rad(180), 0)
 	createLabel(kioskBoard, "Aquarium Viewer\nPress E or tap to open")
 
-	local kioskHint = makePart(kiosk, "KioskHintPanel", Vector3.new(42, 3.2, 0.45), center + Vector3.new(0, 5.2, -57.35), Color3.fromRGB(35, 138, 190), Enum.Material.Glass)
+	local kioskHint = makePart(kiosk, "KioskHintPanel", Vector3.new(42, 3.2, 0.45), center + Vector3.new(0, 5.2, -45.35), Color3.fromRGB(35, 138, 190), Enum.Material.Glass)
 	kioskHint.CFrame = CFrame.new(kioskHint.Position) * CFrame.Angles(0, math.rad(180), 0)
 	kioskHint.Transparency = 0.08
 	kioskHint.CanCollide = false
 	createLabel(kioskHint, "Choose one aquarium at a time")
 
-	local kioskPromptPart = makePart(kiosk, "AquariumHubKioskPrompt", Vector3.new(68, 14, 24), center + Vector3.new(0, 7, -42), Color3.fromRGB(45, 180, 240), Enum.Material.ForceField)
+	local kioskPromptPart = makePart(kiosk, "AquariumHubKioskPrompt", Vector3.new(68, 14, 24), center + Vector3.new(0, 7, -30), Color3.fromRGB(45, 180, 240), Enum.Material.ForceField)
 	kioskPromptPart.Transparency = 1
 	kioskPromptPart.CanCollide = false
 	kioskPromptPart.CanTouch = false
 	kioskPromptPart.CanQuery = true
-	local kioskPrompt = Instance.new("ProximityPrompt")
-	kioskPrompt.Name = "OpenAquariumHubPrompt"
-	kioskPrompt.ActionText = "Open Viewer"
-	kioskPrompt.ObjectText = "Aquarium Viewer"
-	kioskPrompt.HoldDuration = 0.05
-	kioskPrompt.MaxActivationDistance = 36
-	kioskPrompt.RequiresLineOfSight = false
-	kioskPrompt.Parent = kioskPromptPart
-	kioskPrompt.Triggered:Connect(function(player)
-		print("Aquarium Viewer opened")
-		print("Opening Aquarium Viewer GUI")
-		OpenAquariumHub:FireClient(player)
-	end)
 	kiosk.PrimaryPart = kioskBase
 
 	local returnPortal = makePart(showroom, "ReturnToSeasideIslandPortal", Vector3.new(18, 6, 10), center + Vector3.new(50, 3.4, -42), Color3.fromRGB(78, 198, 245), Enum.Material.ForceField)
@@ -3434,8 +3400,8 @@ local function ensureAquariumSharedLand(folder, minimumSlots)
 		return post
 	end
 
-	makeLamp("AquariumHubLamp_BackLeft", center + Vector3.new(-54, 0, -54))
-	makeLamp("AquariumHubLamp_BackRight", center + Vector3.new(54, 0, -54))
+	makeLamp("AquariumHubLamp_BackLeft", center + Vector3.new(-54, 0, -42))
+	makeLamp("AquariumHubLamp_BackRight", center + Vector3.new(54, 0, -42))
 	makeLamp("AquariumHubLamp_TankLeft", viewOrigin + Vector3.new(-50, 0, 14))
 	makeLamp("AquariumHubLamp_TankRight", viewOrigin + Vector3.new(50, 0, 14))
 
@@ -6398,6 +6364,10 @@ local function removeAllGeneratedBiomePlaceholders()
 end
 
 local function buildWorld()
+	-- Keep the saved editor-authored aquarium island across the runtime world
+	-- refresh so changes made in Studio are the version used in Play mode.
+	local authoredAquariums = workspace:FindFirstChild("PersonalAquariums")
+
 	local existing = workspace:FindFirstChild("FishyFishWorld")
 	if existing then
 		existing:Destroy()
@@ -6406,6 +6376,9 @@ local function buildWorld()
 	local world = Instance.new("Folder")
 	world.Name = "FishyFishWorld"
 	world.Parent = workspace
+	if authoredAquariums then
+		authoredAquariums.Parent = world
+	end
 
 	EditorVisuals.removeLegacyFishingHotspots()
 	for _, legacyName in ipairs({
@@ -6430,7 +6403,7 @@ local function buildWorld()
 	ensureFountainPlazaBrickStyle()
 	ensureFountainAnimations()
 	ensureFountainBiomeWarpTrigger()
-	connectBiomeWarpFountainTouches()
+	connectBiomeWarpTouches()
 	ensureShopWoodPartSpacing()
 	ensureSeasideRodShopMirrored()
 	ensureSeasideRodShopKeeper()
@@ -6472,7 +6445,7 @@ local function ensureWorld()
 		ensureFountainPlazaBrickStyle()
 		ensureFountainAnimations()
 		ensureFountainBiomeWarpTrigger()
-		connectBiomeWarpFountainTouches()
+		connectBiomeWarpTouches()
 		ensureShopWoodPartSpacing()
 		ensureSeasideRodShopMirrored()
 		ensureSeasideRodShopKeeper()
@@ -6889,7 +6862,7 @@ getPlayerTravelLocation = function(player)
 
 	local hubPosition = getAquariumHubTeleportPosition()
 	local aquariumPosition = getPlayerAquariumTeleportPosition(player)
-	if (root.Position - hubPosition).Magnitude <= 90 or (root.Position - aquariumPosition).Magnitude <= 70 then
+	if (root.Position - hubPosition).Magnitude <= 125 or (root.Position - aquariumPosition).Magnitude <= 90 then
 		return "AquariumHub"
 	end
 
@@ -7142,7 +7115,7 @@ function connectAreaPortalTrigger(part)
 	end
 
 	if targetArea == "BiomeWarp" then
-		connectBiomeWarpFountainTouch(part)
+		connectBiomeWarpTouch(part)
 		return
 	end
 

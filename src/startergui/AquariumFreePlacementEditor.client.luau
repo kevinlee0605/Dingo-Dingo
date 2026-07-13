@@ -1,4 +1,5 @@
 local Players = game:GetService("Players")
+local ContextActionService = game:GetService("ContextActionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -27,6 +28,12 @@ local zMin = tonumber(bounds.zMin) or -0.42
 local zMax = tonumber(bounds.zMax) or 0.42
 local scaleMin = tonumber(bounds.scaleMin) or 0.55
 local scaleMax = tonumber(bounds.scaleMax) or 1.35
+local DEPTH_LEVEL_COUNT = 7
+local TAP_BLUE = Color3.fromRGB(28, 115, 235)
+local PLACED_GREEN = Color3.fromRGB(24, 151, 82)
+local SELECTED_CYAN = Color3.fromRGB(60, 225, 255)
+local EDITOR_WHEEL_ACTION = "AquariumDecorEditorWheelCapture"
+local EDITOR_PINCH_ACTION = "AquariumDecorEditorPinchCapture"
 
 local state = nil
 local editorItems = {}
@@ -39,10 +46,13 @@ local draggingMode = nil
 local previewMode = false
 local nearOwnAquarium = false
 local mobileLayoutActive = false
+local pinchActive = false
+local pinchStartScale = 1
+local lastActiveInputType = UserInputService:GetLastInputType()
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "AquariumFreePlacementGui"
-gui.DisplayOrder = 1000
+gui.DisplayOrder = 5000
 gui.IgnoreGuiInset = true
 gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -247,13 +257,18 @@ local function loadEditorItemsFromState()
 	selectedThemeId = design.theme or designerConfig.defaultDesign.theme
 	backdropEnabled = design.backdropEnabled ~= false
 	local maxItems = getMaxFreeDecorations()
+	local loadedDecorationIds = {}
 	for _, item in ipairs(design.freeDecorations or {}) do
 		if #editorItems >= maxItems then
 			break
 		end
-		table.insert(editorItems, item)
+		if not loadedDecorationIds[item.decorationId] then
+			loadedDecorationIds[item.decorationId] = true
+			table.insert(editorItems, item)
+		end
 	end
 	selectedIndex = #editorItems > 0 and 1 or nil
+	selectedDecorationId = selectedIndex and editorItems[selectedIndex].decorationId or nil
 end
 
 local function buildDesignFromEditor()
@@ -261,9 +276,11 @@ local function buildDesignFromEditor()
 	design.theme = selectedThemeId or design.theme
 	design.backdropEnabled = backdropEnabled
 	design.freeDecorations = {}
+	local savedDecorationIds = {}
 	for _, item in ipairs(editorItems) do
 		local clamped = clampItem(item)
-		if clamped then
+		if clamped and not savedDecorationIds[clamped.decorationId] then
+			savedDecorationIds[clamped.decorationId] = true
 			table.insert(design.freeDecorations, clamped)
 		end
 	end
@@ -271,19 +288,17 @@ local function buildDesignFromEditor()
 end
 
 local function validateEditorItems()
+	local foundDecorationIds = {}
 	for index, item in ipairs(editorItems) do
 		if not clampItem(item) then
 			return false, "invalid decoration data at #" .. tostring(index)
 		end
+		if foundDecorationIds[item.decorationId] then
+			return false, "duplicate decoration type: " .. tostring(item.decorationId)
+		end
+		foundDecorationIds[item.decorationId] = true
 	end
 	return true, nil
-end
-
-for _, decorationId in ipairs(designerConfig.decorationOrder or {}) do
-	if decorationId ~= "None" and designerConfig.decorations[decorationId] then
-		selectedDecorationId = decorationId
-		break
-	end
 end
 
 local openButton = makeButton(gui, "Decor Editor", Color3.fromRGB(28, 160, 92))
@@ -298,78 +313,61 @@ backButton.Position = UDim2.new(1, -18, 1, -24)
 backButton.Size = UDim2.new(0, 138, 0, 42)
 backButton.Visible = false
 
-local panel = Instance.new("ScrollingFrame")
+local panel = Instance.new("Frame")
 panel.AnchorPoint = Vector2.new(0.5, 0.5)
 panel.Position = UDim2.fromScale(0.5, 0.5)
 panel.Size = UDim2.fromScale(0.96, 0.92)
-panel.BackgroundColor3 = Color3.fromRGB(15, 21, 30)
+panel.BackgroundColor3 = Color3.fromRGB(5, 18, 42)
 panel.BorderSizePixel = 0
-panel.AutomaticCanvasSize = Enum.AutomaticSize.None
-panel.CanvasSize = UDim2.fromOffset(0, 0)
 panel.ClipsDescendants = true
 panel.Active = true
-panel.ScrollingEnabled = true
-panel.ScrollBarThickness = 6
-panel.ScrollingDirection = Enum.ScrollingDirection.Y
-panel.ElasticBehavior = Enum.ElasticBehavior.Always
-panel.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
 panel.Visible = false
 panel.Parent = gui
-addCorner(panel, 10)
-addStroke(panel, Color3.fromRGB(64, 80, 104), 1)
+addCorner(panel, 14)
+addStroke(panel, Color3.fromRGB(20, 155, 255), 2)
 
 local panelSize = Instance.new("UISizeConstraint")
-panelSize.MinSize = Vector2.new(300, 320)
-panelSize.MaxSize = Vector2.new(680, 760)
+panelSize.MinSize = Vector2.new(640, 360)
+panelSize.MaxSize = Vector2.new(1500, 860)
 panelSize.Parent = panel
 
-local padding = Instance.new("UIPadding")
-padding.PaddingTop = UDim.new(0, 16)
-padding.PaddingBottom = UDim.new(0, 16)
-padding.PaddingLeft = UDim.new(0, 16)
-padding.PaddingRight = UDim.new(0, 16)
-padding.Parent = panel
-
-local layout = Instance.new("UIListLayout")
-layout.FillDirection = Enum.FillDirection.Vertical
-layout.SortOrder = Enum.SortOrder.LayoutOrder
-layout.Padding = UDim.new(0, 8)
-layout.Parent = panel
-
 local titleRow = Instance.new("Frame")
-titleRow.LayoutOrder = 1
 titleRow.BackgroundTransparency = 1
-titleRow.Size = UDim2.new(1, 0, 0, 32)
+titleRow.Position = UDim2.fromScale(0.025, 0.018)
+titleRow.Size = UDim2.fromScale(0.95, 0.11)
 titleRow.Parent = panel
 
 local title = makeLabel(titleRow, "Aquarium Decor Editor", 18, Color3.fromRGB(255, 255, 255), true)
-title.Size = UDim2.new(1, -42, 1, 0)
+title.Size = UDim2.new(1, -62, 0.58, 0)
 
-local closeButton = makeButton(titleRow, "X", Color3.fromRGB(86, 98, 115))
+local closeButton = makeButton(titleRow, "X", Color3.fromRGB(20, 80, 175))
 closeButton.AnchorPoint = Vector2.new(1, 0)
 closeButton.Position = UDim2.new(1, 0, 0, 0)
-closeButton.Size = UDim2.new(0, 40, 0, 40)
+closeButton.Size = UDim2.new(0, 48, 0, 48)
+addStroke(closeButton, Color3.fromRGB(50, 205, 255), 2)
 
-local statusLabel = makeLabel(panel, "", 12, Color3.fromRGB(190, 204, 220), false)
-statusLabel.LayoutOrder = 2
-statusLabel.Size = UDim2.new(1, 0, 0, 30)
+local statusLabel = makeLabel(titleRow, "", 13, Color3.fromRGB(47, 236, 255), true)
+statusLabel.Position = UDim2.fromScale(0, 0.56)
+statusLabel.Size = UDim2.new(1, -62, 0.4, 0)
 
 local previewFrame = Instance.new("Frame")
-previewFrame.LayoutOrder = 3
-previewFrame.Size = UDim2.new(1, 0, 0, 300)
-previewFrame.BackgroundColor3 = Color3.fromRGB(31, 72, 96)
+previewFrame.Position = UDim2.fromScale(0.025, 0.145)
+previewFrame.Size = UDim2.fromScale(0.525, 0.825)
+previewFrame.BackgroundColor3 = Color3.fromRGB(8, 45, 92)
 previewFrame.ClipsDescendants = true
+previewFrame.Active = true
 previewFrame.Parent = panel
-addCorner(previewFrame, 8)
-addStroke(previewFrame, Color3.fromRGB(85, 166, 215), 1)
+addCorner(previewFrame, 12)
+addStroke(previewFrame, Color3.fromRGB(25, 175, 255), 2)
 
 local previewWater = Instance.new("Frame")
 previewWater.BackgroundColor3 = Color3.fromRGB(44, 151, 212)
 previewWater.BackgroundTransparency = 0.15
-previewWater.Position = UDim2.fromScale(0.04, 0.08)
-previewWater.Size = UDim2.fromScale(0.92, 0.84)
+previewWater.Position = UDim2.fromScale(0.025, 0.025)
+previewWater.Size = UDim2.fromScale(0.95, 0.95)
 previewWater.Parent = previewFrame
-addCorner(previewWater, 6)
+addCorner(previewWater, 10)
+addStroke(previewWater, Color3.fromRGB(89, 225, 255), 1)
 
 local markerLayer = Instance.new("Frame")
 markerLayer.BackgroundTransparency = 1
@@ -386,23 +384,25 @@ ghostMarker.Parent = previewFrame
 addCorner(ghostMarker, 12)
 addStroke(ghostMarker, Color3.fromRGB(255, 255, 255), 1)
 
-local themeLabel = makeLabel(panel, "Themes", 13, Color3.fromRGB(255, 255, 255), true)
-themeLabel.LayoutOrder = 4
-themeLabel.Size = UDim2.new(1, 0, 0, 22)
+local themeLabel = makeLabel(panel, "Themes", 14, Color3.fromRGB(255, 255, 255), true)
+themeLabel.Position = UDim2.fromScale(0.575, 0.145)
+themeLabel.Size = UDim2.fromScale(0.4, 0.042)
 
 local themeScroll = Instance.new("ScrollingFrame")
-themeScroll.LayoutOrder = 5
-themeScroll.Size = UDim2.new(1, 0, 0, 52)
-themeScroll.BackgroundColor3 = Color3.fromRGB(21, 29, 40)
+themeScroll.Position = UDim2.fromScale(0.57, 0.19)
+themeScroll.Size = UDim2.fromScale(0.405, 0.15)
+themeScroll.BackgroundColor3 = Color3.fromRGB(7, 29, 65)
 themeScroll.BorderSizePixel = 0
 themeScroll.CanvasSize = UDim2.fromOffset(0, 0)
-themeScroll.ScrollBarThickness = 5
-themeScroll.ScrollingDirection = Enum.ScrollingDirection.X
+themeScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+themeScroll.ScrollBarThickness = 4
+themeScroll.ScrollingDirection = Enum.ScrollingDirection.Y
 themeScroll.ElasticBehavior = Enum.ElasticBehavior.Always
 themeScroll.Active = true
 themeScroll.ClipsDescendants = true
 themeScroll.Parent = panel
-addCorner(themeScroll, 7)
+addCorner(themeScroll, 9)
+addStroke(themeScroll, Color3.fromRGB(18, 105, 205), 1)
 
 local themePadding = Instance.new("UIPadding")
 themePadding.PaddingTop = UDim.new(0, 5)
@@ -411,29 +411,33 @@ themePadding.PaddingLeft = UDim.new(0, 5)
 themePadding.PaddingRight = UDim.new(0, 5)
 themePadding.Parent = themeScroll
 
-local themeLayout = Instance.new("UIListLayout")
+local themeLayout = Instance.new("UIGridLayout")
 themeLayout.FillDirection = Enum.FillDirection.Horizontal
+themeLayout.FillDirectionMaxCells = 4
 themeLayout.SortOrder = Enum.SortOrder.LayoutOrder
-themeLayout.Padding = UDim.new(0, 6)
+themeLayout.CellPadding = UDim2.fromOffset(6, 6)
+themeLayout.CellSize = UDim2.new(0.25, -5, 0, 36)
 themeLayout.Parent = themeScroll
 
-local decorLabel = makeLabel(panel, "Decor", 13, Color3.fromRGB(255, 255, 255), true)
-decorLabel.LayoutOrder = 6
-decorLabel.Size = UDim2.new(1, 0, 0, 22)
+local decorLabel = makeLabel(panel, "Decor  (Tap a decor to place or select it)", 14, Color3.fromRGB(255, 255, 255), true)
+decorLabel.Position = UDim2.fromScale(0.575, 0.355)
+decorLabel.Size = UDim2.fromScale(0.4, 0.042)
 
 local decorScroll = Instance.new("ScrollingFrame")
-decorScroll.LayoutOrder = 7
-decorScroll.Size = UDim2.new(1, 0, 0, 52)
-decorScroll.BackgroundColor3 = Color3.fromRGB(21, 29, 40)
+decorScroll.Position = UDim2.fromScale(0.57, 0.4)
+decorScroll.Size = UDim2.fromScale(0.405, 0.275)
+decorScroll.BackgroundColor3 = Color3.fromRGB(7, 29, 65)
 decorScroll.BorderSizePixel = 0
 decorScroll.CanvasSize = UDim2.fromOffset(0, 0)
-decorScroll.ScrollBarThickness = 5
-decorScroll.ScrollingDirection = Enum.ScrollingDirection.X
+decorScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+decorScroll.ScrollBarThickness = 4
+decorScroll.ScrollingDirection = Enum.ScrollingDirection.Y
 decorScroll.ElasticBehavior = Enum.ElasticBehavior.Always
 decorScroll.Active = true
 decorScroll.ClipsDescendants = true
 decorScroll.Parent = panel
-addCorner(decorScroll, 7)
+addCorner(decorScroll, 9)
+addStroke(decorScroll, Color3.fromRGB(18, 105, 205), 1)
 
 local decorPadding = Instance.new("UIPadding")
 decorPadding.PaddingTop = UDim.new(0, 5)
@@ -442,31 +446,71 @@ decorPadding.PaddingLeft = UDim.new(0, 5)
 decorPadding.PaddingRight = UDim.new(0, 5)
 decorPadding.Parent = decorScroll
 
-local decorLayout = Instance.new("UIListLayout")
+local decorLayout = Instance.new("UIGridLayout")
 decorLayout.FillDirection = Enum.FillDirection.Horizontal
+decorLayout.FillDirectionMaxCells = 4
 decorLayout.SortOrder = Enum.SortOrder.LayoutOrder
-decorLayout.Padding = UDim.new(0, 6)
+decorLayout.CellPadding = UDim2.fromOffset(6, 6)
+decorLayout.CellSize = UDim2.new(0.25, -5, 0, 46)
 decorLayout.Parent = decorScroll
 
-local adjustmentLabel = makeLabel(panel, "Adjustments", 13, Color3.fromRGB(255, 255, 255), true)
-adjustmentLabel.LayoutOrder = 8
-adjustmentLabel.Size = UDim2.new(1, 0, 0, 22)
+local adjustmentLabel = makeLabel(panel, "Adjustments", 14, Color3.fromRGB(255, 255, 255), true)
+adjustmentLabel.Position = UDim2.fromScale(0.575, 0.69)
+adjustmentLabel.Size = UDim2.fromScale(0.4, 0.042)
 
 local adjustmentGrid = Instance.new("Frame")
-adjustmentGrid.LayoutOrder = 9
-adjustmentGrid.Size = UDim2.new(1, 0, 0, 86)
-adjustmentGrid.BackgroundTransparency = 1
+adjustmentGrid.Position = UDim2.fromScale(0.57, 0.735)
+adjustmentGrid.Size = UDim2.fromScale(0.405, 0.12)
+adjustmentGrid.BackgroundColor3 = Color3.fromRGB(7, 29, 65)
 adjustmentGrid.Parent = panel
+addCorner(adjustmentGrid, 9)
+addStroke(adjustmentGrid, Color3.fromRGB(18, 105, 205), 1)
 
-local grid = Instance.new("UIGridLayout")
-grid.SortOrder = Enum.SortOrder.LayoutOrder
-grid.CellPadding = UDim2.fromOffset(8, 8)
-grid.CellSize = UDim2.new(0.333, -8, 0, 42)
-grid.Parent = adjustmentGrid
+local depthLabel = makeLabel(adjustmentGrid, "Depth (Forward / Backward)", 12, Color3.fromRGB(230, 242, 255), false)
+depthLabel.Position = UDim2.fromScale(0.1, 0.02)
+depthLabel.Size = UDim2.fromScale(0.8, 0.38)
+depthLabel.TextXAlignment = Enum.TextXAlignment.Center
+
+local depthLeftButton = makeButton(adjustmentGrid, "<", Color3.fromRGB(14, 74, 160))
+depthLeftButton.AnchorPoint = Vector2.new(0, 0.5)
+depthLeftButton.Position = UDim2.fromScale(0.02, 0.7)
+depthLeftButton.Size = UDim2.fromOffset(32, 32)
+addStroke(depthLeftButton, Color3.fromRGB(46, 215, 255), 1)
+
+local depthRightButton = makeButton(adjustmentGrid, ">", Color3.fromRGB(14, 74, 160))
+depthRightButton.AnchorPoint = Vector2.new(1, 0.5)
+depthRightButton.Position = UDim2.fromScale(0.98, 0.7)
+depthRightButton.Size = UDim2.fromOffset(32, 32)
+addStroke(depthRightButton, Color3.fromRGB(46, 215, 255), 1)
+
+local depthTrack = Instance.new("Frame")
+depthTrack.AnchorPoint = Vector2.new(0.5, 0.5)
+depthTrack.Position = UDim2.fromScale(0.5, 0.7)
+depthTrack.Size = UDim2.new(0.75, 0, 0, 3)
+depthTrack.BackgroundColor3 = Color3.fromRGB(56, 116, 205)
+depthTrack.BorderSizePixel = 0
+depthTrack.Parent = adjustmentGrid
+
+local depthButtons = {}
+for level = 1, DEPTH_LEVEL_COUNT do
+	local dot = Instance.new("TextButton")
+	dot.Name = "DepthLevel" .. tostring(level)
+	dot.AnchorPoint = Vector2.new(0.5, 0.5)
+	dot.Position = UDim2.fromScale((level - 1) / (DEPTH_LEVEL_COUNT - 1), 0.5)
+	dot.Size = UDim2.fromOffset(14, 14)
+	dot.BackgroundColor3 = Color3.fromRGB(20, 55, 105)
+	dot.BorderSizePixel = 0
+	dot.Text = ""
+	dot.AutoButtonColor = false
+	dot.Parent = depthTrack
+	addCorner(dot, 8)
+	addStroke(dot, Color3.fromRGB(105, 165, 235), 1)
+	depthButtons[level] = dot
+end
 
 local actionRow = Instance.new("Frame")
-actionRow.LayoutOrder = 10
-actionRow.Size = UDim2.new(1, 0, 0, 48)
+actionRow.Position = UDim2.fromScale(0.57, 0.875)
+actionRow.Size = UDim2.fromScale(0.405, 0.095)
 actionRow.BackgroundTransparency = 1
 actionRow.Parent = panel
 
@@ -480,96 +524,73 @@ actionLayout.Parent = actionRow
 
 local previewButton = makeButton(actionRow, "Preview", Color3.fromRGB(53, 130, 246))
 previewButton.LayoutOrder = 1
-previewButton.Size = UDim2.new(0, 136, 0, 44)
+previewButton.Size = UDim2.new(0.333, -7, 1, 0)
+addStroke(previewButton, Color3.fromRGB(55, 210, 255), 1)
+
+local removeButton = makeButton(actionRow, "Remove", Color3.fromRGB(194, 55, 55))
+removeButton.LayoutOrder = 2
+removeButton.Size = UDim2.new(0.333, -7, 1, 0)
+addStroke(removeButton, Color3.fromRGB(255, 104, 78), 1)
 
 local applyButton = makeButton(actionRow, "Apply", Color3.fromRGB(28, 160, 92))
-applyButton.LayoutOrder = 2
-applyButton.Size = UDim2.new(0, 136, 0, 44)
+applyButton.LayoutOrder = 3
+applyButton.Size = UDim2.new(0.333, -7, 1, 0)
+addStroke(applyButton, Color3.fromRGB(95, 255, 132), 1)
 
 local themeButtons = {}
+local themeButtonStrokes = {}
 local decorButtons = {}
+local decorButtonStrokes = {}
 
-local backdropButton = makeButton(decorScroll, "Backdrop: On", Color3.fromRGB(28, 160, 92))
+local backdropButton = makeButton(decorScroll, "Backdrop On", PLACED_GREEN)
 backdropButton.LayoutOrder = 0
-backdropButton.Size = UDim2.fromOffset(104, 30)
 backdropButton.TextSize = 11
+local backdropStroke = addStroke(backdropButton, Color3.fromRGB(95, 255, 132), 1)
 
 local function updateBackdropButton()
-	backdropButton.Text = backdropEnabled and "Backdrop: On" or "Backdrop: Off"
-	backdropButton.BackgroundColor3 = backdropEnabled and Color3.fromRGB(28, 160, 92) or Color3.fromRGB(194, 76, 76)
+	backdropButton.Text = backdropEnabled and "Backdrop On" or "Backdrop Off"
+	backdropButton.BackgroundColor3 = backdropEnabled and PLACED_GREEN or TAP_BLUE
+	backdropStroke.Color = backdropEnabled and Color3.fromRGB(95, 255, 132) or Color3.fromRGB(40, 155, 255)
+	backdropStroke.Thickness = backdropEnabled and 2 or 1
 end
-
-local function updatePanelCanvas()
-	local verticalPadding = padding.PaddingTop.Offset + padding.PaddingBottom.Offset
-	panel.CanvasSize = UDim2.fromOffset(0, layout.AbsoluteContentSize.Y + verticalPadding)
-end
-
-layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updatePanelCanvas)
 
 local function applyResponsiveLayout()
 	local camera = workspace.CurrentCamera
-	local viewportSize = camera and camera.ViewportSize or Vector2.new(900, 650)
-	local shortScreen = viewportSize.Y < 620
-	local veryShortScreen = viewportSize.Y < 460
-	local narrowScreen = viewportSize.X < 760
-	local veryNarrowScreen = viewportSize.X < 480
-	mobileLayoutActive = UserInputService.TouchEnabled or narrowScreen
+	local viewportSize = camera and camera.ViewportSize or Vector2.new(1280, 720)
+	local compactLandscape = viewportSize.Y < 520
+	mobileLayoutActive = UserInputService.TouchEnabled
 
-	panel.Size = UDim2.fromScale(narrowScreen and 0.98 or 0.94, shortScreen and 0.94 or 0.9)
-	panelSize.MinSize = Vector2.new(math.min(300, viewportSize.X * 0.9), math.min(320, viewportSize.Y * 0.8))
-	panelSize.MaxSize = Vector2.new(math.max(320, math.min(720, viewportSize.X * 0.96)), math.max(340, math.min(780, viewportSize.Y * 0.92)))
-	panel.ScrollBarThickness = mobileLayoutActive and 8 or 6
+	panel.Size = UDim2.fromScale(0.97, 0.94)
+	panelSize.MinSize = Vector2.new(math.min(640, viewportSize.X * 0.96), math.min(360, viewportSize.Y * 0.92))
+	panelSize.MaxSize = Vector2.new(math.max(640, math.min(1500, viewportSize.X * 0.97)), math.max(360, math.min(860, viewportSize.Y * 0.94)))
 
-	local sidePadding = mobileLayoutActive and 12 or 18
-	padding.PaddingTop = UDim.new(0, mobileLayoutActive and 12 or 18)
-	padding.PaddingBottom = UDim.new(0, mobileLayoutActive and 18 or 18)
-	padding.PaddingLeft = UDim.new(0, sidePadding)
-	padding.PaddingRight = UDim.new(0, sidePadding)
-	layout.Padding = UDim.new(0, mobileLayoutActive and 8 or 10)
+	title.TextSize = compactLandscape and 18 or 24
+	statusLabel.TextSize = compactLandscape and 11 or 14
+	closeButton.Size = UDim2.fromOffset(compactLandscape and 38 or 48, compactLandscape and 38 or 48)
+	themeLabel.TextSize = compactLandscape and 12 or 14
+	decorLabel.TextSize = compactLandscape and 11 or 14
+	adjustmentLabel.TextSize = compactLandscape and 12 or 14
+	depthLabel.TextSize = compactLandscape and 10 or 12
+	ghostMarker.Size = UDim2.fromOffset(mobileLayoutActive and 28 or 22, mobileLayoutActive and 28 or 22)
 
-	titleRow.Size = UDim2.new(1, 0, 0, mobileLayoutActive and 48 or 42)
-	title.TextSize = mobileLayoutActive and 17 or 19
-	closeButton.Size = UDim2.new(0, mobileLayoutActive and 48 or 42, 0, mobileLayoutActive and 48 or 42)
-	statusLabel.Size = UDim2.new(1, 0, 0, mobileLayoutActive and 50 or 30)
-	statusLabel.TextSize = mobileLayoutActive and 12 or 13
-
-	local previewHeight = 320
-	if veryShortScreen then
-		previewHeight = 150
-	elseif shortScreen then
-		previewHeight = 190
-	elseif mobileLayoutActive then
-		previewHeight = 240
-	end
-	previewFrame.Size = UDim2.new(1, 0, 0, previewHeight)
-	ghostMarker.Size = UDim2.fromOffset(mobileLayoutActive and 30 or 22, mobileLayoutActive and 30 or 22)
-
-	local selectorHeight = mobileLayoutActive and 44 or 30
-	local selectorRowHeight = mobileLayoutActive and 64 or 56
-	themeScroll.Size = UDim2.new(1, 0, 0, selectorRowHeight)
-	decorScroll.Size = UDim2.new(1, 0, 0, selectorRowHeight)
-	themeScroll.ScrollBarThickness = mobileLayoutActive and 7 or 5
-	decorScroll.ScrollBarThickness = mobileLayoutActive and 7 or 5
+	local themeCellHeight = compactLandscape and 24 or 36
+	local decorCellHeight = compactLandscape and 28 or 46
+	themeLayout.CellSize = UDim2.new(0.25, -5, 0, themeCellHeight)
+	decorLayout.CellSize = UDim2.new(0.25, -5, 0, decorCellHeight)
+	themeScroll.ScrollBarThickness = mobileLayoutActive and 6 or 4
+	decorScroll.ScrollBarThickness = mobileLayoutActive and 6 or 4
 	for _, button in pairs(themeButtons) do
-		button.Size = UDim2.fromOffset(button.Size.X.Offset, selectorHeight)
-		button.TextSize = mobileLayoutActive and 12 or 11
+		button.TextSize = compactLandscape and 9 or 11
 	end
 	for _, button in pairs(decorButtons) do
-		button.Size = UDim2.fromOffset(button.Size.X.Offset, selectorHeight)
-		button.TextSize = mobileLayoutActive and 12 or 11
+		button.TextSize = compactLandscape and 9 or 11
 	end
-	backdropButton.Size = UDim2.fromOffset(mobileLayoutActive and 118 or 104, selectorHeight)
-	backdropButton.TextSize = mobileLayoutActive and 12 or 11
-
-	grid.FillDirectionMaxCells = veryNarrowScreen and 2 or 3
-	grid.CellSize = veryNarrowScreen and UDim2.new(0.5, -4, 0, 48) or UDim2.new(0.333, -8, 0, mobileLayoutActive and 48 or 44)
-	adjustmentGrid.Size = UDim2.new(1, 0, 0, veryNarrowScreen and 160 or (mobileLayoutActive and 108 or 100))
-	actionRow.Size = UDim2.new(1, 0, 0, mobileLayoutActive and 58 or 52)
-	previewButton.Size = mobileLayoutActive and UDim2.new(0.5, -5, 0, 50) or UDim2.new(0, 146, 0, 46)
-	applyButton.Size = mobileLayoutActive and UDim2.new(0.5, -5, 0, 50) or UDim2.new(0, 146, 0, 46)
+	backdropButton.TextSize = compactLandscape and 9 or 11
+	previewButton.TextSize = compactLandscape and 10 or 13
+	removeButton.TextSize = compactLandscape and 10 or 13
+	applyButton.TextSize = compactLandscape and 10 or 13
 	openButton.Size = UDim2.new(0, mobileLayoutActive and 158 or 146, 0, mobileLayoutActive and 52 or 48)
 	backButton.Size = UDim2.new(0, mobileLayoutActive and 166 or 154, 0, mobileLayoutActive and 52 or 48)
-	task.defer(updatePanelCanvas)
 end
 
 applyResponsiveLayout()
@@ -593,18 +614,18 @@ local function pointerToRelative(position)
 end
 
 local function updateStatus()
-	local maxItems = getMaxFreeDecorations()
-	local passText = ownsDesignerPass() and "Designer Pass owned" or "Designer Pass required to save"
-	local statusText = string.format("%s | Free decorations: %d/%d", passText, #editorItems, maxItems)
-	if mobileLayoutActive then
-		statusText ..= "\nTap a decor, tap Add, then drag its marker in the tank."
-	end
-	statusLabel.Text = statusText
+	statusLabel.Text = lastActiveInputType == Enum.UserInputType.Touch and "Pinch to Scale" or "Scroll to Scale"
 end
 
 local refreshMarkers
+local refreshDepthGauge
 local updateThemeButtonSelection
 local updateDecorButtonSelection
+
+UserInputService.LastInputTypeChanged:Connect(function(inputType)
+	lastActiveInputType = inputType
+	updateStatus()
+end)
 
 local function updateGhost()
 	if selectedIndex ~= nil then
@@ -612,9 +633,7 @@ local function updateGhost()
 		return
 	end
 
-	local px, py = relativeToScalePosition(lastPointer.x, lastPointer.y)
-	ghostMarker.Position = UDim2.fromScale(px, py)
-	ghostMarker.Visible = panel.Visible and selectedDecorationId ~= nil
+	ghostMarker.Visible = false
 end
 
 refreshMarkers = function()
@@ -659,18 +678,50 @@ refreshMarkers = function()
 	end
 
 	updateStatus()
+	updateDecorButtonSelection()
+	refreshDepthGauge()
 	updateGhost()
+end
+
+local function findEditorItemIndex(decorationId)
+	for index, item in ipairs(editorItems) do
+		if item.decorationId == decorationId then
+			return index
+		end
+	end
+	return nil
 end
 
 updateDecorButtonSelection = function()
 	for decorationId, button in pairs(decorButtons) do
-		button.BackgroundColor3 = decorationId == selectedDecorationId and Color3.fromRGB(28, 160, 92) or Color3.fromRGB(53, 130, 246)
+		local placed = findEditorItemIndex(decorationId) ~= nil
+		local selected = placed and decorationId == selectedDecorationId
+		local decorationName = button:GetAttribute("DecorationName") or button.Text
+		button.Text = placed and ("✓ " .. decorationName) or decorationName
+		button.BackgroundColor3 = placed and PLACED_GREEN or TAP_BLUE
+		local stroke = decorButtonStrokes[decorationId]
+		if stroke then
+			stroke.Color = selected and SELECTED_CYAN or (placed and Color3.fromRGB(95, 255, 132) or Color3.fromRGB(35, 160, 255))
+			stroke.Thickness = selected and 3 or (placed and 2 or 1)
+		end
 	end
 end
 
 updateThemeButtonSelection = function()
 	for themeId, button in pairs(themeButtons) do
-		button.BackgroundColor3 = themeId == selectedThemeId and Color3.fromRGB(28, 160, 92) or Color3.fromRGB(53, 130, 246)
+		local selected = themeId == selectedThemeId
+		button.BackgroundColor3 = selected and PLACED_GREEN or TAP_BLUE
+		local stroke = themeButtonStrokes[themeId]
+		if stroke then
+			stroke.Color = selected and Color3.fromRGB(95, 255, 132) or Color3.fromRGB(35, 160, 255)
+			stroke.Thickness = selected and 2 or 1
+		end
+	end
+
+	local selectedTheme = designerConfig.themes[selectedThemeId]
+	if selectedTheme then
+		previewWater.BackgroundColor3 = selectedTheme.waterColor or previewWater.BackgroundColor3
+		previewFrame.BackgroundColor3 = selectedTheme.frameColor or previewFrame.BackgroundColor3
 	end
 end
 
@@ -696,10 +747,10 @@ end
 for order, themeId in ipairs(designerConfig.themeOrder or {}) do
 	local theme = designerConfig.themes[themeId]
 	if theme then
-		local button = makeButton(themeScroll, theme.name, Color3.fromRGB(53, 130, 246))
+		local button = makeButton(themeScroll, theme.name, TAP_BLUE)
 		button.LayoutOrder = order
-		button.Size = UDim2.fromOffset(math.max(78, string.len(theme.name) * 7 + 20), 30)
 		button.TextSize = 11
+		themeButtonStrokes[themeId] = addStroke(button, Color3.fromRGB(35, 160, 255), 1)
 		button.MouseButton1Click:Connect(function()
 			selectedThemeId = themeId
 			updateThemeButtonSelection()
@@ -709,23 +760,38 @@ for order, themeId in ipairs(designerConfig.themeOrder or {}) do
 end
 
 themeLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-	themeScroll.CanvasSize = UDim2.fromOffset(themeLayout.AbsoluteContentSize.X + 16, 0)
+	themeScroll.CanvasSize = UDim2.fromOffset(0, themeLayout.AbsoluteContentSize.Y + 12)
 end)
-themeScroll.CanvasSize = UDim2.fromOffset(themeLayout.AbsoluteContentSize.X + 16, 0)
+themeScroll.CanvasSize = UDim2.fromOffset(0, themeLayout.AbsoluteContentSize.Y + 12)
 
 for order, decorationId in ipairs(designerConfig.decorationOrder or {}) do
 	if decorationId ~= "None" and designerConfig.decorations[decorationId] then
 		local decoration = designerConfig.decorations[decorationId]
-		local button = makeButton(decorScroll, decoration.name, Color3.fromRGB(53, 130, 246))
+		local button = makeButton(decorScroll, decoration.name, TAP_BLUE)
 		button.LayoutOrder = order
-		button.Size = UDim2.fromOffset(math.max(78, string.len(decoration.name) * 7 + 20), 30)
 		button.TextSize = 11
+		button:SetAttribute("DecorationName", decoration.name)
+		decorButtonStrokes[decorationId] = addStroke(button, Color3.fromRGB(35, 160, 255), 1)
 		button.MouseButton1Click:Connect(function()
-			selectedDecorationId = decorationId
-			if selectedIndex and editorItems[selectedIndex] then
-				editorItems[selectedIndex].decorationId = decorationId
+			local existingIndex = findEditorItemIndex(decorationId)
+			if existingIndex then
+				selectedIndex = existingIndex
+			else
+				if #editorItems >= getMaxFreeDecorations() then
+					warn("Aquarium decor editor placement failed: no free decoration slots available at this aquarium level.")
+					return
+				end
+
+				table.insert(editorItems, {
+					decorationId = decorationId,
+					x = lastPointer.x,
+					y = lastPointer.y,
+					z = 0,
+					scale = 1,
+				})
+				selectedIndex = #editorItems
 			end
-			updateDecorButtonSelection()
+			selectedDecorationId = decorationId
 			refreshMarkers()
 		end)
 		decorButtons[decorationId] = button
@@ -733,118 +799,193 @@ for order, decorationId in ipairs(designerConfig.decorationOrder or {}) do
 end
 
 decorLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-	decorScroll.CanvasSize = UDim2.fromOffset(decorLayout.AbsoluteContentSize.X + 16, 0)
+	decorScroll.CanvasSize = UDim2.fromOffset(0, decorLayout.AbsoluteContentSize.Y + 12)
 end)
-decorScroll.CanvasSize = UDim2.fromOffset(decorLayout.AbsoluteContentSize.X + 16, 0)
+decorScroll.CanvasSize = UDim2.fromOffset(0, decorLayout.AbsoluteContentSize.Y + 12)
 
 local function getSelectedItem()
 	return selectedIndex and editorItems[selectedIndex] or nil
 end
 
-local addButton = makeButton(adjustmentGrid, "Add", Color3.fromRGB(53, 130, 246))
-addButton.LayoutOrder = 1
-addButton.MouseButton1Click:Connect(function()
-	if not selectedDecorationId then
-		warn("Aquarium decor editor Add failed: no selected decoration.")
-		return
-	end
-	if #editorItems >= getMaxFreeDecorations() then
-		warn("Aquarium decor editor Add failed: no free decoration slots available at this aquarium level.")
-		return
-	end
-
-	table.insert(editorItems, {
-		decorationId = selectedDecorationId,
-		x = lastPointer.x,
-		y = lastPointer.y,
-		z = 0,
-		scale = 1,
-	})
-	selectedIndex = #editorItems
-	refreshMarkers()
-end)
-
-local removeButton = makeButton(adjustmentGrid, "Remove", Color3.fromRGB(194, 76, 76))
-removeButton.LayoutOrder = 2
 removeButton.MouseButton1Click:Connect(function()
 	if selectedIndex and editorItems[selectedIndex] then
 		table.remove(editorItems, selectedIndex)
 		if #editorItems == 0 then
 			selectedIndex = nil
+			selectedDecorationId = nil
 		else
 			selectedIndex = math.clamp(selectedIndex, 1, #editorItems)
 			selectedDecorationId = editorItems[selectedIndex].decorationId
 		end
-		updateDecorButtonSelection()
 		refreshMarkers()
 	end
 end)
 
-local forwardButton = makeButton(adjustmentGrid, "Forward", Color3.fromRGB(53, 130, 246))
-forwardButton.LayoutOrder = 3
-forwardButton.MouseButton1Click:Connect(function()
+local function depthLevelToZ(level)
+	local alpha = (math.clamp(level, 1, DEPTH_LEVEL_COUNT) - 1) / (DEPTH_LEVEL_COUNT - 1)
+	return zMax + ((zMin - zMax) * alpha)
+end
+
+local function zToDepthLevel(z)
+	local alpha = (zMax - math.clamp(tonumber(z) or 0, zMin, zMax)) / math.max(0.001, zMax - zMin)
+	return math.clamp(math.floor((alpha * (DEPTH_LEVEL_COUNT - 1)) + 0.5) + 1, 1, DEPTH_LEVEL_COUNT)
+end
+
+local function setSelectedDepthLevel(level)
+	local item = getSelectedItem()
+	if not item then
+		return
+	end
+	item.z = depthLevelToZ(level)
+	refreshDepthGauge()
+end
+
+refreshDepthGauge = function()
+	local item = getSelectedItem()
+	local selectedLevel = item and zToDepthLevel(item.z) or nil
+	for level, dot in ipairs(depthButtons) do
+		local selected = level == selectedLevel
+		dot.BackgroundColor3 = selected and SELECTED_CYAN or Color3.fromRGB(20, 55, 105)
+		dot.Size = UDim2.fromOffset(selected and 18 or 14, selected and 18 or 14)
+		local stroke = dot:FindFirstChildOfClass("UIStroke")
+		if stroke then
+			stroke.Color = selected and Color3.fromRGB(210, 255, 255) or Color3.fromRGB(105, 165, 235)
+			stroke.Thickness = selected and 2 or 1
+		end
+	end
+	depthLeftButton.Active = item ~= nil
+	depthRightButton.Active = item ~= nil
+	depthLeftButton.AutoButtonColor = item ~= nil
+	depthRightButton.AutoButtonColor = item ~= nil
+	depthLabel.TextColor3 = item and Color3.fromRGB(230, 242, 255) or Color3.fromRGB(125, 145, 175)
+end
+
+depthLeftButton.MouseButton1Click:Connect(function()
 	local item = getSelectedItem()
 	if item then
-		item.z = math.clamp((tonumber(item.z) or 0) - 0.08, zMin, zMax)
-		refreshMarkers()
+		setSelectedDepthLevel(zToDepthLevel(item.z) - 1)
 	end
 end)
 
-local backwardButton = makeButton(adjustmentGrid, "Backward", Color3.fromRGB(53, 130, 246))
-backwardButton.LayoutOrder = 4
-backwardButton.MouseButton1Click:Connect(function()
+depthRightButton.MouseButton1Click:Connect(function()
 	local item = getSelectedItem()
 	if item then
-		item.z = math.clamp((tonumber(item.z) or 0) + 0.08, zMin, zMax)
-		refreshMarkers()
+		setSelectedDepthLevel(zToDepthLevel(item.z) + 1)
 	end
 end)
 
-local scaleUpButton = makeButton(adjustmentGrid, "Scale +", Color3.fromRGB(53, 130, 246))
-scaleUpButton.LayoutOrder = 5
-scaleUpButton.MouseButton1Click:Connect(function()
-	local item = getSelectedItem()
-	if item then
-		item.scale = math.clamp((tonumber(item.scale) or 1) + 0.1, scaleMin, scaleMax)
-		refreshMarkers()
-	end
-end)
+for level, dot in ipairs(depthButtons) do
+	dot.MouseButton1Click:Connect(function()
+		setSelectedDepthLevel(level)
+	end)
+end
 
-local scaleDownButton = makeButton(adjustmentGrid, "Scale -", Color3.fromRGB(53, 130, 246))
-scaleDownButton.LayoutOrder = 6
-scaleDownButton.MouseButton1Click:Connect(function()
-	local item = getSelectedItem()
-	if item then
-		item.scale = math.clamp((tonumber(item.scale) or 1) - 0.1, scaleMin, scaleMax)
-		refreshMarkers()
+local function isPointInsidePreview(position)
+	local absolutePosition = previewFrame.AbsolutePosition
+	local absoluteSize = previewFrame.AbsoluteSize
+	return position.X >= absolutePosition.X
+		and position.X <= absolutePosition.X + absoluteSize.X
+		and position.Y >= absolutePosition.Y
+		and position.Y <= absolutePosition.Y + absoluteSize.Y
+end
+
+local function sinkEditorCameraInput()
+	return Enum.ContextActionResult.Sink
+end
+
+local function captureWheelOnlyInsidePreview()
+	if panel.Visible and isPointInsidePreview(UserInputService:GetMouseLocation()) then
+		return Enum.ContextActionResult.Sink
 	end
-end)
+	return Enum.ContextActionResult.Pass
+end
+
+local function setWheelCapture(enabled)
+	ContextActionService:UnbindAction(EDITOR_WHEEL_ACTION)
+	if enabled and panel.Visible then
+		ContextActionService:BindActionAtPriority(
+			EDITOR_WHEEL_ACTION,
+			captureWheelOnlyInsidePreview,
+			false,
+			Enum.ContextActionPriority.High.Value + 100,
+			Enum.UserInputType.MouseWheel
+		)
+	end
+end
+
+local function setPinchCapture(enabled)
+	ContextActionService:UnbindAction(EDITOR_PINCH_ACTION)
+	if enabled and panel.Visible then
+		ContextActionService:BindActionAtPriority(
+			EDITOR_PINCH_ACTION,
+			sinkEditorCameraInput,
+			false,
+			Enum.ContextActionPriority.High.Value + 100,
+			Enum.UserInputType.Touch
+		)
+	end
+end
+
+local function releaseEditorInputCapture()
+	setWheelCapture(false)
+	setPinchCapture(false)
+	pinchActive = false
+end
+
+local function scaleSelectedDecoration(newScale)
+	local item = getSelectedItem()
+	if not item then
+		return
+	end
+	item.scale = math.clamp(newScale, scaleMin, scaleMax)
+	refreshMarkers()
+end
 
 previewFrame.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		draggingMode = selectedIndex and "selected" or "ghost"
+	if pinchActive then
+		return
+	end
+	if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch)
+		and selectedIndex
+	then
+		draggingMode = "selected"
 		setSelectedItemPosition(input.Position)
 	end
 end)
 
 previewFrame.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+	if not pinchActive
+		and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch)
+	then
 		if draggingMode then
 			setSelectedItemPosition(input.Position)
-		else
-			local x, y = pointerToRelative(input.Position)
-			lastPointer.x = x
-			lastPointer.y = y
-			updateGhost()
 		end
 	end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseWheel then
+		if not panel.Visible or not getSelectedItem() then
+			return
+		end
+		local mousePosition = UserInputService:GetMouseLocation()
+		if not isPointInsidePreview(mousePosition) then
+			return
+		end
+		local direction = math.sign(input.Position.Z)
+		if direction ~= 0 then
+			local item = getSelectedItem()
+			scaleSelectedDecoration((tonumber(item.scale) or 1) + (direction * 0.06))
+		end
+		return
+	end
+
 	if not draggingMode then
 		return
 	end
-	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+	if not pinchActive
+		and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch)
+	then
 		setSelectedItemPosition(input.Position)
 	end
 end)
@@ -852,6 +993,33 @@ end)
 UserInputService.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		draggingMode = nil
+	end
+end)
+
+UserInputService.TouchPinch:Connect(function(touchPositions, pinchScale, _velocity, inputState)
+	if inputState == Enum.UserInputState.Begin then
+		if not panel.Visible or not getSelectedItem() or type(touchPositions) ~= "table" or #touchPositions < 2 then
+			return
+		end
+		local pinchCenter = (touchPositions[1] + touchPositions[2]) / 2
+		if not isPointInsidePreview(pinchCenter) then
+			return
+		end
+
+		pinchActive = true
+		draggingMode = nil
+		pinchStartScale = tonumber(getSelectedItem().scale) or 1
+		setPinchCapture(true)
+	elseif inputState == Enum.UserInputState.Change then
+		if pinchActive and panel.Visible and getSelectedItem() then
+			scaleSelectedDecoration(pinchStartScale * math.max(0.01, tonumber(pinchScale) or 1))
+		end
+	elseif inputState == Enum.UserInputState.End or inputState == Enum.UserInputState.Cancel then
+		if pinchActive then
+			pinchActive = false
+			setPinchCapture(false)
+			refreshMarkers()
+		end
 	end
 end)
 
@@ -865,10 +1033,11 @@ local function openEditor()
 
 	previewMode = false
 	loadEditorItemsFromState()
-	panel.CanvasPosition = Vector2.zero
 	panel.Visible = true
+	setWheelCapture(true)
 	openButton.Visible = false
 	backButton.Visible = false
+	updateStatus()
 	updateThemeButtonSelection()
 	updateDecorButtonSelection()
 	updateBackdropButton()
@@ -876,6 +1045,7 @@ local function openEditor()
 end
 
 local function closeEditor()
+	releaseEditorInputCapture()
 	panel.Visible = false
 	draggingMode = nil
 	refreshMarkers()
@@ -898,11 +1068,6 @@ local function sendAquariumDesign(actionName)
 		warn("Aquarium " .. actionName .. " failed: no aquarium found.")
 		return false
 	end
-	if selectedDecorationId == nil and #editorItems == 0 then
-		warn("Aquarium " .. actionName .. " failed: no selected decoration.")
-		return false
-	end
-
 	local ok, reason = validateEditorItems()
 	if not ok then
 		warn("Aquarium " .. actionName .. " failed: " .. tostring(reason or "invalid decoration data"))
@@ -916,6 +1081,7 @@ end
 previewButton.MouseButton1Click:Connect(function()
 	if sendAquariumDesign("PreviewAquariumDesign") then
 		previewMode = true
+		releaseEditorInputCapture()
 		panel.Visible = false
 		openButton.Visible = false
 		backButton.Visible = nearOwnAquarium

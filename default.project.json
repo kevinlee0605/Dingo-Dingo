@@ -78,8 +78,15 @@
                                              "$path":  "src/server"
                                          },
                  "ServerStorage":  {
-                                       "$ignoreUnknownInstances":  true
+                                       "$ignoreUnknownInstances":  true,
+                                       "AquariumThemesV21":  {
+                                                                     "$className":  "Folder",
+                                                                     "$ignoreUnknownInstances":  true
+                                                                 }
                                    },
+                 "Workspace":  {
+                                   "$ignoreUnknownInstances":  true
+                               },
                  "StarterGui":  {
                                     "$ignoreUnknownInstances":  true,
                                     "FishingGui":  {

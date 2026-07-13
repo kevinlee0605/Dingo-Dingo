@@ -2,8 +2,8 @@ local ServerStorage = game:GetService("ServerStorage")
 
 local AquariumThemeService = {}
 
-local FRAME_FOLDER_NAME = "AquariumThemeFrames"
-local BACKDROP_FOLDER_NAME = "AquariumThemes"
+local THEME_FOLDER_NAME = "AquariumThemesV21"
+local THEME_MODEL_NAME = "AquariumPremiumTheme"
 local STANDARD_TANK_SIZE = Vector3.new(40, 15, 14)
 
 local function configurePart(part)
@@ -16,13 +16,13 @@ local function configurePart(part)
 	part:SetAttribute("AquariumThemeSavedTransparency", part.Transparency)
 end
 
-local function setModelVisible(model, visible)
-	if not model then
-		return
-	end
+local function isBackdropPart(part)
+	return string.find(string.upper(part.Name), "BACKDROP", 1, true) ~= nil
+end
 
+local function setBackdropVisible(model, visible)
 	for _, descendant in ipairs(model:GetDescendants()) do
-		if descendant:IsA("BasePart") then
+		if descendant:IsA("BasePart") and isBackdropPart(descendant) then
 			local savedTransparency = descendant:GetAttribute("AquariumThemeSavedTransparency")
 			if savedTransparency == nil then
 				savedTransparency = descendant.Transparency
@@ -87,6 +87,12 @@ local function scaleAndPlace(template, name, targetAnchor, dimensions)
 end
 
 function AquariumThemeService.apply(tank, themeId, origin, dimensions, backdropEnabled)
+	local oldTheme = tank:FindFirstChild(THEME_MODEL_NAME)
+	if oldTheme then
+		oldTheme:Destroy()
+	end
+
+	-- Remove legacy split assets from aquariums created before the v2.1 combined models.
 	local oldFrame = tank:FindFirstChild("AquariumPremiumThemeFrame")
 	if oldFrame then
 		oldFrame:Destroy()
@@ -98,20 +104,10 @@ function AquariumThemeService.apply(tank, themeId, origin, dimensions, backdropE
 	end
 
 	local proceduralBackdrop = tank:FindFirstChild("AquariumDesignerBackground")
-	if themeId == "Classic" then
-		setDefaultFrameVisible(tank, true)
-		if proceduralBackdrop and proceduralBackdrop:IsA("BasePart") then
-			proceduralBackdrop.Transparency = backdropEnabled and 0.08 or 1
-		end
-		return true
-	end
-
-	local frameFolder = ServerStorage:FindFirstChild(FRAME_FOLDER_NAME)
-	local backdropFolder = ServerStorage:FindFirstChild(BACKDROP_FOLDER_NAME)
-	local frameTemplate = frameFolder and frameFolder:FindFirstChild(themeId)
-	local backdropTemplate = backdropFolder and backdropFolder:FindFirstChild(themeId)
-	if not (frameTemplate and frameTemplate:IsA("Model") and backdropTemplate and backdropTemplate:IsA("Model")) then
-		warn(string.format("[AquariumThemeService] Missing imported premium theme assets for %s", tostring(themeId)))
+	local themeFolder = ServerStorage:FindFirstChild(THEME_FOLDER_NAME)
+	local themeTemplate = themeFolder and themeFolder:FindFirstChild(themeId)
+	if not (themeTemplate and themeTemplate:IsA("Model")) then
+		warn(string.format("[AquariumThemeService] Missing imported v2.1 theme asset for %s", tostring(themeId)))
 		setDefaultFrameVisible(tank, true)
 		if proceduralBackdrop and proceduralBackdrop:IsA("BasePart") then
 			proceduralBackdrop.Transparency = backdropEnabled and 0.08 or 1
@@ -125,12 +121,9 @@ function AquariumThemeService.apply(tank, themeId, origin, dimensions, backdropE
 	end
 
 	local targetAnchor = CFrame.new(origin + Vector3.new(0, 1, 0)) * CFrame.Angles(0, math.pi, 0)
-	local frame = scaleAndPlace(frameTemplate, "AquariumPremiumThemeFrame", targetAnchor, dimensions)
-	frame.Parent = tank
-
-	local backdrop = scaleAndPlace(backdropTemplate, "AquariumPremiumThemeBackdrop", targetAnchor, dimensions)
-	backdrop.Parent = tank
-	setModelVisible(backdrop, backdropEnabled)
+	local theme = scaleAndPlace(themeTemplate, THEME_MODEL_NAME, targetAnchor, dimensions)
+	theme.Parent = tank
+	setBackdropVisible(theme, backdropEnabled)
 
 	return true
 end
