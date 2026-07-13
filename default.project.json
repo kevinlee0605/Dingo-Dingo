@@ -3,16 +3,13 @@
     "tree":  {
                  "$className":  "DataModel",
                  "ReplicatedStorage":  {
+                                           "$ignoreUnknownInstances":  true,
                                            "Shared":  {
+                                                          "$ignoreUnknownInstances":  true,
                                                           "$path":  "src/shared"
                                                       },
-                                           "FishImages":  {
-                                                              "$path":  "assets/fish_icons"
-                                                          },
-                                           "RodImages":  {
-                                                             "$path":  "assets/rod_icons"
-                                                         },
                                            "FishingRemotes":  {
+                                                                  "$ignoreUnknownInstances":  true,
                                                                   "$className":  "Folder",
                                                                   "StartFishing":  {
                                                                                        "$className":  "RemoteEvent"
@@ -53,6 +50,9 @@
                                                                   "OpenRodShop":  {
                                                                                       "$className":  "RemoteEvent"
                                                                                   },
+                                                                  "OpenAquariumHub":  {
+                                                                                          "$className":  "RemoteEvent"
+                                                                                      },
                                                                   "AquariumAction":  {
                                                                                          "$className":  "RemoteEvent"
                                                                                      },
@@ -74,25 +74,46 @@
                                                               }
                                        },
                  "ServerScriptService":  {
+                                             "$ignoreUnknownInstances":  true,
                                              "$path":  "src/server"
                                          },
+                 "ServerStorage":  {
+                                       "$ignoreUnknownInstances":  true
+                                   },
                  "StarterGui":  {
-                                    "$path":  "src/startergui"
+                                    "$ignoreUnknownInstances":  true,
+                                    "FishingGui":  {
+                                                       "$className":  "ScreenGui",
+                                                       "$ignoreUnknownInstances":  true,
+                                                       "FishingClient":  {
+                                                                               "$path":  "src/startergui/FishingClient.rbxmx",
+                                                                               "$ignoreUnknownInstances":  true,
+                                                                               "RarityCatchController":  {
+                                                                                                                 "$path":  "src/gui/FishingClientModules/RarityCatchController.luau"
+                                                                                                             }
+                                                                           }
+                                                   },
+                                    "AquariumFreePlacementEditor":  {
+                                                                                  "$path":  "src/startergui/AquariumFreePlacementEditor.client.luau"
+                                                                              }
                                 },
+                 "StarterPlayer":  {
+                                       "$ignoreUnknownInstances":  true,
+                                       "StarterPlayerScripts":  {
+                                                                     "$ignoreUnknownInstances":  true,
+                                                                     "FishingAreaButtonsVisibility":  {
+                                                                                                           "$path":  "src/starterplayer/FishingAreaButtonsVisibility.client.luau"
+                                                                                                       },
+                                                                     "FishingCastAnimation":  {
+                                                                                                  "$path":  "src/starterplayer/FishingCastAnimation.client.luau"
+                                                                                              },
+                                                                     "BaitIconController":  {
+                                                                                                 "$path":  "src/starterplayer/BaitIconController.client.luau"
+                                                                                                       }
+                                                                 }
+                                   },
                  "StarterPack":  {
-                                     "Aquarium Viewer":  {
-                                                             "$className":  "Tool",
-                                                             "$properties":  {
-                                                                                 "CanBeDropped":  false,
-                                                                                 "RequiresHandle":  false,
-                                                                                 "ToolTip":  "View player aquariums"
-                                                                             }
-                                                         }
-                                 },
-                 "SoundService":  {
-                                      "$properties":  {
-                                                          "RespectFilteringEnabled":  true
-                                                      }
-                                  }
+                                     "$ignoreUnknownInstances":  true
+                                 }
              }
 }

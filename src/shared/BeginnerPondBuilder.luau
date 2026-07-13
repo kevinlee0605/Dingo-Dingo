@@ -33,7 +33,7 @@ function BeginnerPondBuilder.build(parent, biome)
 	local block = 4
 	local biomePosition = (biome and biome.position) or Vector3.new(0, 8, 0)
 	local center = Vector3.new(biomePosition.X, -2, biomePosition.Z)
-	local areaName = "Beginner Pond"
+	local areaName = (biome and biome.displayName) or "Lilyshore Island"
 
 	local groundRadiusX = 32
 	local groundRadiusZ = 29

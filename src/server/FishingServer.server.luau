@@ -7,6 +7,17 @@ local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
 
 local EARLY_ROD_TEMPLATE_FOLDER_NAME = "FishyFishModelTemplates"
+local AQUARIUM_DECOR_TEMPLATE_FOLDER_NAME = "AquariumDecorationTemplates"
+local AQUARIUM_DECOR_TEMPLATE_LARGEST_AXIS = {
+	Coral = 4.2,
+	Seaweed = 4.2,
+	TreasureChest = 3.8,
+	Rocks = 3.4,
+	ShipwreckPiece = 4,
+	BubbleMachine = 3.4,
+	Clams = 3,
+	Driftwood = 4.2,
+}
 
 local function normalizeEarlyRodName(name)
 	return string.lower(name):gsub("[%s_%-]", "")
@@ -15,6 +26,8 @@ end
 local function shouldStoreEarlyRodModel(name)
 	local normalized = normalizeEarlyRodName(name)
 	return normalized == "woodenrodmk411"
+		or normalized == "bluegillnew"
+		or normalized == "bassnew"
 		or normalized == "woodenrodsplit"
 		or normalized == "woodenrodsplit2"
 		or normalized == "woodenrodmk4"
@@ -72,11 +85,19 @@ local function isImportedSplitRodModel(instance)
 end
 
 local function getImportedSplitRodTemplateName(instance)
+	local normalized = normalizeEarlyRodName(instance.Name)
+	if instance:IsA("Model") or instance:IsA("BasePart") then
+		if normalized == "bluegillnew" then
+			return "Bluegill"
+		elseif normalized == "bassnew" then
+			return "Bass"
+		end
+	end
+
 	if not isImportedSplitRodModel(instance) then
 		return nil
 	end
 
-	local normalized = normalizeEarlyRodName(instance.Name)
 	if normalized == "ironrodsplit" or normalized == "ironrodsplit2" then
 		return "IronRod_Split"
 	end
@@ -142,11 +163,51 @@ local function removeWorkspaceModelsFolder()
 
 		if instance:IsA("Model") or instance:IsA("BasePart") then
 			moved[instance] = true
+			local fishTemplateName = if splitTemplateName == "Bluegill" or splitTemplateName == "Bass"
+				then splitTemplateName
+				else nil
 			if splitTemplateName then
 				instance.Name = splitTemplateName
 			end
+			if fishTemplateName then
+				local existingFishTemplate = storage:FindFirstChild(fishTemplateName)
+				if existingFishTemplate and existingFishTemplate ~= instance then
+					existingFishTemplate:Destroy()
+				end
+				instance:SetAttribute("FishTemplateId", fishTemplateName)
+				if instance:GetAttribute("FishVisualYawDegrees") == nil then
+					instance:SetAttribute("FishVisualYawDegrees", 90)
+				end
+			end
 			disablePhysicsForSourceModel(instance)
 			instance.Parent = storage
+			if fishTemplateName then
+				local clientFolder = ReplicatedStorage:FindFirstChild(EARLY_ROD_TEMPLATE_FOLDER_NAME)
+				if not clientFolder then
+					clientFolder = Instance.new("Folder")
+					clientFolder.Name = EARLY_ROD_TEMPLATE_FOLDER_NAME
+					clientFolder.Parent = ReplicatedStorage
+				end
+
+				local existingClientFishTemplate = clientFolder:FindFirstChild(fishTemplateName)
+				if existingClientFishTemplate then
+					existingClientFishTemplate:Destroy()
+				end
+
+				local clientFishTemplate = instance:Clone()
+				clientFishTemplate.Name = fishTemplateName
+				clientFishTemplate.Parent = clientFolder
+				disablePhysicsForSourceModel(clientFishTemplate)
+
+				for _, descendant in ipairs(workspace:GetDescendants()) do
+					if descendant:IsA("Model") and descendant.Name == "AquariumFish_" .. fishTemplateName then
+						descendant:Destroy()
+					end
+				end
+
+				print("[FishyFish] " .. fishTemplateName .. " template source:", instance:GetFullName())
+				print("[FishyFish] Aquarium runtime source path:", "ServerStorage." .. EARLY_ROD_TEMPLATE_FOLDER_NAME .. "." .. fishTemplateName)
+			end
 		end
 	end
 
@@ -199,6 +260,8 @@ local TeleportTo = Remotes:WaitForChild("TeleportTo")
 local OpenBiomeWarp = getOrCreateRemoteEvent("OpenBiomeWarp")
 local OpenSellFish = getOrCreateRemoteEvent("OpenSellFish")
 local OpenRodShop = getOrCreateRemoteEvent("OpenRodShop")
+local OpenShop = getOrCreateRemoteEvent("OpenShop")
+local OpenAquariumHub = getOrCreateRemoteEvent("OpenAquariumHub")
 local AquariumAction = Remotes:WaitForChild("AquariumAction")
 local ToggleAutoFish = Remotes:WaitForChild("ToggleAutoFish")
 local StateUpdated = Remotes:WaitForChild("StateUpdated")
@@ -222,13 +285,12 @@ FishCaughtLeaderboard.configure({
 	playerData = playerData,
 })
 
-local AQUARIUM_AREA_ORIGIN = Vector3.new(6000, 0, 6000)
-local AQUARIUM_COLUMNS = 12
-local AQUARIUM_SLOT_SPACING_X = 110
-local AQUARIUM_SLOT_SPACING_Z = 90
-local AQUARIUM_LAND_MARGIN = 180
-local AQUARIUM_MIN_SHOWCASE_SLOTS = 1000
-local AQUARIUM_LAND_TILE_SIZE = 180
+local AquariumLayout = {
+	AreaOrigin = Vector3.new(6000, 0, 6000),
+	ViewOffset = Vector3.new(0, 0, 28),
+	HubTeleportOffset = Vector3.new(0, 5, -32),
+	LandTileSize = 180,
+}
 
 local RuntimeConfig = {
 	autoFishMinWait = 11,
@@ -241,8 +303,24 @@ local RuntimeConfig = {
 }
 
 -- Optional fallback: paste a single uploaded rod MeshId here if you prefer an asset-id based rod.
-local WOODEN_ROD_MESH_ID = ""
-local ROD_TEMPLATE_FOLDER_NAME = "FishyFishModelTemplates"
+local RodVisual = {
+	WoodenMeshId = "",
+	TemplateFolderName = "FishyFishModelTemplates",
+	VisualLength = 3.9,
+	MaxTemplateScale = 2,
+	GripInset = 0.82,
+	VisualOffset = Vector3.new(0, -0.34, -0.18),
+	VisualRotation = CFrame.Angles(math.rad(-18), math.rad(10), math.rad(16)),
+	UseWoodenShapeForAllRods = false,
+	ToolsEnabled = true,
+	Visuals3DEnabled = true,
+	ImportedModelsEnabled = true,
+	KeepImportedAppearance = true,
+	AutoColorUntexturedImports = true,
+	LineLength = 2.2,
+}
+local IMPORTED_ROD_TOOL_GRIP = CFrame.new(RodVisual.VisualOffset) * RodVisual.VisualRotation
+local FALLBACK_ROD_TOOL_GRIP = CFrame.new(0, -0.04, -0.05) * CFrame.Angles(math.rad(6), math.rad(2), math.rad(-4))
 local ROD_TEMPLATE_NAMES_BY_ROD = {
 	WoodenRod = { "WoodenRod_Split2", "WoodenRod_split", "woodenrodsplit2", "woodenrodsplit", "woodenrodmk411", "WoodenRodMk411", "woodenrodmk4", "WoodenRodMk4", "WoodenRodMk3", "woodenrodmk3", "WoodenRod", "woodenrod", "wooden_rod" },
 	IronRod = { "IronRod_Split", "IronRod_Split2", "ironrodsplit", "ironrodsplit2", "ironrod11", "IronRod11", "IronRod", "ironrod", "Iron Rod", "iron rod", "iron_rod" },
@@ -250,18 +328,6 @@ local ROD_TEMPLATE_NAMES_BY_ROD = {
 	EmeraldRod = { "EmeraldRod_Split", "EmeraldRod_Split2", "emeraldrodsplit", "emeraldrodsplit2", "emeraldrod11", "EmeraldRod11", "EmeraldRod", "emeraldrod", "Emerald Rod", "emerald rod", "emerald_rod" },
 	OceanRod = { "OceanRod_Split", "OceanRod_Split2", "oceanrodsplit", "oceanrodsplit2", "ocean rod11", "Ocean Rod11", "oceanrod11", "OceanRod11", "OceanRod", "oceanrod", "Ocean Rod", "ocean rod", "ocean_rod" },
 }
-local ROD_VISUAL_LENGTH = 3.9
-local ROD_MAX_TEMPLATE_SCALE = 2
-local ROD_GRIP_INSET = 0.82
-local ROD_VISUAL_OFFSET = Vector3.new(0, -0.34, -0.18)
-local ROD_VISUAL_ROTATION = CFrame.Angles(math.rad(-18), math.rad(10), math.rad(16))
-local USE_WOODEN_ROD_SHAPE_FOR_ALL_RODS = false
-local FISHING_ROD_TOOLS_ENABLED = true
-local FISHING_ROD_3D_VISUALS_ENABLED = true
-local FISHING_ROD_IMPORTED_MODELS_ENABLED = true
-local FISHING_ROD_KEEP_IMPORTED_APPEARANCE = true
-local FISHING_ROD_AUTO_COLOR_UNTEXTURED_IMPORTS = true
-local LINE_LENGTH = 2.2
 
 local rarityLuckWeight = {
 	Common = -0.15,
@@ -304,12 +370,45 @@ local function getRodData(data)
 	return GameConfig.Rods[data.EquippedRod] or GameConfig.Rods.WoodenRod
 end
 
+local DEFAULT_FISHING_ISLAND_ID = "LilyshoreIsland"
+
+local function normalizeBiomeId(biomeId)
+	if GameConfig.normalizeIslandId then
+		return GameConfig.normalizeIslandId(biomeId)
+	end
+
+	if GameConfig.Biomes[biomeId] then
+		return biomeId
+	end
+
+	return nil
+end
+
+local function normalizeUnlockedBiomes(unlockedBiomes)
+	local result = {}
+	if type(unlockedBiomes) == "table" then
+		for biomeId, unlocked in pairs(unlockedBiomes) do
+			if unlocked == true then
+				local normalized = normalizeBiomeId(biomeId)
+				if normalized then
+					result[normalized] = true
+				end
+			end
+		end
+	end
+	result[DEFAULT_FISHING_ISLAND_ID] = true
+	return result
+end
+
 local function getBiomeData(data)
-	return GameConfig.Biomes[data.CurrentBiome] or GameConfig.Biomes.BeginnerPond
+	local biomeId = normalizeBiomeId(data.CurrentBiome) or DEFAULT_FISHING_ISLAND_ID
+	data.CurrentBiome = biomeId
+	return GameConfig.Biomes[biomeId] or GameConfig.Biomes[DEFAULT_FISHING_ISLAND_ID]
 end
 
 local function isBiomeUnlocked(data, biomeId)
-	return data.UnlockedBiomes[biomeId] == true
+	biomeId = normalizeBiomeId(biomeId)
+	return biomeId ~= nil and data.UnlockedBiomes[biomeId] == true
 end
 
 local function ownsRod(data, rodId)
@@ -435,7 +534,7 @@ function Monetization.getBagBonus(data)
 	for _, passKey in ipairs({ "SmallBag", "MediumBag", "LargeBag" }) do
 		local pass = Monetization.Config.GamePasses[passKey]
 		if pass and Monetization.ownsPass(data, passKey) then
-			bonus += tonumber(pass.bonusSlots) or 0
+			bonus += tonumber(pass.ExtraSlots) or tonumber(pass.bonusSlots) or 0
 		end
 	end
 	return bonus
@@ -493,10 +592,12 @@ function Monetization.normalizeAquariumDesign(design)
 	local defaults = config.defaultDesign
 	local result = {
 		theme = defaults.theme,
+		backdropEnabled = defaults.backdropEnabled ~= false,
 		backgroundColor = defaults.backgroundColor,
 		lightingColor = defaults.lightingColor,
 		signText = "",
 		decorations = {},
+		freeDecorations = {},
 	}
 
 	if type(design) ~= "table" then
@@ -505,6 +606,9 @@ function Monetization.normalizeAquariumDesign(design)
 
 	if config.themes[design.theme] then
 		result.theme = design.theme
+	end
+	if type(design.backdropEnabled) == "boolean" then
+		result.backdropEnabled = design.backdropEnabled
 	end
 	if config.backgroundColors[design.backgroundColor] then
 		result.backgroundColor = design.backgroundColor
@@ -525,7 +629,81 @@ function Monetization.normalizeAquariumDesign(design)
 		end
 	end
 
+	local placement = config.freePlacement or {}
+	local bounds = placement.bounds or {}
+	local maxFreeDecorations = 12
+	for _, maxForLevel in pairs(placement.maxByLevel or {}) do
+		maxFreeDecorations = math.max(maxFreeDecorations, math.floor(tonumber(maxForLevel) or 0))
+	end
+
+	if type(design.freeDecorations) == "table" then
+		for _, item in ipairs(design.freeDecorations) do
+			if #result.freeDecorations >= maxFreeDecorations then
+				break
+			end
+
+			if type(item) == "table" then
+				local decorationId = item.decorationId or item.id or item.decoration
+				if decorationId and decorationId ~= "None" and config.decorations[decorationId] then
+					local depth = item.z
+					if depth == nil then
+						depth = item.depth
+					end
+					table.insert(result.freeDecorations, {
+						decorationId = decorationId,
+						x = math.clamp(tonumber(item.x) or 0, tonumber(bounds.xMin) or -0.42, tonumber(bounds.xMax) or 0.42),
+						y = math.clamp(tonumber(item.y) or 0.16, tonumber(bounds.yMin) or 0.08, tonumber(bounds.yMax) or 0.82),
+						z = math.clamp(tonumber(depth) or 0, tonumber(bounds.zMin) or -0.42, tonumber(bounds.zMax) or 0.42),
+						scale = math.clamp(tonumber(item.scale) or 1, tonumber(bounds.scaleMin) or 0.55, tonumber(bounds.scaleMax) or 1.35),
+					})
+				end
+			end
+		end
+	end
+
 	return result
+end
+
+function Monetization.limitAquariumDesignForLevel(design, aquariumLevel)
+	local result = Monetization.normalizeAquariumDesign(design)
+	local maxByLevel = ((Monetization.Config.AquariumDesigner.freePlacement or {}).maxByLevel or {})
+	local maxFreeDecorations = math.max(0, math.floor(tonumber(maxByLevel[tonumber(aquariumLevel) or 1]) or 0))
+	while #result.freeDecorations > maxFreeDecorations do
+		table.remove(result.freeDecorations)
+	end
+	return result
+end
+
+function Monetization.getAquariumFreeDecorationValidationError(design)
+	if type(design) ~= "table" then
+		return "payload is not a table"
+	end
+
+	if design.freeDecorations ~= nil and type(design.freeDecorations) ~= "table" then
+		return "freeDecorations is not a table"
+	end
+
+	for index, item in ipairs(design.freeDecorations or {}) do
+		if type(item) ~= "table" then
+			return "decoration #" .. tostring(index) .. " is not a table"
+		end
+
+		local decorationId = item.decorationId or item.id or item.decoration
+		if not decorationId or decorationId == "None" or not Monetization.Config.AquariumDesigner.decorations[decorationId] then
+			return "decoration #" .. tostring(index) .. " has an invalid decorationId"
+		end
+
+		local depth = item.z
+		if depth == nil then
+			depth = item.depth
+		end
+
+		if tonumber(item.x) == nil or tonumber(item.y) == nil or tonumber(depth) == nil or tonumber(item.scale) == nil then
+			return "decoration #" .. tostring(index) .. " has invalid position/depth/scale data"
+		end
+	end
+
+	return nil
 end
 
 function Monetization.aquariumDesignUsesPremium(design)
@@ -555,12 +733,19 @@ function Monetization.aquariumDesignUsesPremium(design)
 		end
 	end
 
+	for _, item in ipairs(design.freeDecorations or {}) do
+		local decoration = config.decorations[item.decorationId]
+		if decoration and decoration.premium then
+			return true
+		end
+	end
+
 	return false
 end
 
 function Monetization.aquariumDesignUsesFixedDecorations(design)
 	design = Monetization.normalizeAquariumDesign(design)
-	return next(design.decorations) ~= nil
+	return next(design.decorations) ~= nil or #design.freeDecorations > 0
 end
 
 function Monetization.ensureState(data)
@@ -592,6 +777,11 @@ function Monetization.syncGamePassOwnership(player, data)
 	Monetization.ensureState(data)
 
 	for passKey, pass in pairs(Monetization.Config.GamePasses) do
+		if pass.purchasable == false then
+			data.OwnedGamePasses[passKey] = false
+			continue
+		end
+
 		local success, ownsPass = pcall(function()
 			return Monetization.MarketplaceService:UserOwnsGamePassAsync(player.UserId, pass.id)
 		end)
@@ -681,7 +871,7 @@ function Quest.getUnlockedBiomeIds(data)
 	end
 
 	if #result == 0 then
-		table.insert(result, "BeginnerPond")
+		table.insert(result, DEFAULT_FISHING_ISLAND_ID)
 	end
 
 	return result
@@ -741,7 +931,7 @@ function Quest.pickSpecificFish(data, template)
 		return choice.fish, choice.biomeId
 	end
 
-	return GameConfig.Biomes.BeginnerPond.fish[1], "BeginnerPond"
+	return GameConfig.Biomes[DEFAULT_FISHING_ISLAND_ID].fish[1], DEFAULT_FISHING_ISLAND_ID
 end
 
 function Quest.makeQuest(data, template)
@@ -768,8 +958,8 @@ function Quest.makeQuest(data, template)
 		quest.rarity = template.rarity
 		quest.description = string.format("Catch %d %s fish.", quest.target, template.rarity or "Rare")
 	elseif template.objectiveType == "discover_biome_species" then
-		local biomeId = Quest.pickFromList(Quest.getUnlockedBiomeIds(data)) or "BeginnerPond"
-		local biome = GameConfig.Biomes[biomeId] or GameConfig.Biomes.BeginnerPond
+		local biomeId = Quest.pickFromList(Quest.getUnlockedBiomeIds(data)) or DEFAULT_FISHING_ISLAND_ID
+		local biome = GameConfig.Biomes[biomeId] or GameConfig.Biomes[DEFAULT_FISHING_ISLAND_ID]
 		quest.biomeId = biomeId
 		quest.biomeName = biome.displayName
 		quest.speciesIds = {}
@@ -777,7 +967,7 @@ function Quest.makeQuest(data, template)
 			table.insert(quest.speciesIds, fish.id)
 		end
 		quest.target = #quest.speciesIds
-		quest.description = "Catch every fish species in " .. biome.displayName .. "."
+		quest.description = "Catch every fish species on " .. biome.displayName .. "."
 	end
 
 	return quest
@@ -1063,8 +1253,8 @@ local function giveStudioBeginnerFishInBag(data)
 		return false
 	end
 
-	local beginnerPond = GameConfig.Biomes.BeginnerPond
-	if not beginnerPond then
+	local lilyshoreIsland = GameConfig.Biomes[DEFAULT_FISHING_ISLAND_ID]
+	if not lilyshoreIsland then
 		return false
 	end
 
@@ -1081,7 +1271,7 @@ local function giveStudioBeginnerFishInBag(data)
 	end
 
 	local missingFish = {}
-	for _, fish in ipairs(beginnerPond.fish) do
+	for _, fish in ipairs(lilyshoreIsland.fish) do
 		if not ownedById[fish.id] then
 			table.insert(missingFish, fish)
 		end
@@ -1093,7 +1283,7 @@ local function giveStudioBeginnerFishInBag(data)
 
 	data.BackpackSize = math.max(data.BackpackSize, #data.Inventory + #missingFish)
 	for _, fish in ipairs(missingFish) do
-		local entry = makeInventoryFishEntry(fish, "BeginnerPond", 100)
+		local entry = makeInventoryFishEntry(fish, DEFAULT_FISHING_ISLAND_ID, 100)
 		table.insert(data.Inventory, entry)
 		if not data.BestCatch or entry.value > data.BestCatch.value then
 			data.BestCatch = entry
@@ -1123,6 +1313,23 @@ local function findInventoryFishIndex(data, fishSerial, fishIndex)
 	end
 
 	return nil
+end
+
+local function getLoadedAquariumViewState(player)
+	local world = workspace:FindFirstChild("FishyFishWorld")
+	local folder = world and world:FindFirstChild("PersonalAquariums")
+	local aquarium = folder and folder:FindFirstChild("AquariumViewerTank")
+	local ownerUserId = aquarium and tonumber(aquarium:GetAttribute("OccupantUserId")) or nil
+	local ownerName = aquarium and aquarium:GetAttribute("OccupantName") or nil
+	local canEdit = ownerUserId ~= nil and ownerUserId == player.UserId
+
+	return {
+		OwnerUserId = ownerUserId,
+		OwnerName = ownerName,
+		CanEdit = canEdit,
+		IsViewingOwn = canEdit,
+		IsLoaded = ownerUserId ~= nil,
+	}
 end
 
 local function makeClientState(player, data)
@@ -1161,7 +1368,9 @@ local function makeClientState(player, data)
 		EquippedBait = equippedBait,
 		EquippedBaitRemaining = Bait.getRemainingForClient(data, equippedBait),
 		UnlockedBiomes = shallowCopyMap(data.UnlockedBiomes),
+		UnlockedIslands = shallowCopyMap(data.UnlockedBiomes),
 		CurrentBiome = data.CurrentBiome,
+		CurrentIsland = data.CurrentBiome,
 		ActualBiome = getPlayerFishingBiome and getPlayerFishingBiome(player) or nil,
 		ActualLocation = getPlayerTravelLocation and getPlayerTravelLocation(player) or nil,
 		AutoFishEnabled = data.AutoFishEnabled,
@@ -1178,6 +1387,7 @@ local function makeClientState(player, data)
 			Fish = copyArray(aquariumFish),
 		},
 		AquariumVisitors = aquariumVisitors,
+		AquariumView = getLoadedAquariumViewState(player),
 		AquariumDecorations = shallowCopyMap(data.AquariumDecorations),
 		BestCatch = data.BestCatch,
 	}
@@ -1226,9 +1436,9 @@ local function makeDefaultData()
 		OwnedGamePasses = Monetization.normalizeOwnedPasses(nil),
 		LastVipRewardDate = "",
 		UnlockedBiomes = {
-			BeginnerPond = true,
+			[DEFAULT_FISHING_ISLAND_ID] = true,
 		},
-		CurrentBiome = "BeginnerPond",
+		CurrentBiome = DEFAULT_FISHING_ISLAND_ID,
 		AutoFishEnabled = false,
 		Fishdex = {},
 		QuestState = {},
@@ -1269,8 +1479,8 @@ local function sanitizeLoadedData(loaded)
 
 	local equippedRod = normalizeRodId(loaded.EquippedRod)
 	data.EquippedRod = GameConfig.Rods[equippedRod] and equippedRod or data.EquippedRod
-	data.UnlockedBiomes = type(loaded.UnlockedBiomes) == "table" and loaded.UnlockedBiomes or data.UnlockedBiomes
-	data.CurrentBiome = GameConfig.Biomes[loaded.CurrentBiome] and loaded.CurrentBiome or data.CurrentBiome
+	data.UnlockedBiomes = normalizeUnlockedBiomes(loaded.UnlockedIslands or loaded.UnlockedBiomes or data.UnlockedBiomes)
+	data.CurrentBiome = normalizeBiomeId(loaded.CurrentIsland or loaded.CurrentBiome) or data.CurrentBiome
 	data.AutoFishEnabled = loaded.AutoFishEnabled == true
 	data.Fishdex = type(loaded.Fishdex) == "table" and loaded.Fishdex or data.Fishdex
 	data.QuestState = type(loaded.QuestState) == "table" and loaded.QuestState or data.QuestState
@@ -1287,8 +1497,8 @@ local function sanitizeLoadedData(loaded)
 		data.OwnedRods.WoodenRod = true
 	end
 
-	if not data.UnlockedBiomes.BeginnerPond then
-		data.UnlockedBiomes.BeginnerPond = true
+	if not data.UnlockedBiomes[DEFAULT_FISHING_ISLAND_ID] then
+		data.UnlockedBiomes[DEFAULT_FISHING_ISLAND_ID] = true
 	end
 
 	if not ownsRod(data, data.EquippedRod) then
@@ -1300,7 +1510,7 @@ local function sanitizeLoadedData(loaded)
 	Quest.ensureState(data)
 
 	if not isBiomeUnlocked(data, data.CurrentBiome) then
-		data.CurrentBiome = "BeginnerPond"
+		data.CurrentBiome = DEFAULT_FISHING_ISLAND_ID
 	end
 
 	recalcLevel(data)
@@ -1355,7 +1565,9 @@ local function saveData(player)
 		OwnedGamePasses = data.OwnedGamePasses,
 		LastVipRewardDate = data.LastVipRewardDate,
 		UnlockedBiomes = data.UnlockedBiomes,
+		UnlockedIslands = data.UnlockedBiomes,
 		CurrentBiome = data.CurrentBiome,
+		CurrentIsland = data.CurrentBiome,
 		AutoFishEnabled = data.AutoFishEnabled,
 		Fishdex = data.Fishdex,
 		QuestState = data.QuestState,
@@ -1601,10 +1813,10 @@ local function applyCharacterMonetizationVisuals(player)
 end
 
 local function getRodTemplateFolder()
-	local folder = ServerStorage:FindFirstChild(ROD_TEMPLATE_FOLDER_NAME)
+	local folder = ServerStorage:FindFirstChild(RodVisual.TemplateFolderName)
 	if not folder then
 		folder = Instance.new("Folder")
-		folder.Name = ROD_TEMPLATE_FOLDER_NAME
+		folder.Name = RodVisual.TemplateFolderName
 		folder.Parent = ServerStorage
 	end
 
@@ -1908,11 +2120,11 @@ local function getRodGripPoint(minPoint, maxPoint)
 	local center = (minPoint + maxPoint) * 0.5
 
 	if size.X >= size.Y and size.X >= size.Z then
-		return Vector3.new(minPoint.X + math.min(ROD_GRIP_INSET, size.X * 0.25), center.Y, center.Z), size.X
+		return Vector3.new(minPoint.X + math.min(RodVisual.GripInset, size.X * 0.25), center.Y, center.Z), size.X
 	elseif size.Y >= size.X and size.Y >= size.Z then
-		return Vector3.new(center.X, minPoint.Y + math.min(ROD_GRIP_INSET, size.Y * 0.25), center.Z), size.Y
+		return Vector3.new(center.X, minPoint.Y + math.min(RodVisual.GripInset, size.Y * 0.25), center.Z), size.Y
 	else
-		return Vector3.new(center.X, center.Y, minPoint.Z + math.min(ROD_GRIP_INSET, size.Z * 0.25)), size.Z
+		return Vector3.new(center.X, center.Y, minPoint.Z + math.min(RodVisual.GripInset, size.Z * 0.25)), size.Z
 	end
 end
 
@@ -1952,6 +2164,18 @@ local function getRodAlignmentPartGroups(baseParts)
 	end
 
 	return handleParts, bodyParts
+end
+
+local function isRodSwayPart(part, visualRoot)
+	local current = part
+	while current and current ~= visualRoot do
+		local normalizedName = normalizeTemplateName(current.Name)
+		if string.find(normalizedName, "bobber") or string.find(normalizedName, "string") then
+			return true
+		end
+		current = current.Parent
+	end
+	return false
 end
 
 local function getClosestRodPart(baseParts, position)
@@ -2050,7 +2274,7 @@ local function isFlatImportedColor(color)
 end
 
 local function shouldAutoColorImportedRodPart(part)
-	return FISHING_ROD_AUTO_COLOR_UNTEXTURED_IMPORTS
+	return RodVisual.AutoColorUntexturedImports
 		and not hasImportedTexture(part)
 		and isFlatImportedColor(part.Color)
 end
@@ -2154,14 +2378,38 @@ local function attachRodTemplateToTool(tool, handle, template, rodId)
 	local tipPoint = getRodTipPoint(tipMinPoint, tipMaxPoint)
 	local scale = 1
 	if largestAxis > 0 then
-		scale = math.clamp(ROD_VISUAL_LENGTH / largestAxis, 0.01, ROD_MAX_TEMPLATE_SCALE)
+		scale = math.clamp(RodVisual.VisualLength / largestAxis, 0.01, RodVisual.MaxTemplateScale)
 	end
 
-	local targetPivot = handle.CFrame * CFrame.new(ROD_VISUAL_OFFSET) * ROD_VISUAL_ROTATION
+	local targetPivot = handle.CFrame * CFrame.new(RodVisual.VisualOffset) * RodVisual.VisualRotation
 	local tipWorldPosition = targetPivot:PointToWorldSpace((tipPoint - gripPoint) * scale)
 
 	visual:ScaleTo(scale)
 	visual:PivotTo(targetPivot * CFrame.new(gripPoint * -scale))
+
+	local swayParts = {}
+	for _, part in ipairs(baseParts) do
+		if isRodSwayPart(part, visual) then
+			swayParts[part] = true
+		end
+	end
+
+	-- Imported GLTF models can contain their own rigid joints. Remove only
+	-- joints attached to the string/bobber so the dedicated tip-pivot motors
+	-- below are the sole constraints controlling those two visual parts.
+	for _, descendant in ipairs(visual:GetDescendants()) do
+		if descendant:IsA("WeldConstraint") then
+			if swayParts[descendant.Part0] or swayParts[descendant.Part1] then
+				descendant:Destroy()
+			end
+		elseif descendant:IsA("JointInstance") then
+			if swayParts[descendant.Part0] or swayParts[descendant.Part1] then
+				descendant:Destroy()
+			end
+		end
+	end
+
+	local swayPivot = CFrame.new(tipWorldPosition) * targetPivot.Rotation
 
 	for _, part in ipairs(baseParts) do
 		part.Anchored = false
@@ -2170,7 +2418,7 @@ local function attachRodTemplateToTool(tool, handle, template, rodId)
 		part.CanTouch = false
 		part.CanQuery = false
 		part.Transparency = 0
-		if FISHING_ROD_KEEP_IMPORTED_APPEARANCE then
+		if RodVisual.KeepImportedAppearance then
 			if shouldAutoColorImportedRodPart(part) then
 				autoColorImportedRodPart(part, rodId)
 			end
@@ -2178,10 +2426,21 @@ local function attachRodTemplateToTool(tool, handle, template, rodId)
 			styleRodPart(part, rodId)
 		end
 
-		local weld = Instance.new("WeldConstraint")
-		weld.Part0 = handle
-		weld.Part1 = part
-		weld.Parent = part
+		if swayParts[part] then
+			local swayJoint = Instance.new("Motor6D")
+			swayJoint.Name = "FishingRodSwayJoint"
+			swayJoint.Part0 = handle
+			swayJoint.Part1 = part
+			swayJoint.C0 = handle.CFrame:ToObjectSpace(swayPivot)
+			swayJoint.C1 = part.CFrame:ToObjectSpace(swayPivot)
+			swayJoint:SetAttribute("FishingRodSwayJoint", true)
+			swayJoint.Parent = part
+		else
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = handle
+			weld.Part1 = part
+			weld.Parent = part
+		end
 	end
 
 	return true, tipWorldPosition, getClosestRodPart(baseParts, tipWorldPosition)
@@ -2212,7 +2471,7 @@ end
 
 local function addLineAndBobber(tool, handle, rodTipPosition, rodTipPart)
 	local lineStart = rodTipPosition or (handle.CFrame * CFrame.new(2.15, -0.3, -0.75)).Position
-	local lineEnd = lineStart + Vector3.new(0, -LINE_LENGTH, -0.15)
+	local lineEnd = lineStart + Vector3.new(0, -RodVisual.LineLength, -0.15)
 	local lineDirection = lineEnd - lineStart
 	local lineCenter = lineStart + (lineDirection * 0.5)
 
@@ -2270,6 +2529,7 @@ end
 local function applyFishingRodVisual(tool, rodId)
 	local rod = GameConfig.Rods[rodId] or GameConfig.Rods.WoodenRod
 	tool.TextureId = GameConfig.getRodImage(rodId) or GameConfig.getRodImage("WoodenRod") or ""
+	tool.Grip = FALLBACK_ROD_TOOL_GRIP
 
 	local handle = tool:FindFirstChild("Handle")
 	if not handle or not handle:IsA("BasePart") then
@@ -2278,7 +2538,7 @@ local function applyFishingRodVisual(tool, rodId)
 
 	clearFishingRodVisual(tool)
 
-	if not FISHING_ROD_3D_VISUALS_ENABLED then
+	if not RodVisual.Visuals3DEnabled then
 		handle.Transparency = 1
 		handle.Size = Vector3.new(0.1, 0.1, 0.1)
 		handle.CanCollide = false
@@ -2290,8 +2550,8 @@ local function applyFishingRodVisual(tool, rodId)
 		return
 	end
 
-	local templateRodId = USE_WOODEN_ROD_SHAPE_FOR_ALL_RODS and "WoodenRod" or rodId
-	local template = FISHING_ROD_IMPORTED_MODELS_ENABLED and findRodTemplate(templateRodId) or nil
+	local templateRodId = RodVisual.UseWoodenShapeForAllRods and "WoodenRod" or rodId
+	local template = RodVisual.ImportedModelsEnabled and findRodTemplate(templateRodId) or nil
 	local rodTipPosition = nil
 	local rodTipPart = nil
 	local attached = false
@@ -2303,6 +2563,13 @@ local function applyFishingRodVisual(tool, rodId)
 	if template then
 		handle.Transparency = 1
 		attached, rodTipPosition, rodTipPart = attachRodTemplateToTool(tool, handle, template, rodId)
+	end
+
+	if attached then
+		-- Match the imported model's real handle frame to the character's
+		-- RightGripAttachment. Roblox applies Tool.Grip inversely, so using the
+		-- same transform that places the visual handle cancels its model offset.
+		tool.Grip = IMPORTED_ROD_TOOL_GRIP
 	end
 
 	if not attached then
@@ -2328,20 +2595,21 @@ local function createFishingRodTool()
 		existing:Destroy()
 	end
 
-	if not FISHING_ROD_TOOLS_ENABLED then
+	if not RodVisual.ToolsEnabled then
 		return
 	end
 
 	local tool = Instance.new("Tool")
 	tool.Name = "Fishing Rod"
 	tool.RequiresHandle = true
-	tool.ToolTip = "Use the UI to fish in unlocked biomes."
-	tool.Grip = CFrame.new(0, -0.04, -0.05) * CFrame.Angles(math.rad(6), math.rad(2), math.rad(-4))
+	tool.CanBeDropped = false
+	tool.ToolTip = "Use the UI to fish on unlocked islands."
+	tool.Grip = FALLBACK_ROD_TOOL_GRIP
 
 	local handle
-	if WOODEN_ROD_MESH_ID ~= "" then
+	if RodVisual.WoodenMeshId ~= "" then
 		handle = Instance.new("MeshPart")
-		handle.MeshId = WOODEN_ROD_MESH_ID
+		handle.MeshId = RodVisual.WoodenMeshId
 	else
 		handle = Instance.new("Part")
 		handle.Shape = Enum.PartType.Cylinder
@@ -2355,41 +2623,91 @@ local function createFishingRodTool()
 	tool.Parent = StarterPack
 end
 
-local AquariumViewerTool = {}
+local HUD_ACCESS_TOOL_DEFINITIONS = {
+	{
+		name = "Bag",
+		tooltip = "Open Bag",
+		textureId = "rbxasset://textures/ui/Backpack/Backpack.png",
+	},
+	{
+		name = "Fishdex",
+		tooltip = "Open Fishdex",
+		textureId = GameConfig.getFishImage("SmallFish") or "",
+	},
+}
 
-function AquariumViewerTool.make()
+local function makeHudAccessTool(definition)
 	local tool = Instance.new("Tool")
-	tool.Name = "Aquarium Viewer"
+	tool.Name = definition.name
 	tool.RequiresHandle = false
 	tool.CanBeDropped = false
-	tool.ToolTip = "View player aquariums."
+	tool.ToolTip = definition.tooltip
+	tool.TextureId = definition.textureId
 	return tool
 end
 
-function AquariumViewerTool.createStarterTool()
-	local existing = StarterPack:FindFirstChild("Aquarium Viewer")
-	if existing then
-		existing:Destroy()
+local function removeToolByName(container, toolName)
+	if not container then
+		return
 	end
 
-	AquariumViewerTool.make().Parent = StarterPack
+	local existing = container:FindFirstChild(toolName)
+	if existing and existing:IsA("Tool") then
+		existing:Destroy()
+	end
 end
 
-function AquariumViewerTool.ensureForPlayer(player)
+local function createHudAccessTools()
+	removeToolByName(StarterPack, "Aquarium Viewer")
+
+	for _, definition in ipairs(HUD_ACCESS_TOOL_DEFINITIONS) do
+		removeToolByName(StarterPack, definition.name)
+		makeHudAccessTool(definition).Parent = StarterPack
+	end
+end
+
+local function playerHasHudAccessTool(player, toolName)
 	for _, container in ipairs({ player:FindFirstChild("Backpack"), player.Character }) do
-		if container and container:FindFirstChild("Aquarium Viewer") then
-			return
+		if container then
+			local tool = container:FindFirstChild(toolName)
+			if tool and tool:IsA("Tool") then
+				return true
+			end
 		end
 	end
 
+	return false
+end
+
+local function ensureHudAccessToolsForPlayer(player)
+	for _, container in ipairs({ player:FindFirstChild("Backpack"), player.Character }) do
+		removeToolByName(container, "Aquarium Viewer")
+	end
+
 	local backpack = player:FindFirstChild("Backpack")
-	if backpack then
-		AquariumViewerTool.make().Parent = backpack
+	if not backpack then
+		return
+	end
+
+	for _, definition in ipairs(HUD_ACCESS_TOOL_DEFINITIONS) do
+		if not playerHasHudAccessTool(player, definition.name) then
+			local template = StarterPack:FindFirstChild(definition.name)
+			if not template or not template:IsA("Tool") then
+				createHudAccessTools()
+				template = StarterPack:FindFirstChild(definition.name)
+			end
+
+			if template and template:IsA("Tool") then
+				template:Clone().Parent = backpack
+			else
+				makeHudAccessTool(definition).Parent = backpack
+			end
+		end
 	end
 end
 
 local function refreshFishingRodForPlayer(player, data)
-	if not FISHING_ROD_TOOLS_ENABLED then
+	if not RodVisual.ToolsEnabled then
 		for _, container in ipairs({ player:FindFirstChild("Backpack"), player.Character }) do
 			if container then
 				local tool = container:FindFirstChild("Fishing Rod")
@@ -2433,6 +2751,21 @@ local function refreshFishingRodForPlayer(player, data)
 			end
 		end
 	end
+end
+
+function RodVisual.getHeldFishingRodTool(player, data)
+	local character = player.Character
+	local tool = character and character:FindFirstChild("Fishing Rod")
+	if not tool or not tool:IsA("Tool") then
+		return nil
+	end
+
+	local expectedRodId = data and data.EquippedRod
+	if expectedRodId and tool:GetAttribute("RodId") ~= expectedRodId then
+		return nil
+	end
+
+	return tool
 end
 
 local function createLabel(part, text)
@@ -2700,38 +3033,16 @@ local function getAquariumsFolder()
 end
 
 local function getAquariumSlotName(slot)
-	return string.format("AquariumSlot_%03d", slot)
+	return "AquariumViewerTank"
 end
 
 local function getAquariumSlotOrigin(slot)
-	local slotIndex = slot - 1
-	local column = slotIndex % AQUARIUM_COLUMNS
-	local row = math.floor(slotIndex / AQUARIUM_COLUMNS)
-	return AQUARIUM_AREA_ORIGIN + Vector3.new(column * AQUARIUM_SLOT_SPACING_X, 0, row * AQUARIUM_SLOT_SPACING_Z)
+	return AquariumLayout.AreaOrigin + AquariumLayout.ViewOffset
 end
 
 local function getPlayerAquariumSlot(player)
-	if playerAquariumSlots[player] then
-		return playerAquariumSlots[player]
-	end
-
-	local folder = getAquariumsFolder()
-	for slot = 1, AQUARIUM_MIN_SHOWCASE_SLOTS do
-		local aquarium = folder and folder:FindFirstChild(getAquariumSlotName(slot))
-		local occupantUserId = aquarium and aquarium:GetAttribute("OccupantUserId")
-		if occupantUserId == nil or occupantUserId == player.UserId then
-			playerAquariumSlots[player] = slot
-			if aquarium then
-				aquarium:SetAttribute("OccupantUserId", player.UserId)
-				aquarium:SetAttribute("OccupantName", player.DisplayName)
-			end
-			return slot
-		end
-	end
-
-	local overflowSlot = AQUARIUM_MIN_SHOWCASE_SLOTS + #Players:GetPlayers()
-	playerAquariumSlots[player] = overflowSlot
-	return overflowSlot
+	playerAquariumSlots[player] = 1
+	return 1
 end
 
 local function getPlayerAquariumOrigin(player)
@@ -2745,11 +3056,131 @@ local function getPlayerAquariumTeleportPosition(player)
 	return getPlayerAquariumOrigin(player) + Vector3.new(0, 5, -(tankDepth / 2 + 16))
 end
 
-local function getAquariumTeleportPositionForOwner(ownerPlayer)
-	local ownerData = playerData[ownerPlayer]
-	local level = ownerData and ownerData.Aquarium and ownerData.Aquarium.Level or 1
-	local tankDepth = 10 + ((level - 1) * 4)
-	return getAquariumSlotOrigin(getPlayerAquariumSlot(ownerPlayer)) + Vector3.new(0, 5, -(tankDepth / 2 + 16))
+local function getAquariumHubTeleportPosition()
+	return AquariumLayout.AreaOrigin + AquariumLayout.HubTeleportOffset
+end
+
+function AquariumLayout.findSpawnPart(names)
+	if type(names) == "string" then
+		names = { names }
+	end
+
+	local folder = getAquariumsFolder()
+	if folder then
+		for _, name in ipairs(names) do
+			local part = folder:FindFirstChild(name, true)
+			if part and part:IsA("BasePart") then
+				return part
+			end
+		end
+	end
+
+	for _, name in ipairs(names) do
+		local part = workspace:FindFirstChild(name, true)
+		if part and part:IsA("BasePart") then
+			return part
+		end
+	end
+
+	return nil
+end
+
+function AquariumLayout.getSpawnPosition(names, fallbackPosition, lift)
+	local spawnPart = AquariumLayout.findSpawnPart(names)
+	if spawnPart then
+		return spawnPart.Position + Vector3.new(0, (spawnPart.Size.Y / 2) + (lift or 4), 0)
+	end
+
+	return fallbackPosition
+end
+
+function AquariumLayout.getHubSpawnPosition()
+	return AquariumLayout.getSpawnPosition({ "AquariumHubSpawn", "HomeAquariumSpawn" }, getAquariumHubTeleportPosition(), 4)
+end
+
+function AquariumLayout.getViewerSpawnPosition(player)
+	return AquariumLayout.getSpawnPosition({ "MyAquariumSpawn", "HomeAquariumSpawn" }, getPlayerAquariumTeleportPosition(player), 4)
+end
+
+function AquariumLayout.safePivotPlayer(player, cframe)
+	local character = player.Character
+	local timeoutAt = os.clock() + 5
+	while player.Parent and not character and os.clock() < timeoutAt do
+		task.wait(0.1)
+		character = player.Character
+	end
+
+	if not character then
+		return false
+	end
+
+	local root = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("HumanoidRootPart", 5)
+	if not root then
+		return false
+	end
+
+	pcall(function()
+		player:RequestStreamAroundAsync(cframe.Position, 4)
+	end)
+
+	root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+	root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+
+	local pivotOk = pcall(function()
+		character:PivotTo(cframe)
+	end)
+	if not pivotOk then
+		root.CFrame = cframe
+	end
+
+	root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+	root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+
+	task.defer(function()
+		if root.Parent then
+			root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+			root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+		end
+	end)
+
+	return true
+end
+
+function AquariumLayout.startFallSafety()
+	if AquariumLayout.FallSafetyStarted then
+		return
+	end
+
+	AquariumLayout.FallSafetyStarted = true
+	AquariumLayout.FallSafetyCooldowns = AquariumLayout.FallSafetyCooldowns or {}
+
+	RunService.Heartbeat:Connect(function()
+		local bounds = AquariumLayout.FallSafetyBounds
+		if not bounds then
+			return
+		end
+
+		local now = os.clock()
+		for _, player in ipairs(Players:GetPlayers()) do
+			local character = player.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart")
+			if root then
+				local position = root.Position
+				local withinAquariumArea = position.X >= bounds.minX
+					and position.X <= bounds.maxX
+					and position.Z >= bounds.minZ
+					and position.Z <= bounds.maxZ
+
+				if withinAquariumArea and position.Y < bounds.fallY then
+					local lastTeleport = AquariumLayout.FallSafetyCooldowns[player] or 0
+					if now - lastTeleport > 1.5 then
+						AquariumLayout.FallSafetyCooldowns[player] = now
+						teleportPlayer(player, "AquariumHub")
+					end
+				end
+			end
+		end
+	end)
 end
 
 getAquariumVisitorsState = function(requestingPlayer)
@@ -2810,11 +3241,35 @@ local function getAquariumDimensions(level)
 end
 
 local function ensureAquariumSharedLand(folder, minimumSlots)
-	local slotCount = math.max(minimumSlots or 1, #Players:GetPlayers(), AQUARIUM_MIN_SHOWCASE_SLOTS)
-	local rows = math.max(1, math.ceil(slotCount / AQUARIUM_COLUMNS))
-	local existing = folder:FindFirstChild("SharedAquariumShowcase")
+	local center = AquariumLayout.AreaOrigin
+	local viewOrigin = getAquariumSlotOrigin(1)
+	local landWidth = 156
+	local northEdge = center.Z - 78
+	local southEdge = center.Z + 76
+	local boundsDepth = southEdge - northEdge
+	local boundsCenter = Vector3.new(center.X, 0, northEdge + (boundsDepth / 2))
 
-	if existing and existing:GetAttribute("Rows") == rows then
+	local function updateFallSafetyBounds()
+		AquariumLayout.FallSafetyBounds = {
+			minX = boundsCenter.X - (landWidth / 2),
+			maxX = boundsCenter.X + (landWidth / 2),
+			minZ = northEdge,
+			maxZ = southEdge,
+			fallY = -24,
+		}
+		AquariumLayout.startFallSafety()
+	end
+
+	local existing = folder:FindFirstChild("SharedAquariumShowcase")
+	if existing
+		and existing:GetAttribute("HubVersion") == 7
+		and existing:FindFirstChild("AquariumHubSpawn", true)
+		and existing:FindFirstChild("MyAquariumSpawn", true)
+		and existing:FindFirstChild("AquariumHubSafetyFloor", true)
+		and existing:FindFirstChild("AquariumHubKioskPrompt", true)
+		and existing:FindFirstChild("MainAquariumViewingDeck", true)
+	then
+		updateFallSafetyBounds()
 		return existing
 	end
 
@@ -2822,54 +3277,190 @@ local function ensureAquariumSharedLand(folder, minimumSlots)
 		existing:Destroy()
 	end
 
-	local showcase = Instance.new("Model")
-	showcase.Name = "SharedAquariumShowcase"
-	showcase:SetAttribute("Rows", rows)
-	showcase.Parent = folder
-
-	local landWidth = ((AQUARIUM_COLUMNS - 1) * AQUARIUM_SLOT_SPACING_X) + AQUARIUM_LAND_MARGIN
-	local landDepth = ((rows - 1) * AQUARIUM_SLOT_SPACING_Z) + AQUARIUM_LAND_MARGIN
-	local center = AQUARIUM_AREA_ORIGIN + Vector3.new(
-		((AQUARIUM_COLUMNS - 1) * AQUARIUM_SLOT_SPACING_X) / 2,
-		0,
-		((rows - 1) * AQUARIUM_SLOT_SPACING_Z) / 2
-	)
-
-	local firstLandTile = nil
-	local tileColumns = math.ceil(landWidth / AQUARIUM_LAND_TILE_SIZE)
-	local tileRows = math.ceil(landDepth / AQUARIUM_LAND_TILE_SIZE)
-	local landMinX = center.X - (landWidth / 2)
-	local landMinZ = center.Z - (landDepth / 2)
-
-	for tileX = 0, tileColumns - 1 do
-		for tileZ = 0, tileRows - 1 do
-			local tileWidth = math.min(AQUARIUM_LAND_TILE_SIZE, landWidth - (tileX * AQUARIUM_LAND_TILE_SIZE))
-			local tileDepth = math.min(AQUARIUM_LAND_TILE_SIZE, landDepth - (tileZ * AQUARIUM_LAND_TILE_SIZE))
-			local tileCenter = Vector3.new(
-				landMinX + (tileX * AQUARIUM_LAND_TILE_SIZE) + (tileWidth / 2),
-				0,
-				landMinZ + (tileZ * AQUARIUM_LAND_TILE_SIZE) + (tileDepth / 2)
-			)
-			local tile = makePart(showcase, "WhiteQuartzFloorTile", Vector3.new(tileWidth, 1, tileDepth), tileCenter, Color3.fromRGB(236, 240, 238), Enum.Material.Marble)
-			firstLandTile = firstLandTile or tile
+	for _, child in ipairs(folder:GetChildren()) do
+		if child.Name:match("^AquariumSlot_") or child.Name == "AquariumViewerTank" then
+			child:Destroy()
 		end
 	end
 
-	local carpetColor = Color3.fromRGB(190, 34, 45)
-	for row = 0, rows - 1 do
-		local z = AQUARIUM_AREA_ORIGIN.Z + (row * AQUARIUM_SLOT_SPACING_Z) - 30
-		makePart(showcase, "RedCarpet_Row_" .. tostring(row + 1), Vector3.new(landWidth - 34, 0.18, 10), Vector3.new(center.X, 0.62, z), carpetColor, Enum.Material.Fabric)
-	end
+	local showroom = Instance.new("Model")
+	showroom.Name = "SharedAquariumShowcase"
+	showroom:SetAttribute("HubVersion", 7)
+	showroom.Parent = folder
 
-	if rows > 1 then
-		for column = 0, AQUARIUM_COLUMNS - 1 do
-			local x = AQUARIUM_AREA_ORIGIN.X + (column * AQUARIUM_SLOT_SPACING_X) - 34
-			makePart(showcase, "RedCarpet_Column_" .. tostring(column + 1), Vector3.new(10, 0.18, landDepth - 40), Vector3.new(x, 0.63, center.Z), carpetColor, Enum.Material.Fabric)
+	local sandColor = Color3.fromRGB(238, 224, 158)
+	local grassColor = Color3.fromRGB(82, 164, 94)
+	local stoneColor = Color3.fromRGB(102, 112, 116)
+	local dockColor = Color3.fromRGB(126, 82, 44)
+	local waterColor = Color3.fromRGB(24, 118, 184)
+
+	local ocean = makePart(showroom, "AquariumIslandOcean", Vector3.new(520, 0.45, 520), center + Vector3.new(0, -1.35, 12), waterColor, Enum.Material.Water)
+	ocean.Transparency = 0.08
+	ocean.CanCollide = false
+	ocean.CanTouch = false
+	ocean.CanQuery = false
+
+	local floor = makePart(showroom, "AquariumHubFloor", Vector3.new(1, 1, 1), center + Vector3.new(0, -8, 0), sandColor, Enum.Material.Sand)
+	floor.Transparency = 1
+	floor.CanCollide = false
+	floor.CanTouch = false
+	floor.CanQuery = false
+
+	local function makeIslandRows(prefix, rows)
+		for index, row in ipairs(rows) do
+			makePart(showroom, prefix .. "Sand_" .. index, Vector3.new(row[3], 1.2, row[4]), center + Vector3.new(row[1], 0, row[2]), sandColor, Enum.Material.Sand)
 		end
 	end
+
+	local function makeGrassPatch(name, offset, size)
+		local patch = makePart(showroom, name, size, center + offset, grassColor, Enum.Material.Grass)
+		patch.CanCollide = false
+		return patch
+	end
+
+	makeIslandRows("AquariumViewerIsland", {
+		{ 0, -62, 58, 12 },
+		{ 0, -50, 102, 12 },
+		{ 0, -38, 136, 12 },
+		{ 0, -26, 148, 12 },
+		{ 0, -14, 152, 12 },
+		{ 0, -2, 148, 12 },
+		{ 0, 10, 140, 12 },
+		{ 0, 22, 124, 12 },
+		{ 0, 34, 100, 12 },
+		{ 0, 46, 70, 12 },
+	})
+	makeGrassPatch("AquariumIslandGrass_Left", Vector3.new(-40, 0.72, -18), Vector3.new(34, 0.24, 24))
+	makeGrassPatch("AquariumIslandGrass_Right", Vector3.new(40, 0.72, -14), Vector3.new(34, 0.24, 22))
+	makeGrassPatch("AquariumIslandGrass_TankLeft", Vector3.new(-48, 0.72, 30), Vector3.new(22, 0.24, 18))
+	makeGrassPatch("AquariumIslandGrass_TankRight", Vector3.new(48, 0.72, 30), Vector3.new(22, 0.24, 18))
+
+	makePart(showroom, "AquariumIslandNorthStoneEdge", Vector3.new(70, 1.1, 3), center + Vector3.new(0, 0.35, -69), stoneColor, Enum.Material.Slate)
+	makePart(showroom, "AquariumIslandWestStoneEdge", Vector3.new(3, 1.1, 64), center + Vector3.new(-76, 0.35, -16), stoneColor, Enum.Material.Slate)
+	makePart(showroom, "AquariumIslandEastStoneEdge", Vector3.new(3, 1.1, 64), center + Vector3.new(76, 0.35, -16), stoneColor, Enum.Material.Slate)
+	makePart(showroom, "AquariumIslandSouthStoneEdge", Vector3.new(70, 1.1, 3), center + Vector3.new(0, 0.35, 52), stoneColor, Enum.Material.Slate)
+
+	local controlDeck = makePart(showroom, "AquariumHubControlDeck", Vector3.new(76, 0.45, 30), center + Vector3.new(0, 0.9, -44), dockColor, Enum.Material.WoodPlanks)
+	local viewingDeck = makePart(showroom, "MainAquariumViewingDeck", Vector3.new(82, 0.55, 50), viewOrigin + Vector3.new(0, 0.95, -2), dockColor, Enum.Material.WoodPlanks)
+	makePart(showroom, "MainAquariumViewingDeckTrim", Vector3.new(88, 0.25, 54), viewOrigin + Vector3.new(0, 1.24, -2), Color3.fromRGB(154, 101, 55), Enum.Material.WoodPlanks)
+	makePart(showroom, "MainAquariumLeftRail", Vector3.new(1, 1.4, 48), viewOrigin + Vector3.new(-44, 2, -2), Color3.fromRGB(86, 58, 36), Enum.Material.Wood)
+	makePart(showroom, "MainAquariumRightRail", Vector3.new(1, 1.4, 48), viewOrigin + Vector3.new(44, 2, -2), Color3.fromRGB(86, 58, 36), Enum.Material.Wood)
+	makePart(showroom, "MainAquariumBackRail", Vector3.new(88, 1.4, 1), viewOrigin + Vector3.new(0, 2, 24), Color3.fromRGB(86, 58, 36), Enum.Material.Wood)
+
+	local path = makePart(showroom, "AquariumHubToDisplayPath", Vector3.new(16, 0.28, 46), center + Vector3.new(0, 1.25, -10), Color3.fromRGB(150, 96, 52), Enum.Material.WoodPlanks)
+	path.CanCollide = false
+
+	local hubSpawn = makePart(showroom, "AquariumHubSpawn", Vector3.new(16, 1, 14), center + Vector3.new(0, 1.1, -28), Color3.fromRGB(80, 180, 255), Enum.Material.ForceField)
+	hubSpawn.Transparency = 1
+	hubSpawn.CanCollide = true
+	hubSpawn.CanTouch = false
+	hubSpawn.CanQuery = true
+	local viewerSpawn = makePart(showroom, "MyAquariumSpawn", Vector3.new(16, 1, 14), center + Vector3.new(0, 1.1, -20), Color3.fromRGB(80, 180, 255), Enum.Material.ForceField)
+	viewerSpawn.Transparency = 1
+	viewerSpawn.CanCollide = true
+	viewerSpawn.CanTouch = false
+	viewerSpawn.CanQuery = true
+
+	local pavilion = Instance.new("Model")
+	pavilion.Name = "AquariumHubControlPavilion"
+	pavilion.Parent = showroom
+	local pavilionFloor = makePart(pavilion, "ControlPavilionFloor", Vector3.new(72, 0.5, 28), center + Vector3.new(0, 1.18, -48), stoneColor, Enum.Material.Slate)
+	local pavilionRoof = makePart(pavilion, "ControlPavilionBlueRoof", Vector3.new(80, 1.2, 32), center + Vector3.new(0, 20, -48), Color3.fromRGB(20, 86, 126), Enum.Material.Metal)
+	makePart(pavilion, "ControlPavilionWoodTrim", Vector3.new(84, 1.2, 36), center + Vector3.new(0, 18.8, -48), Color3.fromRGB(110, 76, 42), Enum.Material.Wood)
+	for index, offset in ipairs({
+		Vector3.new(-36, 0, -61),
+		Vector3.new(36, 0, -61),
+		Vector3.new(-36, 0, -35),
+		Vector3.new(36, 0, -35),
+	}) do
+		makePart(pavilion, "ControlPavilionPost_" .. index, Vector3.new(1.4, 17, 1.4), center + offset + Vector3.new(0, 9.3, 0), Color3.fromRGB(96, 68, 42), Enum.Material.Wood)
+	end
+	pavilion.PrimaryPart = pavilionFloor
+
+	local kiosk = Instance.new("Model")
+	kiosk.Name = "AquariumHubKiosk"
+	kiosk.Parent = pavilion
+
+	local kioskBase = makePart(kiosk, "KioskStoneBase", Vector3.new(58, 1.2, 9), center + Vector3.new(0, 2.1, -54), Color3.fromRGB(82, 91, 96), Enum.Material.Slate)
+	local kioskBoard = makePart(kiosk, "KioskMainBoard", Vector3.new(56, 15, 0.8), center + Vector3.new(0, 11, -58), Color3.fromRGB(10, 44, 76), Enum.Material.SmoothPlastic)
+	kioskBoard.CFrame = CFrame.new(kioskBoard.Position) * CFrame.Angles(0, math.rad(180), 0)
+	createLabel(kioskBoard, "Aquarium Viewer\nPress E or tap to open")
+
+	local kioskHint = makePart(kiosk, "KioskHintPanel", Vector3.new(42, 3.2, 0.45), center + Vector3.new(0, 5.2, -57.35), Color3.fromRGB(35, 138, 190), Enum.Material.Glass)
+	kioskHint.CFrame = CFrame.new(kioskHint.Position) * CFrame.Angles(0, math.rad(180), 0)
+	kioskHint.Transparency = 0.08
+	kioskHint.CanCollide = false
+	createLabel(kioskHint, "Choose one aquarium at a time")
+
+	local kioskPromptPart = makePart(kiosk, "AquariumHubKioskPrompt", Vector3.new(68, 14, 24), center + Vector3.new(0, 7, -42), Color3.fromRGB(45, 180, 240), Enum.Material.ForceField)
+	kioskPromptPart.Transparency = 1
+	kioskPromptPart.CanCollide = false
+	kioskPromptPart.CanTouch = false
+	kioskPromptPart.CanQuery = true
+	local kioskPrompt = Instance.new("ProximityPrompt")
+	kioskPrompt.Name = "OpenAquariumHubPrompt"
+	kioskPrompt.ActionText = "Open Viewer"
+	kioskPrompt.ObjectText = "Aquarium Viewer"
+	kioskPrompt.HoldDuration = 0.05
+	kioskPrompt.MaxActivationDistance = 36
+	kioskPrompt.RequiresLineOfSight = false
+	kioskPrompt.Parent = kioskPromptPart
+	kioskPrompt.Triggered:Connect(function(player)
+		print("Aquarium Viewer opened")
+		print("Opening Aquarium Viewer GUI")
+		OpenAquariumHub:FireClient(player)
+	end)
+	kiosk.PrimaryPart = kioskBase
+
+	local returnPortal = makePart(showroom, "ReturnToSeasideIslandPortal", Vector3.new(18, 6, 10), center + Vector3.new(50, 3.4, -42), Color3.fromRGB(78, 198, 245), Enum.Material.ForceField)
+	returnPortal.Transparency = 0.55
+	returnPortal.CanCollide = false
+	returnPortal:SetAttribute("TargetArea", "Lobby")
+	returnPortal:SetAttribute("PortalName", "Return to Seaside Island")
+	CollectionService:AddTag(returnPortal, "AreaPortal")
+	local returnSign = makePart(showroom, "ReturnToSeasideIslandSign", Vector3.new(23, 4, 0.6), center + Vector3.new(50, 7.6, -48), Color3.fromRGB(12, 58, 86), Enum.Material.SmoothPlastic)
+	returnSign.CFrame = CFrame.new(returnSign.Position) * CFrame.Angles(0, math.rad(180), 0)
+	createLabel(returnSign, "Return to\nSeaside Island")
+
+	local function makeLamp(name, position)
+		local post = makePart(showroom, name .. "Post", Vector3.new(1, 8, 1), position + Vector3.new(0, 4, 0), Color3.fromRGB(86, 58, 36), Enum.Material.Wood)
+		local lamp = makePart(showroom, name .. "Light", Vector3.new(2.4, 2.4, 2.4), position + Vector3.new(0, 8.6, 0), Color3.fromRGB(170, 235, 255), Enum.Material.Glass)
+		lamp.CanCollide = false
+		local glow = Instance.new("PointLight")
+		glow.Brightness = 0.7
+		glow.Range = 24
+		glow.Color = Color3.fromRGB(120, 220, 255)
+		glow.Parent = lamp
+		return post
+	end
+
+	makeLamp("AquariumHubLamp_BackLeft", center + Vector3.new(-54, 0, -54))
+	makeLamp("AquariumHubLamp_BackRight", center + Vector3.new(54, 0, -54))
+	makeLamp("AquariumHubLamp_TankLeft", viewOrigin + Vector3.new(-50, 0, 14))
+	makeLamp("AquariumHubLamp_TankRight", viewOrigin + Vector3.new(50, 0, 14))
+
+	local function makePalm(name, origin)
+		local trunk = makePart(showroom, name .. "Trunk", Vector3.new(2.2, 13, 2.2), origin + Vector3.new(0, 7, 0), Color3.fromRGB(111, 70, 39), Enum.Material.Wood)
+		for index, leafSpec in ipairs({
+			{ Vector3.new(0, 14.2, -4), Vector3.new(3, 0.8, 9), 0 },
+			{ Vector3.new(0, 14.2, 4), Vector3.new(3, 0.8, 9), 0 },
+			{ Vector3.new(-4, 14.2, 0), Vector3.new(9, 0.8, 3), 0 },
+			{ Vector3.new(4, 14.2, 0), Vector3.new(9, 0.8, 3), 0 },
+			{ Vector3.new(-3, 14.7, -3), Vector3.new(7, 0.8, 3), 45 },
+			{ Vector3.new(3, 14.7, 3), Vector3.new(7, 0.8, 3), 45 },
+		}) do
+			local leaf = makePart(showroom, name .. "Leaf_" .. index, leafSpec[2], origin + leafSpec[1], grassColor, Enum.Material.Grass)
+			leaf.CFrame = CFrame.new(leaf.Position) * CFrame.Angles(0, math.rad(leafSpec[3]), 0)
+			leaf.CanCollide = false
+		end
+		trunk.CanCollide = true
+	end
+
+	makePalm("AquariumViewerPalmLeft", center + Vector3.new(-62, 0.6, 20))
+	makePalm("AquariumViewerPalmRight", center + Vector3.new(62, 0.6, 6))
 
 	local function makeInvisibleWall(name, size, position)
-		local wall = makePart(showcase, name, size, position, Color3.fromRGB(255, 255, 255), Enum.Material.ForceField)
+		local wall = makePart(showroom, name, size, position, Color3.fromRGB(255, 255, 255), Enum.Material.ForceField)
 		wall.Transparency = 1
 		wall.CanCollide = true
 		wall.CanTouch = false
@@ -2877,31 +3468,22 @@ local function ensureAquariumSharedLand(folder, minimumSlots)
 		return wall
 	end
 
+	updateFallSafetyBounds()
 	local wallHeight = 42
 	local wallThickness = 4
-	local segmentLength = AQUARIUM_LAND_TILE_SIZE
 	local halfWidth = landWidth / 2
-	local halfDepth = landDepth / 2
+	makeInvisibleWall("InvisibleWall_North", Vector3.new(landWidth, wallHeight, wallThickness), Vector3.new(boundsCenter.X, wallHeight / 2, northEdge))
+	makeInvisibleWall("InvisibleWall_South", Vector3.new(landWidth, wallHeight, wallThickness), Vector3.new(boundsCenter.X, wallHeight / 2, southEdge))
+	makeInvisibleWall("InvisibleWall_West", Vector3.new(wallThickness, wallHeight, boundsDepth), Vector3.new(boundsCenter.X - halfWidth, wallHeight / 2, boundsCenter.Z))
+	makeInvisibleWall("InvisibleWall_East", Vector3.new(wallThickness, wallHeight, boundsDepth), Vector3.new(boundsCenter.X + halfWidth, wallHeight / 2, boundsCenter.Z))
+	local safetyFloor = makePart(showroom, "AquariumHubSafetyFloor", Vector3.new(landWidth, 2, boundsDepth), boundsCenter + Vector3.new(0, -5, 0), Color3.fromRGB(255, 255, 255), Enum.Material.ForceField)
+	safetyFloor.Transparency = 1
+	safetyFloor.CanCollide = true
+	safetyFloor.CanTouch = false
+	safetyFloor.CanQuery = false
 
-	for index = 0, math.ceil(landWidth / segmentLength) - 1 do
-		local segmentWidth = math.min(segmentLength, landWidth - (index * segmentLength))
-		local x = center.X - halfWidth + (index * segmentLength) + (segmentWidth / 2)
-		makeInvisibleWall("InvisibleWall_North_" .. tostring(index + 1), Vector3.new(segmentWidth, wallHeight, wallThickness), Vector3.new(x, wallHeight / 2, center.Z - halfDepth - (wallThickness / 2)))
-		makeInvisibleWall("InvisibleWall_South_" .. tostring(index + 1), Vector3.new(segmentWidth, wallHeight, wallThickness), Vector3.new(x, wallHeight / 2, center.Z + halfDepth + (wallThickness / 2)))
-	end
-
-	for index = 0, math.ceil(landDepth / segmentLength) - 1 do
-		local segmentDepth = math.min(segmentLength, landDepth - (index * segmentLength))
-		local z = center.Z - halfDepth + (index * segmentLength) + (segmentDepth / 2)
-		makeInvisibleWall("InvisibleWall_West_" .. tostring(index + 1), Vector3.new(wallThickness, wallHeight, segmentDepth), Vector3.new(center.X - halfWidth - (wallThickness / 2), wallHeight / 2, z))
-		makeInvisibleWall("InvisibleWall_East_" .. tostring(index + 1), Vector3.new(wallThickness, wallHeight, segmentDepth), Vector3.new(center.X + halfWidth + (wallThickness / 2), wallHeight / 2, z))
-	end
-
-	local sign = makePart(showcase, "ShowcaseSign", Vector3.new(42, 5, 0.6), center + Vector3.new(0, 4.5, -(landDepth / 2) + 8), Color3.fromRGB(34, 40, 46), Enum.Material.SmoothPlastic)
-	createLabel(sign, "Aquarium Showcase")
-	showcase.PrimaryPart = firstLandTile
-
-	return showcase
+	showroom.PrimaryPart = floor
+	return showroom
 end
 
 local function getAquariumFishColor(fish)
@@ -3282,16 +3864,37 @@ local function animateAquariumFish(part, origin, index, seed, dimensions)
 	end)
 end
 
+-- Maximum model dimension in studs for each storage tier. Aquarium fish are
+-- normalized once, after their complete species model has been assembled.
+local AQUARIUM_FISH_SIZE_BY_STORAGE = {
+	[1] = 2.2,
+	[2] = 3,
+	[3] = 3.8,
+	[4] = 4.6,
+	[5] = 5.4,
+	[10] = 12.5,
+}
+
+local function scaleAquariumFishToStorageSize(model, fish)
+	local fishStorageSpace = GameConfig.getAquariumFishSpace(fish)
+	local targetDimension = AQUARIUM_FISH_SIZE_BY_STORAGE[fishStorageSpace]
+		or AQUARIUM_FISH_SIZE_BY_STORAGE[math.clamp(fishStorageSpace, 1, 5)]
+		or AQUARIUM_FISH_SIZE_BY_STORAGE[1]
+	local boundingSize = model:GetExtentsSize()
+	local largestDimension = math.max(boundingSize.X, boundingSize.Y, boundingSize.Z)
+	if largestDimension <= 0 then
+		return 1
+	end
+
+	local uniformScale = targetDimension / largestDimension
+	model:ScaleTo(model:GetScale() * uniformScale)
+	model:SetAttribute("AquariumStorageSpace", fishStorageSpace)
+	model:SetAttribute("AquariumTargetDimension", targetDimension)
+	model:SetAttribute("AquariumUniformScaleMultiplier", uniformScale)
+	return uniformScale
+end
+
 local function makeAquariumFish(parent, fish, origin, index, ownerUserId, dimensions)
-	local rarityScale = {
-		Common = 0.85,
-		Uncommon = 0.95,
-		Rare = 1.08,
-		Epic = 1.22,
-		Legendary = 1.42,
-		Mythic = 1.65,
-	}
-	local scale = rarityScale[fish.rarity] or 1
 	local lane = getAquariumFishSwimLane(origin, index, dimensions)
 
 	local model = Instance.new("Model")
@@ -3310,7 +3913,290 @@ local function makeAquariumFish(parent, fish, origin, index, ownerUserId, dimens
 	root.CFrame = CFrame.lookAt(startPosition, startPosition + Vector3.new(1, 0, 0))
 	root.Parent = model
 
-	local rarityGlow = buildAquariumFishModel(model, root, fish, scale)
+	local rarityGlow = nil
+	local fishVisualId = tostring(fish.id or fish.imageKey or "")
+	if fishVisualId == "SmallFish" then
+		local overrideFolder = ServerStorage:FindFirstChild("AquariumFishOverrides")
+		local smallFishTemplate = if overrideFolder then overrideFolder:FindFirstChild("SmallFish") else nil
+		if smallFishTemplate and smallFishTemplate:IsA("Model") then
+			local visual = smallFishTemplate:Clone()
+			visual.Name = "FishVisual"
+			visual.Parent = model
+
+			local parts = {}
+			local largestPart = nil
+			local largestVolume = 0
+			for _, descendant in ipairs(visual:GetDescendants()) do
+				if descendant:IsA("BasePart") then
+					table.insert(parts, descendant)
+					local volume = descendant.Size.X * descendant.Size.Y * descendant.Size.Z
+					if volume > largestVolume then
+						largestVolume = volume
+						largestPart = descendant
+					end
+				end
+			end
+
+			if #parts > 0 then
+				visual.PrimaryPart = visual.PrimaryPart or largestPart or parts[1]
+				local yawDegrees = tonumber(smallFishTemplate:GetAttribute("FishVisualYawDegrees")) or 90
+				visual:PivotTo(root.CFrame * CFrame.Angles(0, math.rad(yawDegrees), 0))
+				for _, part in ipairs(parts) do
+					part.Anchored = false
+					part.CanCollide = false
+					part.CanTouch = false
+					part.CanQuery = false
+					part.Massless = true
+					weldFishPart(root, part)
+				end
+				rarityGlow = getAquariumFishColor(fish)
+			else
+				visual:Destroy()
+			end
+		end
+	elseif fishVisualId == "Carp" then
+		local visual = Instance.new("Model")
+		visual.Name = "FishVisual"
+		visual:SetAttribute("AquariumOnlyTemplate", true)
+		visual.Parent = model
+
+		local body = Instance.new("Part")
+		body.Name = "Carp_Roblox_Baked"
+		body.Anchored = false
+		body.CanCollide = false
+		body.CanTouch = false
+		body.CanQuery = false
+		body.Massless = true
+		body.Size = Vector3.new(1, 1, 1)
+		body.Color = Color3.new(1, 1, 1)
+		body.Material = Enum.Material.SmoothPlastic
+		body.CFrame = root.CFrame * CFrame.Angles(0, math.rad(90), 0)
+		body.Parent = visual
+
+		local mesh = Instance.new("SpecialMesh")
+		mesh.Name = "CarpBakedMesh"
+		mesh.MeshType = Enum.MeshType.FileMesh
+		mesh.MeshId = "rbxassetid://111989793998660"
+		mesh.TextureId = "rbxassetid://93915793213981"
+		local importedLongestAxis = 6.760799884796143
+		local importedScale = 1 / importedLongestAxis
+		mesh.Scale = Vector3.new(importedScale, importedScale, importedScale)
+		mesh.Parent = body
+
+		visual.PrimaryPart = body
+		weldFishPart(root, body)
+		rarityGlow = getAquariumFishColor(fish)
+	elseif fishVisualId == "GoldenCarp" then
+		local overrideFolder = ServerStorage:FindFirstChild("AquariumFishOverrides")
+		local goldenCarpTemplate = if overrideFolder then overrideFolder:FindFirstChild("GoldenCarp") else nil
+		if goldenCarpTemplate and goldenCarpTemplate:IsA("Model") then
+			local visual = goldenCarpTemplate:Clone()
+			visual.Name = "FishVisual"
+			visual.Parent = model
+
+			local parts = {}
+			local largestPart = nil
+			local largestVolume = 0
+			for _, descendant in ipairs(visual:GetDescendants()) do
+				if descendant:IsA("BasePart") then
+					table.insert(parts, descendant)
+					local volume = descendant.Size.X * descendant.Size.Y * descendant.Size.Z
+					if volume > largestVolume then
+						largestVolume = volume
+						largestPart = descendant
+					end
+				end
+			end
+
+			if #parts > 0 then
+				visual.PrimaryPart = visual.PrimaryPart or largestPart or parts[1]
+				local yawDegrees = tonumber(goldenCarpTemplate:GetAttribute("FishVisualYawDegrees")) or 90
+				visual:PivotTo(root.CFrame * CFrame.Angles(0, math.rad(yawDegrees), 0))
+				for _, part in ipairs(parts) do
+					part.Anchored = false
+					part.CanCollide = false
+					part.CanTouch = false
+					part.CanQuery = false
+					part.Massless = true
+					weldFishPart(root, part)
+				end
+				rarityGlow = getAquariumFishColor(fish)
+			else
+				visual:Destroy()
+			end
+		end
+	elseif fishVisualId == "Koi" then
+		local overrideFolder = ServerStorage:FindFirstChild("AquariumFishOverrides")
+		local koiTemplate = if overrideFolder then overrideFolder:FindFirstChild("Koi") else nil
+		if koiTemplate and koiTemplate:IsA("Model") then
+			local visual = koiTemplate:Clone()
+			visual.Name = "FishVisual"
+			visual.Parent = model
+
+			local parts = {}
+			local largestPart = nil
+			local largestVolume = 0
+			for _, descendant in ipairs(visual:GetDescendants()) do
+				if descendant:IsA("BasePart") then
+					table.insert(parts, descendant)
+					local volume = descendant.Size.X * descendant.Size.Y * descendant.Size.Z
+					if volume > largestVolume then
+						largestVolume = volume
+						largestPart = descendant
+					end
+				end
+			end
+
+			if #parts > 0 then
+				visual.PrimaryPart = visual.PrimaryPart or largestPart or parts[1]
+				local yawDegrees = tonumber(koiTemplate:GetAttribute("FishVisualYawDegrees")) or 90
+				visual:PivotTo(root.CFrame * CFrame.Angles(0, math.rad(yawDegrees), 0))
+				for _, part in ipairs(parts) do
+					part.Anchored = false
+					part.CanCollide = false
+					part.CanTouch = false
+					part.CanQuery = false
+					part.Massless = true
+					weldFishPart(root, part)
+				end
+				rarityGlow = getAquariumFishColor(fish)
+			else
+				visual:Destroy()
+			end
+		end
+	elseif fishVisualId == "PondGuardian" then
+		local overrideFolder = ServerStorage:FindFirstChild("AquariumFishOverrides")
+		local pondGuardianTemplate = if overrideFolder then overrideFolder:FindFirstChild("PondGuardian") else nil
+		if not pondGuardianTemplate then
+			pondGuardianTemplate = workspace:FindFirstChild("PondGuardian_New")
+		end
+		if pondGuardianTemplate and pondGuardianTemplate:IsA("Model") then
+			local visual = pondGuardianTemplate:Clone()
+			visual.Name = "FishVisual"
+			visual.Parent = model
+
+			local parts = {}
+			local largestPart = nil
+			local largestVolume = 0
+			for _, descendant in ipairs(visual:GetDescendants()) do
+				if descendant:IsA("BasePart") then
+					table.insert(parts, descendant)
+					local volume = descendant.Size.X * descendant.Size.Y * descendant.Size.Z
+					if volume > largestVolume then
+						largestVolume = volume
+						largestPart = descendant
+					end
+				end
+			end
+
+			if #parts > 0 then
+				visual.PrimaryPart = visual.PrimaryPart or largestPart or parts[1]
+				local yawDegrees = tonumber(pondGuardianTemplate:GetAttribute("FishVisualYawDegrees")) or 90
+				visual:PivotTo(root.CFrame * CFrame.Angles(0, math.rad(yawDegrees), 0))
+				for _, part in ipairs(parts) do
+					part.Anchored = false
+					part.CanCollide = false
+					part.CanTouch = false
+					part.CanQuery = false
+					part.Massless = true
+					weldFishPart(root, part)
+				end
+				rarityGlow = getAquariumFishColor(fish)
+			else
+				visual:Destroy()
+			end
+		end
+	elseif fishVisualId == "Catfish" then
+		local overrideFolder = ServerStorage:FindFirstChild("AquariumFishOverrides")
+		local catfishTemplate = if overrideFolder then overrideFolder:FindFirstChild("Catfish") else nil
+		if catfishTemplate and catfishTemplate:IsA("Model") then
+			local visual = catfishTemplate:Clone()
+			visual.Name = "FishVisual"
+			visual.Parent = model
+
+			local parts = {}
+			local largestPart = nil
+			local largestVolume = 0
+			for _, descendant in ipairs(visual:GetDescendants()) do
+				if descendant:IsA("BasePart") then
+					table.insert(parts, descendant)
+					local volume = descendant.Size.X * descendant.Size.Y * descendant.Size.Z
+					if volume > largestVolume then
+						largestVolume = volume
+						largestPart = descendant
+					end
+				end
+			end
+
+			if #parts > 0 then
+				visual.PrimaryPart = visual.PrimaryPart or largestPart or parts[1]
+				local yawDegrees = tonumber(catfishTemplate:GetAttribute("FishVisualYawDegrees")) or 90
+				visual:PivotTo(root.CFrame * CFrame.Angles(0, math.rad(yawDegrees), 0))
+				for _, part in ipairs(parts) do
+					part.Anchored = false
+					part.CanCollide = false
+					part.CanTouch = false
+					part.CanQuery = false
+					part.Massless = true
+					weldFishPart(root, part)
+				end
+				rarityGlow = getAquariumFishColor(fish)
+			else
+				visual:Destroy()
+			end
+		end
+	end
+
+	local templateRoot = ServerStorage:FindFirstChild(RodVisual.TemplateFolderName)
+	local fishTemplate = if not rarityGlow and templateRoot then templateRoot:FindFirstChild(fishVisualId) else nil
+	if not rarityGlow and fishTemplate and fishTemplate:IsA("Model") then
+		local visual = fishTemplate:Clone()
+		visual.Name = "FishVisual"
+		visual.Parent = model
+
+		local parts = {}
+		local primaryPart = visual.PrimaryPart
+		local largestPart = nil
+		local largestVolume = 0
+		for _, descendant in ipairs(visual:GetDescendants()) do
+			if descendant:IsA("BasePart") then
+				table.insert(parts, descendant)
+				local volume = descendant.Size.X * descendant.Size.Y * descendant.Size.Z
+				if volume > largestVolume then
+					largestVolume = volume
+					largestPart = descendant
+				end
+			end
+		end
+
+		if #parts > 0 then
+			visual.PrimaryPart = primaryPart or largestPart or parts[1]
+			local yawDegrees = tonumber(fishTemplate:GetAttribute("FishVisualYawDegrees")) or 90
+			visual:PivotTo(root.CFrame * CFrame.Angles(0, math.rad(yawDegrees), 0))
+			for _, part in ipairs(parts) do
+				part.Anchored = false
+				part.CanCollide = false
+				part.CanTouch = false
+				part.CanQuery = false
+				part.Massless = true
+				weldFishPart(root, part)
+			end
+			rarityGlow = getAquariumFishColor(fish)
+		else
+			visual:Destroy()
+		end
+	end
+
+	if not rarityGlow then
+		if tostring(fish.id or fish.imageKey or "") == "Bass" then
+			warn("[FishyFish] Bass template is missing; skipped deprecated procedural Bass fallback.")
+			model:Destroy()
+			return nil
+		end
+		rarityGlow = buildAquariumFishModel(model, root, fish, 1)
+	end
+
+	scaleAquariumFishToStorageSize(model, fish)
 
 	local light = Instance.new("PointLight")
 	light.Brightness = 0.18
@@ -3352,6 +4238,7 @@ local function buildAquariumSlotModel(slot, ownerPlayer, ownerData)
 	local model = Instance.new("Model")
 	model.Name = modelName
 	model:SetAttribute("SlotNumber", slot)
+	model:SetAttribute("BackdropEnabled", aquariumDesign.backdropEnabled ~= false)
 	if ownerPlayer then
 		model:SetAttribute("OccupantUserId", ownerPlayer.UserId)
 		model:SetAttribute("OccupantName", ownerPlayer.DisplayName)
@@ -3375,7 +4262,7 @@ local function buildAquariumSlotModel(slot, ownerPlayer, ownerData)
 	end
 
 	local background = makePart(model, "AquariumDesignerBackground", Vector3.new(dimensions.tankWidth - 1.2, dimensions.tankHeight - 1, 0.16), origin + Vector3.new(0, dimensions.glassY, halfDepth - 0.18), backgroundColor, Enum.Material.SmoothPlastic)
-	background.Transparency = 0.08
+	background.Transparency = aquariumDesign.backdropEnabled ~= false and 0.08 or 1
 	background.CanCollide = false
 
 	local waterSurface = makePart(model, "AquariumWaterSurface", Vector3.new(dimensions.tankWidth - 2, 0.18, dimensions.tankDepth - 2), origin + Vector3.new(0, dimensions.waterY, 0), waterColor, Enum.Material.Glass)
@@ -3405,6 +4292,13 @@ local function buildAquariumSlotModel(slot, ownerPlayer, ownerData)
 
 	makeFrameRails("AquariumTopFrame", dimensions.topY)
 	makeFrameRails("AquariumBottomFrame", 1.05)
+	require(script.Parent:WaitForChild("AquariumThemeService")).apply(
+		model,
+		aquariumDesign.theme,
+		origin,
+		dimensions,
+		aquariumDesign.backdropEnabled ~= false
+	)
 
 	local sign = makePart(model, "AquariumOwnerSign", Vector3.new(math.min(dimensions.tankWidth, 30), 3.5, 0.5), origin + Vector3.new(0, dimensions.topY + 2.6, -halfDepth - 1.2), Color3.fromRGB(34, 40, 46), Enum.Material.SmoothPlastic)
 	local signText = ownerPlayer and (ownerPlayer.DisplayName .. "'s Aquarium") or "Available Aquarium"
@@ -3433,33 +4327,14 @@ local function buildAquariumSlotModel(slot, ownerPlayer, ownerData)
 		return sizeScale * math.clamp(tonumber(slotConfig.scale) or 1, 0.55, 1.35)
 	end
 
-	local function makeDesignerDecoration(slotId, decorationId)
-		local slotConfig = designerConfig.slots[slotId]
+	local function makeDesignerDecorationAt(decorationId, center, scale)
 		local decoration = designerConfig.decorations[decorationId]
-		if not slotConfig or not decoration or decorationId == "None" then
-			return
-		end
-		if (tonumber(slotConfig.level) or 1) > aquariumLevel then
+		if not decoration or decorationId == "None" then
 			return
 		end
 
-		local center = getDesignerSlotCenter(slotConfig)
-		local scale = getDesignerSlotScale(slotConfig)
 		local color = decoration.color or Color3.fromRGB(160, 180, 190)
-		local part
-		if decorationId == "Seaweed" then
-			for stem = 1, 3 do
-				part = makePart(decorationsFolder, "Seaweed", Vector3.new(0.35, 3.2 + stem * 0.35, 0.35) * scale, center + Vector3.new((stem - 2) * 0.55 * scale, 1.2 * scale, 0), color, Enum.Material.Grass)
-				part.CanCollide = false
-			end
-		elseif decorationId == "TreasureChest" then
-			part = makePart(decorationsFolder, "TreasureChest", Vector3.new(3.6, 1.8, 2.4) * scale, center + Vector3.new(0, 0.5 * scale, 0), color, Enum.Material.Wood)
-			part.CanCollide = false
-			local band = makePart(decorationsFolder, "TreasureBand", Vector3.new(3.8, 0.25, 0.3) * scale, center + Vector3.new(0, 1.1 * scale, -0.3 * scale), Color3.fromRGB(255, 210, 80), Enum.Material.Metal)
-			band.CanCollide = false
-		elseif decorationId == "BubbleMachine" then
-			part = makePart(decorationsFolder, "BubbleMachine", Vector3.new(2.2, 1.4, 2.2) * scale, center, color, Enum.Material.Metal)
-			part.CanCollide = false
+		local function addBubbleEmitter(parent)
 			local bubbles = Instance.new("ParticleEmitter")
 			bubbles.Name = "Bubbles"
 			bubbles.Texture = "rbxasset://textures/particles/sparkles_main.dds"
@@ -3467,11 +4342,128 @@ local function buildAquariumSlotModel(slot, ownerPlayer, ownerData)
 			bubbles.Lifetime = NumberRange.new(1.8, 3.2)
 			bubbles.Speed = NumberRange.new(0.5, 1.2)
 			bubbles.Color = ColorSequence.new(Color3.fromRGB(200, 240, 255))
-			bubbles.Parent = part
-		else
-			part = makePart(decorationsFolder, decorationId, Vector3.new(2.8, 1.6, 2.2) * scale, center, color, Enum.Material.SmoothPlastic)
-			part.CanCollide = false
+			bubbles.Parent = parent
 		end
+
+		local function cloneImportedDecoration()
+			local templateFolder = ServerStorage:FindFirstChild(AQUARIUM_DECOR_TEMPLATE_FOLDER_NAME)
+			local template = templateFolder and templateFolder:FindFirstChild(decorationId)
+			if not template or not template:IsA("Model") then
+				return false
+			end
+
+			local visual = template:Clone()
+			visual.Name = decorationId
+			visual:SetAttribute("DesignerDecorationTemplate", decorationId)
+			visual.Parent = decorationsFolder
+
+			local parts = {}
+			for _, descendant in ipairs(visual:GetDescendants()) do
+				if descendant:IsA("BasePart") then
+					descendant.Anchored = true
+					descendant.CanCollide = false
+					descendant.CanTouch = false
+					descendant.CanQuery = true
+					descendant.Massless = true
+					table.insert(parts, descendant)
+				end
+			end
+
+			if #parts == 0 then
+				visual:Destroy()
+				return false
+			end
+
+			local _, sourceSize = visual:GetBoundingBox()
+			local largestAxis = math.max(sourceSize.X, sourceSize.Y, sourceSize.Z)
+			local targetLargestAxis = AQUARIUM_DECOR_TEMPLATE_LARGEST_AXIS[decorationId] or 3.4
+			if largestAxis <= 0 then
+				visual:Destroy()
+				return false
+			end
+
+			local scaled = pcall(function()
+				visual:ScaleTo(visual:GetScale() * ((targetLargestAxis * scale) / largestAxis))
+			end)
+			if not scaled then
+				visual:Destroy()
+				return false
+			end
+
+			local boundsCFrame = visual:GetBoundingBox()
+			visual:PivotTo(visual:GetPivot() + (center - boundsCFrame.Position))
+			visual:PivotTo(
+				CFrame.new(center)
+					* CFrame.Angles(0, math.pi, 0)
+					* CFrame.new(-center)
+					* visual:GetPivot()
+			)
+			if decorationId == "Coral" then
+				visual:PivotTo(
+					CFrame.new(center)
+						* CFrame.Angles(math.rad(43.92915394888073), 0, 0)
+						* CFrame.new(-center)
+						* visual:GetPivot()
+				)
+				local correctedBoundsCFrame = visual:GetBoundingBox()
+				visual:PivotTo(visual:GetPivot() + (center - correctedBoundsCFrame.Position))
+			end
+
+			if decorationId == "BubbleMachine" then
+				addBubbleEmitter(visual.PrimaryPart or parts[1])
+			end
+			return true
+		end
+
+		if cloneImportedDecoration() then
+			return
+		end
+
+		local function placePart(name, size, offset, partColor, material)
+			local position = center + (offset or Vector3.zero)
+			local part = makePart(decorationsFolder, name, size, position, partColor or color, material or Enum.Material.SmoothPlastic)
+			part.CanCollide = false
+			return part
+		end
+
+		if decorationId == "Seaweed" then
+			for stem = 1, 3 do
+				placePart("Seaweed", Vector3.new(0.35, 3.2 + stem * 0.35, 0.35) * scale, Vector3.new((stem - 2) * 0.55 * scale, 1.2 * scale, 0), color, Enum.Material.Grass)
+			end
+		elseif decorationId == "TreasureChest" then
+			placePart("TreasureChest", Vector3.new(3.6, 1.8, 2.4) * scale, Vector3.new(0, 0.5 * scale, 0), color, Enum.Material.Wood)
+			placePart("TreasureBand", Vector3.new(3.8, 0.25, 0.3) * scale, Vector3.new(0, 1.1 * scale, -0.3 * scale), Color3.fromRGB(255, 210, 80), Enum.Material.Metal)
+		elseif decorationId == "BubbleMachine" then
+			local part = placePart("BubbleMachine", Vector3.new(2.2, 1.4, 2.2) * scale, Vector3.zero, color, Enum.Material.Metal)
+			addBubbleEmitter(part)
+		else
+			placePart(decorationId, Vector3.new(2.8, 1.6, 2.2) * scale, Vector3.zero, color, Enum.Material.SmoothPlastic)
+		end
+	end
+
+	local function makeDesignerDecoration(slotId, decorationId)
+		local slotConfig = designerConfig.slots[slotId]
+		if not slotConfig or (tonumber(slotConfig.level) or 1) > aquariumLevel then
+			return
+		end
+
+		makeDesignerDecorationAt(decorationId, getDesignerSlotCenter(slotConfig), getDesignerSlotScale(slotConfig), 0)
+	end
+
+	local function getFreeDecorationCenter(item)
+		local placement = designerConfig.freePlacement or {}
+		local bounds = placement.bounds or {}
+		-- The editor is a front-facing view, while the aquarium's world X axis is
+		-- viewed from the opposite direction. Mirror X so screen-left stays left.
+		local x = -math.clamp(tonumber(item.x) or 0, tonumber(bounds.xMin) or -0.42, tonumber(bounds.xMax) or 0.42) * dimensions.tankWidth
+		local y = 1 + (math.clamp(tonumber(item.y) or 0.16, tonumber(bounds.yMin) or 0.08, tonumber(bounds.yMax) or 0.82) * dimensions.tankHeight)
+		local z = math.clamp(tonumber(item.z) or 0, tonumber(bounds.zMin) or -0.42, tonumber(bounds.zMax) or 0.42) * dimensions.tankDepth
+		return origin + Vector3.new(x, y, z)
+	end
+
+	local function getFreeDecorationScale(item)
+		local sizeScale = math.clamp(dimensions.tankWidth / 32, 0.72, 1.28)
+		return sizeScale * math.clamp(tonumber(item.scale) or 1, 0.55, 1.35)
 	end
 
 	local canShowSavedDecorations = ownerData and Monetization.ownsPass(ownerData, "AquariumDesigner")
@@ -3479,6 +4471,15 @@ local function buildAquariumSlotModel(slot, ownerPlayer, ownerData)
 	if canShowSavedDecorations or canShowPreviewDecorations then
 		for slotId, decorationId in pairs(aquariumDesign.decorations or {}) do
 			makeDesignerDecoration(slotId, decorationId)
+		end
+
+		local maxFreeDecorations = (((designerConfig.freePlacement or {}).maxByLevel or {})[aquariumLevel]) or 0
+		for index, item in ipairs(aquariumDesign.freeDecorations or {}) do
+			if index > maxFreeDecorations then
+				break
+			end
+
+			makeDesignerDecorationAt(item.decorationId, getFreeDecorationCenter(item), getFreeDecorationScale(item))
 		end
 	end
 
@@ -3506,12 +4507,7 @@ local function ensurePrebuiltAquariumSlots()
 		return
 	end
 
-	ensureAquariumSharedLand(folder, AQUARIUM_MIN_SHOWCASE_SLOTS)
-	for slot = 1, AQUARIUM_MIN_SHOWCASE_SLOTS do
-		if not folder:FindFirstChild(getAquariumSlotName(slot)) then
-			buildAquariumSlotModel(slot, nil, nil)
-		end
-	end
+	ensureAquariumSharedLand(folder, 1)
 end
 
 local function refreshPlayerAquarium(player)
@@ -3522,7 +4518,8 @@ local function refreshPlayerAquarium(player)
 
 	ensurePrebuiltAquariumSlots()
 	local slot = getPlayerAquariumSlot(player)
-	buildAquariumSlotModel(slot, player, data)
+	local model = buildAquariumSlotModel(slot, player, data)
+	return model ~= nil
 end
 
 local function playerOwnsAssignedAquarium(player)
@@ -3537,6 +4534,20 @@ local function playerOwnsAssignedAquarium(player)
 		return false
 	end
 
+	return true
+end
+
+local function playerCanEditLoadedAquarium(player)
+	return playerOwnsAssignedAquarium(player)
+end
+
+local function rejectAquariumEditIfViewOnly(player)
+	if playerCanEditLoadedAquarium(player) then
+		return false
+	end
+
+	notify(player, "This aquarium is view-only. Select My Aquarium to edit.")
+	sendState(player)
 	return true
 end
 
@@ -4311,15 +5322,17 @@ local function buildCleanLobby(world)
 			end
 
 			if targetArea == "Home" then
-				if root then
-					refreshPlayerAquarium(player)
-					root.CFrame = CFrame.new(getPlayerAquariumTeleportPosition(player))
-				end
+				teleportPlayer(player, "Home")
+				return
+			end
+
+			if targetArea == "AquariumHub" then
+				teleportPlayer(player, "AquariumHub")
 				return
 			end
 
 			if GameConfig.Biomes[targetArea] and not isBiomeUnlocked(data, targetArea) then
-				notify(player, "Unlock that area first.")
+				notify(player, "Unlock that island first.")
 				return
 			end
 
@@ -4406,7 +5419,7 @@ local function buildCleanLobby(world)
 		false
 	)
 	fountainWarpTrigger:SetAttribute("TargetArea", "BiomeWarp")
-	fountainWarpTrigger:SetAttribute("PortalName", "Biome Warp")
+	fountainWarpTrigger:SetAttribute("PortalName", "Island Warp")
 	fountainWarpTrigger:SetAttribute("RequiredLevel", 1)
 	CollectionService:AddTag(fountainWarpTrigger, "AreaPortal")
 	connectPortal(fountainWarpTrigger, "BiomeWarp")
@@ -4459,8 +5472,8 @@ local function buildCleanLobby(world)
 	makeLobbyPart(leaderboardModel, "LeaderboardRightPost", Vector3.new(1.4, 22, 1.4), Vector3.new(7 * block, 12, 27 * block), woodDark, Enum.Material.Wood)
 	leaderboardModel.PrimaryPart = leaderboardBoard
 
-	makeSign(aquariumWarpModel, "AquariumWarpSign", Vector3.new(31 * block, 11, 10 * block), Vector3.new(22, 15, 0.7), "Aquarium\nWarp", aquariumColor, Enum.NormalId.Front)
-	makeWarpPad("AquariumWarp", Vector3.new(31 * block, 3.2, 10 * block), aquariumColor, "Aquarium", "Home", 1)
+	makeSign(aquariumWarpModel, "AquariumWarpSign", Vector3.new(31 * block, 11, 10 * block), Vector3.new(22, 15, 0.7), "Aquarium\nHub", aquariumColor, Enum.NormalId.Front)
+	makeWarpPad("AquariumWarp", Vector3.new(31 * block, 3.2, 10 * block), aquariumColor, "Aquarium Hub", "AquariumHub", 1)
 
 	makeShopBuilding("FishShop", -24, -24, "FISH SHOP", blueUI)
 	makeShopBuilding("RodShop", 24, -24, "SUPPLY SHOP", goldUI)
@@ -5357,6 +6370,33 @@ local function ensureSeasideShopDisplayAquarium()
 	aquarium.PrimaryPart = base
 end
 
+local function removeGeneratedBiomePlaceholders(world)
+	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
+		local biome = GameConfig.Biomes[biomeId]
+		for _, name in ipairs({
+			biome.displayName .. " Island",
+			biome.displayName .. " Water",
+			biomeId .. "Dock",
+			biome.displayName .. " Sign",
+		}) do
+			local placeholder = world:FindFirstChild(name)
+			if placeholder then
+				placeholder:Destroy()
+			end
+		end
+	end
+end
+
+local function removeAllGeneratedBiomePlaceholders()
+	for _, descendant in ipairs(workspace:GetDescendants()) do
+		if descendant.Name == "FishyFishWorld"
+			and (descendant:IsA("Folder") or descendant:IsA("Model"))
+		then
+			removeGeneratedBiomePlaceholders(descendant)
+		end
+	end
+end
+
 local function buildWorld()
 	local existing = workspace:FindFirstChild("FishyFishWorld")
 	if existing then
@@ -5382,21 +6422,9 @@ local function buildWorld()
 
 	ensureLobbyInvisibleBoundaries()
 
-	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
-		local biome = GameConfig.Biomes[biomeId]
-		local pos = biome.position
-
-		makePart(world, biome.displayName .. " Island", Vector3.new(105, 2, 95), Vector3.new(pos.X, -1, pos.Z), Color3.fromRGB(92, 150, 86), Enum.Material.Grass)
-
-		local water = makePart(world, biome.displayName .. " Water", Vector3.new(72, 1, 56), Vector3.new(pos.X, 0.2, pos.Z + 8), biome.color, Enum.Material.Water)
-		water.Transparency = 0.2
-
-		local dock = makePart(world, biome.displayName .. " Dock", Vector3.new(16, 1, 28), Vector3.new(pos.X, 1, pos.Z - 29), Color3.fromRGB(121, 79, 43), Enum.Material.WoodPlanks)
-		dock.Name = biomeId .. "Dock"
-
-		local sign = makePart(world, biome.displayName .. " Sign", Vector3.new(22, 8, 1), Vector3.new(pos.X, 6, pos.Z - 42), Color3.fromRGB(35, 45, 55), Enum.Material.SmoothPlastic)
-		createLabel(sign, biome.displayName)
-	end
+	-- Fishing-island geometry is authored in the saved Workspace map. Runtime
+	-- slabs here duplicate those islands and must not be generated in Play mode.
+	removeAllGeneratedBiomePlaceholders()
 
 	ensurePrebuiltAquariumSlots()
 	ensureFountainPlazaBrickStyle()
@@ -5428,6 +6456,7 @@ local function ensureWorld()
 	if not world then
 		buildWorld()
 	else
+		removeAllGeneratedBiomePlaceholders()
 		EditorVisuals.removeLegacyFishingHotspots()
 		for _, legacyName in ipairs({
 			"WorldGroundPondToRiver",
@@ -5473,6 +6502,13 @@ local function safeEnsureWorld(context)
 	end
 
 	EditorVisuals.restore()
+
+	local lilyshoreSuccess, lilyshoreError = pcall(function()
+		require(script.Parent:WaitForChild("LilyshoreIslandService")).ensure()
+	end)
+	if not lilyshoreSuccess then
+		warn("Lilyshore Island setup failed", context or "", lilyshoreError)
+	end
 end
 
 function Bait.calculateCatchValue(fish, baitId)
@@ -5493,7 +6529,9 @@ function Bait.calculateCatchXP(fish, baitId, isAutoFish)
 	return xp
 end
 
-local function chooseFish(data, isAutoFish, baitId, extraRareChanceBonus)
+local FishingRuntime = {}
+
+function FishingRuntime.chooseFish(data, isAutoFish, baitId, extraRareChanceBonus)
 	local biome = getBiomeData(data)
 	local rod = getRodData(data)
 	local bait = Bait.getData(baitId)
@@ -5509,6 +6547,9 @@ local function chooseFish(data, isAutoFish, baitId, extraRareChanceBonus)
 	for index, fish in ipairs(biome.fish) do
 		local rarityWeight = rarityLuckWeight[fish.rarity] or 0
 		local adjusted = fish.chance * math.max(0.05, 1 + (luck * rarityWeight))
+		if tostring(fish.id or fish.imageKey or "") == tostring(bait.targetFishId or "") then
+			adjusted *= math.max(1, tonumber(bait.targetFishChanceMultiplier) or 1)
+		end
 		weights[index] = adjusted
 		totalWeight += adjusted
 	end
@@ -5526,7 +6567,7 @@ local function chooseFish(data, isAutoFish, baitId, extraRareChanceBonus)
 	return biome.fish[1]
 end
 
-local function awardCatch(player, fish, isAutoFish, baitId)
+function FishingRuntime.awardCatch(player, fish, isAutoFish, baitId)
 	local data = playerData[player]
 	if not data then
 		return
@@ -5581,7 +6622,7 @@ local function awardCatch(player, fish, isAutoFish, baitId)
 	notify(player, message)
 end
 
-local function makeFishingMinigamePrompt(biomeId, biteDelay, fish, rodId, sessionId, isAutoFish, baitId, remainingBait, castResult)
+function FishingRuntime.makeMinigamePrompt(biomeId, biteDelay, fish, rodId, sessionId, isAutoFish, baitId, remainingBait, castResult)
 	local bait = Bait.getData(baitId)
 	local xp = Bait.calculateCatchXP(fish, baitId, isAutoFish)
 	local value = Bait.calculateCatchValue(fish, baitId)
@@ -5622,6 +6663,7 @@ local function makeFishingMinigamePrompt(biomeId, biteDelay, fish, rodId, sessio
 end
 
 local Travel = {}
+Travel.Lilyshore = require(script.Parent:WaitForChild("LilyshoreIslandService"))
 
 function Travel.getPlayerRoot(player)
 	local character = player.Character
@@ -5678,8 +6720,16 @@ function Travel.findLobbySpawnLocation()
 end
 
 function Travel.isBeginnerPondInstance(instance)
+	if Travel.Lilyshore.isIslandInstance(instance) then
+		return true
+	end
+
 	while instance do
-		if instance.Name == "BeginnerPondArea" or instance.Name == "BeginnerPond_ExtraLarge" or instance.Name == "Beginner Pond" then
+		if instance.Name == "LilyshoreIsland"
+			or instance.Name == "BeginnerPondArea"
+			or instance.Name == "BeginnerPond_ExtraLarge"
+			or instance.Name == "Beginner Pond"
+		then
 			return true
 		end
 		instance = instance.Parent
@@ -5695,7 +6745,7 @@ function Travel.getGroundBiomeAtPosition(position, ignoreInstances)
 
 	local result = workspace:Raycast(position + Vector3.new(0, 12, 0), Vector3.new(0, -90, 0), params)
 	if result and Travel.isBeginnerPondInstance(result.Instance) then
-		return "BeginnerPond"
+		return DEFAULT_FISHING_ISLAND_ID
 	end
 
 	return nil
@@ -5708,7 +6758,7 @@ function Travel.getBiomeAtPosition(position, ignoreInstances)
 	end
 
 	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
-		if biomeId == "BeginnerPond" then
+		if biomeId == DEFAULT_FISHING_ISLAND_ID then
 			continue
 		end
 
@@ -5837,9 +6887,10 @@ getPlayerTravelLocation = function(player)
 		return "Lobby"
 	end
 
+	local hubPosition = getAquariumHubTeleportPosition()
 	local aquariumPosition = getPlayerAquariumTeleportPosition(player)
-	if (root.Position - aquariumPosition).Magnitude <= 70 then
-		return "Home"
+	if (root.Position - hubPosition).Magnitude <= 90 or (root.Position - aquariumPosition).Magnitude <= 70 then
+		return "AquariumHub"
 	end
 
 	return "Lobby"
@@ -5855,6 +6906,15 @@ function startAutoFish(player)
 
 	task.spawn(function()
 		while player.Parent and playerData[player] == data and data.AutoFishEnabled do
+			if not RodVisual.getHeldFishingRodTool(player, data) then
+				data.AutoFishEnabled = false
+				data.AutoFishRunning = false
+				pendingFishing[player] = nil
+				sendState(player)
+				notify(player, "AutoFish stopped. Hold your fishing rod to fish.")
+				return
+			end
+
 			if #data.Inventory >= data.BackpackSize then
 				data.AutoFishEnabled = false
 				data.AutoFishRunning = false
@@ -5880,6 +6940,15 @@ function startAutoFish(player)
 				break
 			end
 
+			if not RodVisual.getHeldFishingRodTool(player, data) then
+				data.AutoFishEnabled = false
+				data.AutoFishRunning = false
+				pendingFishing[player] = nil
+				sendState(player)
+				notify(player, "AutoFish stopped. Hold your fishing rod to fish.")
+				return
+			end
+
 			if pendingFishing[player] then
 				continue
 			end
@@ -5890,7 +6959,7 @@ function startAutoFish(player)
 					data.AutoFishEnabled = false
 					data.AutoFishRunning = false
 					sendState(player)
-					notify(player, "AutoFish stopped. Move to Beginner Pond, River, or Ocean to fish.")
+					notify(player, "AutoFish stopped. Move to Lilyshore Island, Riverbend Island, or Coral Coast Island to fish.")
 					return
 				end
 
@@ -5898,7 +6967,7 @@ function startAutoFish(player)
 					data.AutoFishEnabled = false
 					data.AutoFishRunning = false
 					sendState(player)
-					notify(player, "AutoFish stopped. Unlock this biome first.")
+					notify(player, "AutoFish stopped. Unlock this island first.")
 					return
 				end
 
@@ -5907,7 +6976,7 @@ function startAutoFish(player)
 				local rodId = data.EquippedRod or "WoodenRod"
 				local baitId, bait = Bait.consumeForCast(data)
 				local biteDelay = 0.2 * math.max(0.75, tonumber(bait.biteSpeedMultiplier) or 1)
-				local fish = chooseFish(data, true, baitId)
+				local fish = FishingRuntime.chooseFish(data, true, baitId)
 				local visualTime = 3
 				pendingFishing[player] = {
 					autoFish = true,
@@ -5917,7 +6986,7 @@ function startAutoFish(player)
 				}
 				sendState(player)
 
-				local prompt = makeFishingMinigamePrompt(locationBiomeId, biteDelay, fish, rodId, nil, true, baitId, Bait.getRemainingForClient(data, baitId))
+				local prompt = FishingRuntime.makeMinigamePrompt(locationBiomeId, biteDelay, fish, rodId, nil, true, baitId, Bait.getRemainingForClient(data, baitId))
 				prompt.visualTime = visualTime
 				FishingPrompt:FireClient(player, prompt)
 
@@ -5928,8 +6997,17 @@ function startAutoFish(player)
 					break
 				end
 
+				if not RodVisual.getHeldFishingRodTool(player, data) then
+					data.AutoFishEnabled = false
+					data.AutoFishRunning = false
+					pendingFishing[player] = nil
+					sendState(player)
+					notify(player, "AutoFish stopped. Hold your fishing rod to fish.")
+					return
+				end
+
 				pendingFishing[player] = nil
-				awardCatch(player, fish, true, baitId)
+				FishingRuntime.awardCatch(player, fish, true, baitId)
 			end
 		end
 
@@ -5941,9 +7019,10 @@ function startAutoFish(player)
 end
 
 local function canUnlockBiome(data, biomeId)
+	biomeId = normalizeBiomeId(biomeId)
 	local biome = GameConfig.Biomes[biomeId]
 	if not biome then
-		return false, "Unknown biome."
+		return false, "Unknown island."
 	end
 
 	if isBiomeUnlocked(data, biomeId) then
@@ -5966,28 +7045,45 @@ local function canUnlockBiome(data, biomeId)
 end
 
 function teleportPlayer(player, target)
-	local root = Travel.getPlayerRoot(player)
-	if not root then
-		return
-	end
+	target = normalizeBiomeId(target) or target
 
 	local position
+	local destination
+	local sourceArea = getPlayerTravelLocation and getPlayerTravelLocation(player) or nil
+	if player:GetAttribute("FishyFishTravelTarget") == target then
+		sourceArea = player:GetAttribute("FishyFishTravelSource") or sourceArea
+	end
 
 	if target == "Lobby" then
 		position = Travel.getLobbyTeleportPosition()
-	elseif target == "Home" then
+	elseif target == "AquariumHub" then
 		refreshPlayerAquarium(player)
-		position = getPlayerAquariumTeleportPosition(player)
+		sendStateToAll()
+		position = AquariumLayout.getHubSpawnPosition()
+	elseif target == "Home" or target == "MyAquarium" then
+		refreshPlayerAquarium(player)
+		position = AquariumLayout.getViewerSpawnPosition(player)
+	elseif target == DEFAULT_FISHING_ISLAND_ID then
+		destination = Travel.Lilyshore.getSpawnCFrame(sourceArea)
+		if not destination then
+			position = GameConfig.Biomes[target].position
+		end
 	elseif GameConfig.Biomes[target] then
 		position = GameConfig.Biomes[target].position
 	end
 
-	if position then
-		if target == "Home" then
-			root.CFrame = CFrame.lookAt(position, getPlayerAquariumOrigin(player) + Vector3.new(0, 5, 0))
-		else
-			root.CFrame = CFrame.new(position)
+	if position or destination then
+		if target == "Home" or target == "MyAquarium" then
+			destination = CFrame.lookAt(position, getPlayerAquariumOrigin(player) + Vector3.new(0, 5, 0))
+		elseif target == "AquariumHub" then
+			destination = CFrame.lookAt(position, AquariumLayout.AreaOrigin + Vector3.new(0, 4, 0))
+		elseif not destination then
+			destination = CFrame.new(position)
 		end
+
+		AquariumLayout.safePivotPlayer(player, destination)
+		player:SetAttribute("FishyFishTravelTarget", target)
+		player:SetAttribute("FishyFishTravelSource", sourceArea or "Lobby")
 	end
 end
 
@@ -6003,16 +7099,13 @@ function teleportPlayerToAquariumOwner(player, ownerPlayer)
 		return
 	end
 
+	print("Loading aquarium:", ownerPlayer.DisplayName or ownerPlayer.Name)
 	refreshPlayerAquarium(ownerPlayer)
 
-	local root = Travel.getPlayerRoot(player)
-	if not root then
-		return
-	end
-
-	local position = getAquariumTeleportPositionForOwner(ownerPlayer)
+	local position = AquariumLayout.getViewerSpawnPosition(ownerPlayer)
 	local lookAt = getAquariumSlotOrigin(getPlayerAquariumSlot(ownerPlayer)) + Vector3.new(0, 5, 0)
-	root.CFrame = CFrame.lookAt(position, lookAt)
+	AquariumLayout.safePivotPlayer(player, CFrame.lookAt(position, lookAt))
+	sendStateToAll()
 	notify(player, "Visiting " .. ownerPlayer.DisplayName .. "'s aquarium.")
 end
 
@@ -6040,7 +7133,7 @@ function connectAreaPortalTrigger(part)
 
 	local targetArea = part:GetAttribute("TargetArea")
 	if not targetArea and part.Name == "AquariumWarpTrigger" and part:FindFirstAncestor("LobbyAquariumWarp") then
-		targetArea = "Home"
+		targetArea = "AquariumHub"
 		part:SetAttribute("TargetArea", targetArea)
 	end
 
@@ -6075,8 +7168,9 @@ function connectAreaPortalTrigger(part)
 		local data = playerData[player]
 		local target = part:GetAttribute("TargetArea")
 		if not target and part.Name == "AquariumWarpTrigger" and part:FindFirstAncestor("LobbyAquariumWarp") then
-			target = "Home"
+			target = "AquariumHub"
 		end
+		target = normalizeBiomeId(target) or target
 
 		if not data or not target then
 			return
@@ -6088,11 +7182,11 @@ function connectAreaPortalTrigger(part)
 		end
 
 		if GameConfig.Biomes[target] and not isBiomeUnlocked(data, target) then
-			notify(player, "Unlock that area first.")
+			notify(player, "Unlock that island first.")
 			return
 		end
 
-		if target == "Lobby" or target == "Home" or GameConfig.Biomes[target] then
+		if target == "Lobby" or target == "Home" or target == "AquariumHub" or target == "MyAquarium" or GameConfig.Biomes[target] then
 			if GameConfig.Biomes[target] then
 				data.CurrentBiome = target
 			end
@@ -6124,7 +7218,7 @@ function setupPlayer(player)
 		player.RespawnLocation = lobbySpawn
 	end
 	connectAreaPortalTriggers()
-	AquariumViewerTool.ensureForPlayer(player)
+	ensureHudAccessToolsForPlayer(player)
 	setupLeaderstats(player)
 	updateLeaderstats(player)
 	FishCaughtLeaderboard.publish(player, playerData[player])
@@ -6132,11 +7226,17 @@ function setupPlayer(player)
 	player.CharacterAdded:Connect(function()
 		task.defer(function()
 			safeEnsureWorld("character added")
-			AquariumViewerTool.ensureForPlayer(player)
+			ensureHudAccessToolsForPlayer(player)
 			local data = playerData[player]
 			if data then
 				refreshFishingRodForPlayer(player, data)
 				applyCharacterMonetizationVisuals(player)
+			end
+
+			local respawnTarget = player:GetAttribute("FishyFishTravelTarget")
+			if respawnTarget and respawnTarget ~= "Lobby" then
+				task.wait(0.2)
+				teleportPlayer(player, respawnTarget)
 			end
 		end)
 	end)
@@ -6145,7 +7245,7 @@ function setupPlayer(player)
 		local data = playerData[player]
 		safeEnsureWorld("deferred player setup")
 		if data then
-			refreshPlayerAquarium(player)
+			ensurePrebuiltAquariumSlots()
 			applyCharacterMonetizationVisuals(player)
 		end
 		teleportPlayer(player, "Lobby")
@@ -6200,18 +7300,23 @@ StartFishing.OnServerEvent:Connect(function(player, requestedBiome)
 		return
 	end
 
+	if not RodVisual.getHeldFishingRodTool(player, data) then
+		notify(player, "Hold your fishing rod before fishing.")
+		return
+	end
+
 	local castRequest = type(requestedBiome) == "table" and requestedBiome or nil
-	local requestedBiomeId = castRequest and castRequest.biomeId or requestedBiome
+	local requestedBiomeId = normalizeBiomeId(castRequest and castRequest.biomeId or requestedBiome)
 	local biomeId = GameConfig.Biomes[requestedBiomeId] and requestedBiomeId or data.CurrentBiome
 	local locationBiomeId = getPlayerFishingBiome(player)
 
 	if not locationBiomeId then
-		notify(player, "Move to Beginner Pond, River, or Ocean to fish.")
+		notify(player, "Move to Lilyshore Island, Riverbend Island, or Coral Coast Island to fish.")
 		return
 	end
 
 	if requestedBiomeId and requestedBiomeId ~= locationBiomeId then
-		notify(player, "You can only cast in the biome you are standing in.")
+		notify(player, "You can only cast on the island you are standing on.")
 		return
 	end
 
@@ -6223,7 +7328,7 @@ StartFishing.OnServerEvent:Connect(function(player, requestedBiome)
 	end
 
 	if not isBiomeUnlocked(data, biomeId) then
-		notify(player, "Unlock that biome first.")
+		notify(player, "Unlock that island first.")
 		return
 	end
 
@@ -6246,7 +7351,7 @@ StartFishing.OnServerEvent:Connect(function(player, requestedBiome)
 		* rod.speed
 		* math.max(0.65, tonumber(bait.biteSpeedMultiplier) or 1)
 		* math.max(0.75, tonumber(castResult and castResult.biteSpeedMultiplier) or 1)
-	local fish = chooseFish(data, false, baitId)
+	local fish = FishingRuntime.chooseFish(data, false, baitId)
 	local sessionId = tostring(math.floor(os.clock() * 1000)) .. ":" .. tostring(Random.new():NextInteger(100000, 999999))
 	local minigameConfig = GameConfig.getFishingMinigameConfig(fish.rarity, rodId)
 
@@ -6263,7 +7368,7 @@ StartFishing.OnServerEvent:Connect(function(player, requestedBiome)
 	}
 
 	sendState(player)
-	FishingPrompt:FireClient(player, makeFishingMinigamePrompt(biomeId, biteDelay, fish, rodId, sessionId, false, baitId, Bait.getRemainingForClient(data, baitId), castResult))
+	FishingPrompt:FireClient(player, FishingRuntime.makeMinigamePrompt(biomeId, biteDelay, fish, rodId, sessionId, false, baitId, Bait.getRemainingForClient(data, baitId), castResult))
 end)
 
 FinishMinigame.OnServerEvent:Connect(function(player, result)
@@ -6278,6 +7383,12 @@ FinishMinigame.OnServerEvent:Connect(function(player, result)
 	end
 
 	pendingFishing[player] = nil
+
+	if not RodVisual.getHeldFishingRodTool(player, data) then
+		notify(player, "The fish escaped because you stopped holding your fishing rod.")
+		sendState(player)
+		return
+	end
 
 	local elapsed = os.clock() - pending.requestedAt
 	if elapsed < pending.biteDelay - 0.75 then
@@ -6314,7 +7425,7 @@ FinishMinigame.OnServerEvent:Connect(function(player, result)
 	end
 
 	data.CurrentBiome = pending.biomeId
-	awardCatch(player, pending.fish, false, pending.baitId)
+	FishingRuntime.awardCatch(player, pending.fish, false, pending.baitId)
 end)
 
 SellFish.OnServerEvent:Connect(function(player, action, fishSerialToSell, fishIndexToSell)
@@ -6433,7 +7544,7 @@ BaitAction.OnServerEvent:Connect(function(player, action, baitId)
 
 	if bait.requiredBiome and not isBiomeUnlocked(data, bait.requiredBiome) then
 		local biome = GameConfig.Biomes[bait.requiredBiome]
-		notify(player, "Unlock " .. (biome and biome.displayName or "that biome") .. " first.")
+		notify(player, "Unlock " .. (biome and biome.displayName or "that island") .. " first.")
 		return
 	end
 
@@ -6507,7 +7618,24 @@ getOrCreateRemoteEvent("ShopAction").OnServerEvent:Connect(function(player, acti
 			sendState(player)
 			return
 		end
+		if pass.purchasable == false then
+			notify(player, pass.name .. " is coming soon.")
+			sendState(player)
+			return
+		end
 		local success, err = pcall(function()
+			print("Prompting purchase:", pass.name or itemKey, pass.id)
+			if itemKey == "VipAngler" then
+				print("Prompting VIP Angler Pass purchase:", pass.id)
+			elseif itemKey == "AquariumDesigner" then
+				print("Prompting Aquarium Designer Pass purchase:", pass.id)
+			elseif itemKey == "SmallBag" then
+				print("Prompting Small Bag Upgrade purchase:", pass.id)
+			elseif itemKey == "MediumBag" then
+				print("Prompting Medium Bag Upgrade purchase:", pass.id)
+			elseif itemKey == "LargeBag" then
+				print("Prompting Large Bag Upgrade purchase:", pass.id)
+			end
 			Monetization.MarketplaceService:PromptGamePassPurchase(player, pass.id)
 		end)
 		if not success then
@@ -6519,8 +7647,15 @@ getOrCreateRemoteEvent("ShopAction").OnServerEvent:Connect(function(player, acti
 		if not product then
 			return
 		end
+		local productId = tonumber(product.id) or tonumber(product.Id)
+		if product.purchasable == false or not productId or productId <= 0 then
+			notify(player, (product.name or "That product") .. " is coming soon.")
+			sendState(player)
+			return
+		end
 		local success, err = pcall(function()
-			Monetization.MarketplaceService:PromptProductPurchase(player, product.id)
+			print("Prompting purchase:", product.name or itemKey, productId)
+			Monetization.MarketplaceService:PromptProductPurchase(player, productId)
 		end)
 		if not success then
 			warn("Product prompt failed", player.Name, itemKey, err)
@@ -6535,32 +7670,74 @@ getOrCreateRemoteEvent("ShopAction").OnServerEvent:Connect(function(player, acti
 			notify(player, Monetization.ownsPass(data, "VipAngler") and "VIP reward already claimed today." or "VIP Angler Pass required.")
 		end
 	elseif action == "PreviewAquariumDesign" then
-		data.AquariumPreviewDesign = Monetization.normalizeAquariumDesign(payload)
-		refreshPlayerAquarium(player)
+		if rejectAquariumEditIfViewOnly(player) then
+			return
+		end
+
+		if category ~= "Aquarium" then
+			warn("Aquarium preview failed for", player.Name, "invalid category", tostring(category))
+			return
+		end
+
+		if Monetization.getAquariumFreeDecorationValidationError(payload) then
+			warn("Aquarium preview failed for", player.Name, "invalid decoration data:", Monetization.getAquariumFreeDecorationValidationError(payload))
+			notify(player, "Preview failed: invalid decoration data.")
+			return
+		end
+
+		data.AquariumPreviewDesign = Monetization.limitAquariumDesignForLevel(payload, data.Aquarium and data.Aquarium.Level or 1)
+		local refreshed = refreshPlayerAquarium(player)
+		if not refreshed then
+			warn("Aquarium preview failed for", player.Name, "no aquarium found or rebuilt")
+			notify(player, "Preview failed: no aquarium found.")
+			sendState(player)
+			return
+		end
+
 		sendStateToAll()
 		notify(player, "Previewing aquarium design.")
 	elseif action == "CancelAquariumPreview" then
+		if rejectAquariumEditIfViewOnly(player) then
+			return
+		end
+
 		data.AquariumPreviewDesign = nil
 		refreshPlayerAquarium(player)
 		sendStateToAll()
 		notify(player, "Aquarium preview canceled.")
 	elseif action == "ApplyAquariumDesign" then
-		local design = Monetization.normalizeAquariumDesign(payload)
+		if rejectAquariumEditIfViewOnly(player) then
+			return
+		end
+
+		if Monetization.getAquariumFreeDecorationValidationError(payload) then
+			warn("Aquarium apply failed for", player.Name, "invalid decoration data:", Monetization.getAquariumFreeDecorationValidationError(payload))
+			notify(player, "Apply failed: invalid decoration data.")
+			return
+		end
+
+		local design = Monetization.limitAquariumDesignForLevel(payload, data.Aquarium and data.Aquarium.Level or 1)
 		if Monetization.aquariumDesignUsesFixedDecorations(design) and not Monetization.ownsPass(data, "AquariumDesigner") then
 			local pass = Monetization.Config.GamePasses.AquariumDesigner
-			pcall(function()
-				Monetization.MarketplaceService:PromptGamePassPurchase(player, pass.id)
-			end)
-			notify(player, "Aquarium Designer Pass is required to save fixed decorations.")
+			if pass and pass.purchasable ~= false then
+				pcall(function()
+					print("Prompting Aquarium Designer Pass purchase:", pass.id)
+					Monetization.MarketplaceService:PromptGamePassPurchase(player, pass.id)
+				end)
+			end
+			notify(player, pass and pass.purchasable == false and "Aquarium Designer Pass is coming soon." or "Aquarium Designer Pass is required to save aquarium decorations.")
 			return
 		end
 
 		if Monetization.aquariumDesignUsesPremium(design) and not Monetization.ownsPass(data, "AquariumDesigner") then
 			local pass = Monetization.Config.GamePasses.AquariumDesigner
-			pcall(function()
-				Monetization.MarketplaceService:PromptGamePassPurchase(player, pass.id)
-			end)
-			notify(player, "Aquarium Designer Pass is required to apply that design.")
+			if pass and pass.purchasable ~= false then
+				pcall(function()
+					print("Prompting Aquarium Designer Pass purchase:", pass.id)
+					Monetization.MarketplaceService:PromptGamePassPurchase(player, pass.id)
+				end)
+			end
+			notify(player, pass and pass.purchasable == false and "Aquarium Designer Pass is coming soon." or "Aquarium Designer Pass is required to apply that design.")
 			return
 		end
 
@@ -6579,6 +7756,7 @@ UnlockBiome.OnServerEvent:Connect(function(player, biomeId)
 		return
 	end
 
+	biomeId = normalizeBiomeId(biomeId)
 	local canUnlock, reason = canUnlockBiome(data, biomeId)
 	if not canUnlock then
 		notify(player, reason)
@@ -6612,8 +7790,9 @@ TeleportTo.OnServerEvent:Connect(function(player, target)
 		return
 	end
 
+	target = normalizeBiomeId(target) or target
 	if GameConfig.Biomes[target] and not isBiomeUnlocked(data, target) then
-		notify(player, "Unlock that teleport first.")
+		notify(player, "Unlock that island first.")
 		return
 	end
 
@@ -6631,10 +7810,7 @@ AquariumAction.OnServerEvent:Connect(function(player, action, fishSerial, fishIn
 		return
 	end
 
-	if not playerOwnsAssignedAquarium(player) then
-		refreshPlayerAquarium(player)
-		notify(player, "Use your own aquarium.")
-		sendState(player)
+	if rejectAquariumEditIfViewOnly(player) then
 		return
 	end
 
@@ -6781,10 +7957,37 @@ Monetization.MarketplaceService.ProcessReceipt = function(receiptInfo)
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
-	Monetization.addBait(data, product.baitId, product.amount)
+	local amount = math.max(0, math.floor(tonumber(product.amount) or tonumber(product.Amount) or 0))
+	print("[DeveloperProductReceipt] Product ID purchased:", receiptInfo.ProductId)
+	print("[DeveloperProductReceipt] Player name:", player.Name)
+
+	local coinAmount = math.max(0, math.floor(tonumber(product.coinAmount) or tonumber(product.CoinAmount) or 0))
+	if coinAmount > 0 then
+		local coinsBefore = data.Coins
+		data.Coins += coinAmount
+		print("[DeveloperProductReceipt] Coins granted:", coinAmount)
+		print("[DeveloperProductReceipt] Coin count before purchase:", coinsBefore)
+		print("[DeveloperProductReceipt] Coin count after purchase:", data.Coins)
+		updateLeaderstats(player)
+		sendState(player)
+		saveData(player)
+		notify(player, "Added " .. tostring(coinAmount) .. " Coins.")
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+
+	local baitId = product.baitId or product.BaitId
+	if not baitId or amount <= 0 then
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	local countBefore = Bait.getCount(data, baitId)
+	print("[DeveloperProductReceipt] Lucky Bait amount granted:", amount)
+	print("[DeveloperProductReceipt] Lucky Bait count before purchase:", countBefore)
+	Monetization.addBait(data, baitId, amount)
+	print("[DeveloperProductReceipt] Lucky Bait count after purchase:", Bait.getCount(data, baitId))
 	sendState(player)
 	saveData(player)
-	notify(player, "Added " .. tostring(product.amount) .. " " .. GameConfig.Baits[product.baitId].displayName .. ".")
+	notify(player, "Added " .. tostring(amount) .. " " .. GameConfig.Baits[baitId].displayName .. ".")
 	return Enum.ProductPurchaseDecision.PurchaseGranted
 end
 
@@ -6799,6 +8002,11 @@ ToggleAutoFish.OnServerEvent:Connect(function(player)
 		pendingFishing[player] = nil
 		sendState(player)
 		notify(player, "AutoFish turned off.")
+		return
+	end
+
+	if not RodVisual.getHeldFishingRodTool(player, data) then
+		notify(player, "Hold your fishing rod before turning on AutoFish.")
 		return
 	end
 
@@ -6843,7 +8051,7 @@ cacheRodTemplates()
 EditorVisuals.capture()
 safeEnsureWorld("startup")
 createFishingRodTool()
-AquariumViewerTool.createStarterTool()
+createHudAccessTools()
 FishCaughtLeaderboard.ensureBoard()
 FishCaughtLeaderboard.refresh(true)
 

@@ -4,6 +4,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local MonetizationConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("MonetizationConfig"))
 local Remotes = ReplicatedStorage:FindFirstChild("FishingRemotes")
 local Notice = Remotes and Remotes:FindFirstChild("Notice")
+local OpenShop = Remotes and Remotes:FindFirstChild("OpenShop")
 
 local CastleShopService = {}
 
@@ -28,6 +29,7 @@ local GREEN = Color3.fromRGB(38, 150, 86)
 local PURPLE = Color3.fromRGB(112, 72, 170)
 
 local promptConnections = {}
+local connectedPrompts = {}
 
 local function makeFolder(parent, name)
 	local folder = Instance.new("Folder")
@@ -40,6 +42,26 @@ local function notify(player, message)
 	if player and Notice then
 		Notice:FireClient(player, message)
 	end
+end
+
+local function getOpenShopRemote()
+	if OpenShop and OpenShop.Parent then
+		return OpenShop
+	end
+
+	Remotes = ReplicatedStorage:FindFirstChild("FishingRemotes")
+	if not Remotes then
+		return nil
+	end
+
+	OpenShop = Remotes:FindFirstChild("OpenShop")
+	if not OpenShop then
+		OpenShop = Instance.new("RemoteEvent")
+		OpenShop.Name = "OpenShop"
+		OpenShop.Parent = Remotes
+	end
+
+	return OpenShop
 end
 
 local function makePart(parent, name, size, position, color, material, transparency, canCollide)
@@ -102,6 +124,24 @@ local function makePromptPart(parent, name, position, size, purchaseKind, purcha
 	prompt.HoldDuration = 0.25
 	prompt.MaxActivationDistance = 12
 	prompt.RequiresLineOfSight = false
+	prompt.Parent = promptPart
+	return prompt
+end
+
+local function makeOpenShopPromptPart(parent, name, position, size, shopTab, actionText, objectText)
+	local promptPart = makePart(parent, name, size, position, Color3.fromRGB(0, 255, 255), Enum.Material.ForceField, 1, false)
+	promptPart:SetAttribute("CastleShopAction", "OpenShop")
+	promptPart:SetAttribute("ShopTab", shopTab or "Passes")
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "CastleShopOpenPrompt"
+	prompt.ActionText = actionText or "Open Shop"
+	prompt.ObjectText = objectText or "Castle Shop"
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.HoldDuration = 0.15
+	prompt.MaxActivationDistance = 14
+	prompt.RequiresLineOfSight = false
+	prompt.Enabled = true
 	prompt.Parent = promptPart
 	return prompt
 end
@@ -216,6 +256,7 @@ function CastleShopService.clear()
 		connection:Disconnect()
 	end
 	table.clear(promptConnections)
+	table.clear(connectedPrompts)
 
 	for _, modelName in ipairs({ MODEL_NAME, LEGACY_MODEL_NAME }) do
 		local existing = workspace:FindFirstChild(modelName, true)
@@ -232,6 +273,10 @@ function CastleShopService.promptPurchase(player, purchaseKind, purchaseKey)
 		if not pass then
 			return
 		end
+		if pass.purchasable == false then
+			notify(player, pass.name .. " is coming soon.")
+			return
+		end
 
 		local ownsPass = false
 		local ownsSuccess = pcall(function()
@@ -243,6 +288,18 @@ function CastleShopService.promptPurchase(player, purchaseKind, purchaseKey)
 		end
 
 		local success, err = pcall(function()
+			print("Prompting purchase:", pass.name or purchaseKey, pass.id)
+			if purchaseKey == "VipAngler" then
+				print("Prompting VIP Angler Pass purchase:", pass.id)
+			elseif purchaseKey == "AquariumDesigner" then
+				print("Prompting Aquarium Designer Pass purchase:", pass.id)
+			elseif purchaseKey == "SmallBag" then
+				print("Prompting Small Bag Upgrade purchase:", pass.id)
+			elseif purchaseKey == "MediumBag" then
+				print("Prompting Medium Bag Upgrade purchase:", pass.id)
+			elseif purchaseKey == "LargeBag" then
+				print("Prompting Large Bag Upgrade purchase:", pass.id)
+			end
 			MarketplaceService:PromptGamePassPurchase(player, pass.id)
 		end)
 		if not success then
@@ -254,9 +311,15 @@ function CastleShopService.promptPurchase(player, purchaseKind, purchaseKey)
 		if not product then
 			return
 		end
+		local productId = tonumber(product.id) or tonumber(product.Id)
+		if product.purchasable == false or not productId or productId <= 0 then
+			notify(player, (product.name or "That product") .. " is coming soon.")
+			return
+		end
 
 		local success, err = pcall(function()
-			MarketplaceService:PromptProductPurchase(player, product.id)
+			print("Prompting purchase:", product.name or purchaseKey, productId)
+			MarketplaceService:PromptProductPurchase(player, productId)
 		end)
 		if not success then
 			warn("Castle shop product prompt failed", player.Name, purchaseKey, err)
@@ -265,18 +328,76 @@ function CastleShopService.promptPurchase(player, purchaseKind, purchaseKey)
 	end
 end
 
+function CastleShopService.openShop(player, shopTab)
+	local remote = getOpenShopRemote()
+	if not remote then
+		warn("Castle shop could not open Shop UI because OpenShop remote is missing.")
+		notify(player, "Shop is not ready yet. Try again in a moment.")
+		return
+	end
+
+	print("Opening shop from castle")
+	remote:FireClient(player, shopTab or "Passes")
+end
+
 function CastleShopService.connectPrompts(root)
 	for _, descendant in ipairs((root or workspace):GetDescendants()) do
-		if descendant:IsA("ProximityPrompt") and descendant.Name == "CastleShopPurchasePrompt" and not descendant:GetAttribute("CastleShopConnected") then
+		if descendant:IsA("ProximityPrompt")
+			and (descendant.Name == "CastleShopPurchasePrompt" or descendant.Name == "CastleShopOpenPrompt")
+			and not connectedPrompts[descendant]
+		then
+			connectedPrompts[descendant] = true
+			descendant.Enabled = true
+			descendant.RequiresLineOfSight = false
 			descendant:SetAttribute("CastleShopConnected", true)
 			table.insert(promptConnections, descendant.Triggered:Connect(function(player)
+				print("Castle shop interaction triggered")
 				local promptPart = descendant.Parent
 				if promptPart and promptPart:IsA("BasePart") then
-					CastleShopService.promptPurchase(player, promptPart:GetAttribute("PurchaseKind"), promptPart:GetAttribute("PurchaseKey"))
+					local action = promptPart:GetAttribute("CastleShopAction")
+					if action == "OpenShop" then
+						CastleShopService.openShop(player, promptPart:GetAttribute("ShopTab"))
+						return
+					end
+
+					local purchaseKind = promptPart:GetAttribute("PurchaseKind")
+					local purchaseKey = promptPart:GetAttribute("PurchaseKey")
+					if purchaseKind == "GamePass" or purchaseKind == "Product" then
+						CastleShopService.promptPurchase(player, purchaseKind, purchaseKey)
+					else
+						CastleShopService.openShop(player, "Passes")
+					end
 				end
 			end))
+			descendant.Destroying:Connect(function()
+				connectedPrompts[descendant] = nil
+			end)
 		end
 	end
+end
+
+local function ensureCastleOpenShopPrompt(castle)
+	if castle:FindFirstChild("CastleShopOpenPrompt", true) then
+		return
+	end
+
+	local pivot, size = castle:GetBoundingBox()
+	local promptFolder = castle:FindFirstChild("Prompts")
+	if not promptFolder then
+		promptFolder = Instance.new("Folder")
+		promptFolder.Name = "Prompts"
+		promptFolder.Parent = castle
+	end
+
+	makeOpenShopPromptPart(
+		promptFolder,
+		"CastleShopOpenPromptPart",
+		pivot.Position + Vector3.new(0, 5, -size.Z / 2 - 8),
+		Vector3.new(math.max(24, math.min(52, size.X * 0.28)), 10, 10),
+		"Passes",
+		"Open Shop",
+		"Castle Shop"
+	)
 end
 
 local function findExistingCastle()
@@ -303,6 +424,7 @@ local function repairExistingCastle(castle)
 		end
 	end
 
+	ensureCastleOpenShopPrompt(castle)
 	CastleShopService.connectPrompts(castle)
 	return castle
 end
@@ -466,6 +588,7 @@ function CastleShopService.build()
 
 	makeSign(signsFolder, "CastleShopMainSign", currentOrigin + Vector3.new(0, 31.5, -48.2), Vector3.new(44, 7, 0.8), "Castle Shop", WOOD_DARK, Enum.NormalId.Front, GOLD, 38)
 	makeSign(signsFolder, "CastleShopSubtitleSign", currentOrigin + Vector3.new(0, 24, -48.4), Vector3.new(42, 4.5, 0.8), "Passes, Upgrades & Bait", WOOD, Enum.NormalId.Front, Color3.fromRGB(255, 255, 255), 24)
+	makeOpenShopPromptPart(signsFolder, "CastleShopOpenPromptPart", currentOrigin + Vector3.new(0, 6, -62), Vector3.new(36, 10, 12), "Passes", "Open Shop", "Castle Shop")
 
 	makeBooth(boothsFolder, "VipAnglerBooth", -42, 18, GOLD, "VIP Angler Pass", "VIP tag, +10% coin boost, daily bait reward, exclusive lobby title.", {
 		{ kind = "GamePass", key = "VipAngler", label = "Buy VIP", actionText = "Buy VIP", objectText = "VIP Angler Pass" },

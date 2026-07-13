@@ -1,4 +1,5 @@
 local GameConfig = {}
+local IslandConfig = require(script.Parent:WaitForChild("IslandConfig"))
 
 GameConfig.MAX_LEVEL = 30
 GameConfig.BASE_BACKPACK_SIZE = 30
@@ -34,6 +35,12 @@ GameConfig.FishingMinigame = {
 		startProgress = 0.34,
 		minSuccessDuration = 1.75,
 		maxDuration = 35,
+	},
+	-- Multi-phase catches keep the full standard reel time, then receive time for their required phases.
+	ExtraDurationByRarity = {
+		Epic = 8,
+		Legendary = 10,
+		Mythic = 20,
 	},
 	RodBonuses = {
 		WoodenRod = {
@@ -172,7 +179,7 @@ function GameConfig.getFishingMinigameConfig(rarity, rodId)
 		maxBarVelocity = defaults.maxBarVelocity,
 		startProgress = defaults.startProgress,
 		minSuccessDuration = defaults.minSuccessDuration,
-		maxDuration = defaults.maxDuration,
+		maxDuration = defaults.maxDuration + (GameConfig.FishingMinigame.ExtraDurationByRarity[rarity] or 0),
 		difficulty = difficulty,
 	}
 end
@@ -270,6 +277,16 @@ GameConfig.RodImageFiles = {
 	OceanRod = "assets/rod_icons_transparent/OceanRod.png",
 }
 
+GameConfig.BaitImageIds = {
+	BasicBait = "rbxassetid://83977711719065",
+	FreshBait = "rbxassetid://112896536673425",
+	TastyBait = "rbxassetid://126177305532970",
+	LuckyBait = "rbxassetid://137577581082499",
+	GlowBait = "rbxassetid://103871393730446",
+	MysticBait = "rbxassetid://89466037376797",
+	PondGuardianBait = "rbxassetid://98810046583564",
+}
+
 GameConfig.AquariumCapacities = {
 	[1] = 18,
 	[2] = 40,
@@ -288,8 +305,8 @@ GameConfig.FishAquariumSpace = {
 	Carp = 2,
 	Bluegill = 2,
 	Bass = 3,
-	Catfish = 4,
-	GoldenCarp = 5,
+	Catfish = 3,
+	GoldenCarp = 4,
 	Koi = 5,
 	PondGuardian = 10,
 }
@@ -310,7 +327,7 @@ function GameConfig.getAquariumFishSpace(fishOrId)
 	local raritySpace = {
 		Common = 1,
 		Uncommon = 3,
-		Rare = 5,
+		Rare = 4,
 		Epic = 5,
 		Legendary = 10,
 		Mythic = 14,
@@ -368,7 +385,6 @@ GameConfig.Rods = {
 		displayName = "Ocean Rod",
 		cost = 75000,
 		unlockLevel = 25,
-		requiredBiome = "Ocean",
 		luck = 0.50,
 		speed = 0.68,
 		zoneBonus = 0.14,
@@ -452,16 +468,31 @@ GameConfig.Baits = {
 		order = 6,
 		description = "Small boost to bites, luck, XP, and value.",
 	},
+	PondGuardianBait = {
+		displayName = "Pond Guardian Bait",
+		cost = 1000,
+		purchaseAmount = 10,
+		unlockLevel = 20,
+		biteSpeedMultiplier = 1,
+		rareChanceBonus = 0,
+		xpMultiplier = 1,
+		valueMultiplier = 1,
+		targetFishId = "PondGuardian",
+		targetFishChanceMultiplier = 8,
+		order = 7,
+		description = "Greatly increases Pond Guardian chance only.",
+	},
 }
 
-GameConfig.BaitOrder = { "BasicBait", "FreshBait", "TastyBait", "LuckyBait", "GlowBait", "MysticBait" }
+GameConfig.BaitOrder = { "BasicBait", "FreshBait", "TastyBait", "LuckyBait", "GlowBait", "MysticBait", "PondGuardianBait" }
 
 function GameConfig.getBait(baitId)
 	return GameConfig.Baits[baitId] or GameConfig.Baits[GameConfig.BasicBaitId]
 end
 
 GameConfig.Lobby = {
-	displayName = "Lobby",
+	displayName = "Seaside Island",
+	islandId = IslandConfig.SeasideIslandId,
 	center = Vector3.new(-170, 8, -452),
 	spawnPosition = Vector3.new(-147, 10, -492),
 	bounds = {
@@ -473,8 +504,9 @@ GameConfig.Lobby = {
 }
 
 GameConfig.Biomes = {
-	BeginnerPond = {
-		displayName = "Beginner Pond",
+	LilyshoreIsland = {
+		displayName = "Lilyshore Island",
+		legacyId = "BeginnerPond",
 		icon = "Pond",
 		unlockLevel = 1,
 		cost = 0,
@@ -491,8 +523,9 @@ GameConfig.Biomes = {
 			{ id = "PondGuardian", name = "Pond Guardian", rarity = "Legendary", chance = 0.1, value = 2000, imageKey = "PondGuardian" },
 		},
 	},
-	River = {
-		displayName = "River",
+	RiverbendIsland = {
+		displayName = "Riverbend Island",
+		legacyId = "River",
 		icon = "River",
 		unlockLevel = 10,
 		cost = 5000,
@@ -509,11 +542,13 @@ GameConfig.Biomes = {
 			{ id = "RiverDragon", name = "River Dragon", rarity = "Legendary", chance = 1, value = 5000 },
 		},
 	},
-	Ocean = {
-		displayName = "Ocean",
+	CoralCoastIsland = {
+		displayName = "Coral Coast Island",
+		legacyId = "Ocean",
 		icon = "Ocean",
 		unlockLevel = 25,
 		cost = 50000,
+		requiredRod = "OceanRod",
 		position = Vector3.new(360, 8, 0),
 		color = Color3.fromRGB(45, 105, 210),
 		fish = {
@@ -530,8 +565,24 @@ GameConfig.Biomes = {
 	},
 }
 
-GameConfig.BiomeOrder = { "BeginnerPond", "River", "Ocean" }
+GameConfig.Biomes.BeginnerPond = GameConfig.Biomes.LilyshoreIsland
+GameConfig.Biomes.River = GameConfig.Biomes.RiverbendIsland
+GameConfig.Biomes.Ocean = GameConfig.Biomes.CoralCoastIsland
+GameConfig.Islands = GameConfig.Biomes
+GameConfig.IslandOrder = table.clone(IslandConfig.Order)
+GameConfig.BiomeOrder = GameConfig.IslandOrder
+GameConfig.LegacyBiomeIdToIslandId = IslandConfig.LegacyIdToIslandId
+GameConfig.IslandIdToLegacyBiomeId = IslandConfig.IslandIdToLegacyId
 GameConfig.RodOrder = { "WoodenRod", "IronRod", "GoldenRod", "EmeraldRod", "OceanRod" }
+
+function GameConfig.normalizeIslandId(areaId)
+	local normalized = IslandConfig.normalizeIslandId(areaId)
+	return GameConfig.Biomes[normalized] and normalized or nil
+end
+
+function GameConfig.normalizeBiomeId(areaId)
+	return GameConfig.normalizeIslandId(areaId)
+end
 
 function GameConfig.getLevelFromXP(xp)
 	local level = 1
@@ -569,7 +620,8 @@ function GameConfig.getFishCount()
 end
 
 function GameConfig.findFish(fishId)
-	for biomeId, biome in pairs(GameConfig.Biomes) do
+	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
+		local biome = GameConfig.Biomes[biomeId]
 		for _, fish in ipairs(biome.fish) do
 			if fish.id == fishId then
 				return fish, biomeId
@@ -598,7 +650,17 @@ function GameConfig.getRodImage(rodId)
 	return nil
 end
 
+function GameConfig.getBaitImage(baitId)
+	local imageId = GameConfig.BaitImageIds[baitId]
+	if type(imageId) == "string" and imageId ~= "" then
+		return imageId
+	end
+
+	return nil
+end
+
 function GameConfig.getBiomeUnlockText(biomeId)
+	biomeId = GameConfig.normalizeIslandId(biomeId)
 	local biome = GameConfig.Biomes[biomeId]
 	if not biome then
 		return "Unknown"
@@ -608,7 +670,12 @@ function GameConfig.getBiomeUnlockText(biomeId)
 		return "Free"
 	end
 
-	return string.format("Level %d + %d Coins", biome.unlockLevel, biome.cost)
+	local text = string.format("Level %d + %d Coins", biome.unlockLevel, biome.cost)
+	if biome.requiredRod and GameConfig.Rods[biome.requiredRod] then
+		text ..= " + " .. GameConfig.Rods[biome.requiredRod].displayName
+	end
+
+	return text
 end
 
 return GameConfig

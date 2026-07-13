@@ -1,0 +1,627 @@
+{
+  "pack_version": "4.0.0-high-quality-textured",
+  "coordinate_system": "Y-up; X width; Z depth; front is -Z",
+  "standard_tank_interior_studs": {
+    "width": 40.0,
+    "height": 15.0,
+    "depth": 14.0
+  },
+  "classic_default": "Classic is intentionally excluded and should keep the existing free DefaultFrame.",
+  "content_rule": "No physical interior decorations. Each paid theme contains one premium frame and one flat embedded-texture rear backdrop.",
+  "themes": [
+    {
+      "id": "CoralReef",
+      "display_name": "Coral Reef",
+      "files": {
+        "frame": {
+          "path": "Frames/CoralReef_PremiumFrame_HQ.glb",
+          "bytes": 1633968,
+          "mesh_parts": 13,
+          "triangles": 1492,
+          "embedded_images": 12,
+          "bounds": [
+            [
+              -22.4,
+              -2.5,
+              -9.282
+            ],
+            [
+              22.4,
+              18.3,
+              8.85
+            ]
+          ],
+          "materials": [
+            "CoralReef_Pivot",
+            "CoralReef_TopFrameTexture",
+            "CoralReef_BottomFrameTexture",
+            "CoralReef_LeftFrameTexture",
+            "CoralReef_RightFrameTexture",
+            "CoralReef_PlaqueTrim",
+            "CoralReef_PlaqueInset",
+            "CoralReef_TopBadgeTrim",
+            "CoralReef_TopBadgeInsetMat",
+            "CoralReef_PearlBadgeMat",
+            "CoralReef_PrimaryMat",
+            "CoralReef_TrimMat",
+            "CoralReef_AccentMat"
+          ]
+        },
+        "backdrop": {
+          "path": "Backdrops/CoralReef_PremiumBackdrop_HQ.glb",
+          "bytes": 1786060,
+          "mesh_parts": 3,
+          "triangles": 90,
+          "embedded_images": 2,
+          "bounds": [
+            [
+              -19.85,
+              -0.06,
+              6.93
+            ],
+            [
+              19.85,
+              14.95,
+              7.07
+            ]
+          ],
+          "materials": [
+            "CoralReef_BackdropPivot",
+            "CoralReef_PremiumBackdropTexture",
+            "CoralReef_BackdropBackingMat"
+          ]
+        },
+        "complete": {
+          "path": "Complete/CoralReef_PremiumFrameBackdrop_HQ.glb",
+          "bytes": 3418308,
+          "mesh_parts": 16,
+          "triangles": 1582,
+          "embedded_images": 14,
+          "bounds": [
+            [
+              -22.4,
+              -2.5,
+              -9.282
+            ],
+            [
+              22.4,
+              18.3,
+              8.85
+            ]
+          ],
+          "materials": [
+            "CoralReef_Pivot",
+            "CoralReef_TopFrameTexture",
+            "CoralReef_BottomFrameTexture",
+            "CoralReef_LeftFrameTexture",
+            "CoralReef_RightFrameTexture",
+            "CoralReef_PlaqueTrim",
+            "CoralReef_PlaqueInset",
+            "CoralReef_TopBadgeTrim",
+            "CoralReef_TopBadgeInsetMat",
+            "CoralReef_PearlBadgeMat",
+            "CoralReef_PrimaryMat",
+            "CoralReef_TrimMat",
+            "CoralReef_AccentMat",
+            "CoralReef_BackdropPivot",
+            "CoralReef_PremiumBackdropTexture",
+            "CoralReef_BackdropBackingMat"
+          ]
+        }
+      },
+      "preview": "Previews/CoralReef_HQPreview.png"
+    },
+    {
+      "id": "DeepOcean",
+      "display_name": "Deep Ocean",
+      "files": {
+        "frame": {
+          "path": "Frames/DeepOcean_PremiumFrame_HQ.glb",
+          "bytes": 1575480,
+          "mesh_parts": 13,
+          "triangles": 1188,
+          "embedded_images": 12,
+          "bounds": [
+            [
+              -22.4,
+              -2.5,
+              -9.305
+            ],
+            [
+              22.4,
+              18.3,
+              8.85
+            ]
+          ],
+          "materials": [
+            "DeepOcean_Pivot",
+            "DeepOcean_TopFrameTexture",
+            "DeepOcean_BottomFrameTexture",
+            "DeepOcean_LeftFrameTexture",
+            "DeepOcean_RightFrameTexture",
+            "DeepOcean_PlaqueTrim",
+            "DeepOcean_PlaqueInset",
+            "DeepOcean_TopBadgeTrim",
+            "DeepOcean_TopBadgeInsetMat",
+            "DeepOcean_AbyssGemMat",
+            "DeepOcean_PrimaryMat",
+            "DeepOcean_TrimMat",
+            "DeepOcean_AccentMat"
+          ]
+        },
+        "backdrop": {
+          "path": "Backdrops/DeepOcean_PremiumBackdrop_HQ.glb",
+          "bytes": 1216552,
+          "mesh_parts": 3,
+          "triangles": 90,
+          "embedded_images": 2,
+          "bounds": [
+            [
+              -19.85,
+              -0.06,
+              6.93
+            ],
+            [
+              19.85,
+              14.95,
+              7.07
+            ]
+          ],
+          "materials": [
+            "DeepOcean_BackdropPivot",
+            "DeepOcean_PremiumBackdropTexture",
+            "DeepOcean_BackdropBackingMat"
+          ]
+        },
+        "complete": {
+          "path": "Complete/DeepOcean_PremiumFrameBackdrop_HQ.glb",
+          "bytes": 2790312,
+          "mesh_parts": 16,
+          "triangles": 1278,
+          "embedded_images": 14,
+          "bounds": [
+            [
+              -22.4,
+              -2.5,
+              -9.305
+            ],
+            [
+              22.4,
+              18.3,
+              8.85
+            ]
+          ],
+          "materials": [
+            "DeepOcean_Pivot",
+            "DeepOcean_TopFrameTexture",
+            "DeepOcean_BottomFrameTexture",
+            "DeepOcean_LeftFrameTexture",
+            "DeepOcean_RightFrameTexture",
+            "DeepOcean_PlaqueTrim",
+            "DeepOcean_PlaqueInset",
+            "DeepOcean_TopBadgeTrim",
+            "DeepOcean_TopBadgeInsetMat",
+            "DeepOcean_AbyssGemMat",
+            "DeepOcean_PrimaryMat",
+            "DeepOcean_TrimMat",
+            "DeepOcean_AccentMat",
+            "DeepOcean_BackdropPivot",
+            "DeepOcean_PremiumBackdropTexture",
+            "DeepOcean_BackdropBackingMat"
+          ]
+        }
+      },
+      "preview": "Previews/DeepOcean_HQPreview.png"
+    },
+    {
+      "id": "JapaneseKoiPond",
+      "display_name": "Japanese Koi Pond",
+      "files": {
+        "frame": {
+          "path": "Frames/JapaneseKoiPond_PremiumFrame_HQ.glb",
+          "bytes": 1671244,
+          "mesh_parts": 12,
+          "triangles": 1284,
+          "embedded_images": 12,
+          "bounds": [
+            [
+              -22.4,
+              -2.5,
+              -9.09
+            ],
+            [
+              22.4,
+              18.3,
+              8.85
+            ]
+          ],
+          "materials": [
+            "JapaneseKoiPond_Pivot",
+            "JapaneseKoiPond_TopFrameTexture",
+            "JapaneseKoiPond_BottomFrameTexture",
+            "JapaneseKoiPond_LeftFrameTexture",
+            "JapaneseKoiPond_RightFrameTexture",
+            "JapaneseKoiPond_PlaqueTrim",
+            "JapaneseKoiPond_PlaqueInset",
+            "JapaneseKoiPond_TopBadgeTrim",
+            "JapaneseKoiPond_TopBadgeInsetMat",
+            "JapaneseKoiPond_PrimaryMat",
+            "JapaneseKoiPond_TrimMat",
+            "JapaneseKoiPond_AccentMat"
+          ]
+        },
+        "backdrop": {
+          "path": "Backdrops/JapaneseKoiPond_PremiumBackdrop_HQ.glb",
+          "bytes": 1729512,
+          "mesh_parts": 3,
+          "triangles": 90,
+          "embedded_images": 2,
+          "bounds": [
+            [
+              -19.85,
+              -0.06,
+              6.93
+            ],
+            [
+              19.85,
+              14.95,
+              7.07
+            ]
+          ],
+          "materials": [
+            "JapaneseKoiPond_BackdropPivot",
+            "JapaneseKoiPond_PremiumBackdropTexture",
+            "JapaneseKoiPond_BackdropBackingMat"
+          ]
+        },
+        "complete": {
+          "path": "Complete/JapaneseKoiPond_PremiumFrameBackdrop_HQ.glb",
+          "bytes": 3399020,
+          "mesh_parts": 15,
+          "triangles": 1374,
+          "embedded_images": 14,
+          "bounds": [
+            [
+              -22.4,
+              -2.5,
+              -9.09
+            ],
+            [
+              22.4,
+              18.3,
+              8.85
+            ]
+          ],
+          "materials": [
+            "JapaneseKoiPond_Pivot",
+            "JapaneseKoiPond_TopFrameTexture",
+            "JapaneseKoiPond_BottomFrameTexture",
+            "JapaneseKoiPond_LeftFrameTexture",
+            "JapaneseKoiPond_RightFrameTexture",
+            "JapaneseKoiPond_PlaqueTrim",
+            "JapaneseKoiPond_PlaqueInset",
+            "JapaneseKoiPond_TopBadgeTrim",
+            "JapaneseKoiPond_TopBadgeInsetMat",
+            "JapaneseKoiPond_PrimaryMat",
+            "JapaneseKoiPond_TrimMat",
+            "JapaneseKoiPond_AccentMat",
+            "JapaneseKoiPond_BackdropPivot",
+            "JapaneseKoiPond_PremiumBackdropTexture",
+            "JapaneseKoiPond_BackdropBackingMat"
+          ]
+        }
+      },
+      "preview": "Previews/JapaneseKoiPond_HQPreview.png"
+    },
+    {
+      "id": "ModernGlass",
+      "display_name": "Modern Glass",
+      "files": {
+        "frame": {
+          "path": "Frames/ModernGlass_PremiumFrame_HQ.glb",
+          "bytes": 1074360,
+          "mesh_parts": 12,
+          "triangles": 1428,
+          "embedded_images": 12,
+          "bounds": [
+            [
+              -22.0,
+              -2.5,
+              -9.225
+            ],
+            [
+              22.0,
+              18.3,
+              8.45
+            ]
+          ],
+          "materials": [
+            "ModernGlass_Pivot",
+            "ModernGlass_TopFrameTexture",
+            "ModernGlass_BottomFrameTexture",
+            "ModernGlass_LeftFrameTexture",
+            "ModernGlass_RightFrameTexture",
+            "ModernGlass_PlaqueTrim",
+            "ModernGlass_PlaqueInset",
+            "ModernGlass_TopBadgeTrim",
+            "ModernGlass_TopBadgeInsetMat",
+            "ModernGlass_ModernGemMat",
+            "ModernGlass_PrimaryMat",
+            "ModernGlass_TrimMat"
+          ]
+        },
+        "backdrop": {
+          "path": "Backdrops/ModernGlass_PremiumBackdrop_HQ.glb",
+          "bytes": 1375192,
+          "mesh_parts": 3,
+          "triangles": 90,
+          "embedded_images": 2,
+          "bounds": [
+            [
+              -19.85,
+              -0.06,
+              6.93
+            ],
+            [
+              19.85,
+              14.95,
+              7.07
+            ]
+          ],
+          "materials": [
+            "ModernGlass_BackdropPivot",
+            "ModernGlass_PremiumBackdropTexture",
+            "ModernGlass_BackdropBackingMat"
+          ]
+        },
+        "complete": {
+          "path": "Complete/ModernGlass_PremiumFrameBackdrop_HQ.glb",
+          "bytes": 2447816,
+          "mesh_parts": 15,
+          "triangles": 1518,
+          "embedded_images": 14,
+          "bounds": [
+            [
+              -22.0,
+              -2.5,
+              -9.225
+            ],
+            [
+              22.0,
+              18.3,
+              8.45
+            ]
+          ],
+          "materials": [
+            "ModernGlass_Pivot",
+            "ModernGlass_TopFrameTexture",
+            "ModernGlass_BottomFrameTexture",
+            "ModernGlass_LeftFrameTexture",
+            "ModernGlass_RightFrameTexture",
+            "ModernGlass_PlaqueTrim",
+            "ModernGlass_PlaqueInset",
+            "ModernGlass_TopBadgeTrim",
+            "ModernGlass_TopBadgeInsetMat",
+            "ModernGlass_ModernGemMat",
+            "ModernGlass_PrimaryMat",
+            "ModernGlass_TrimMat",
+            "ModernGlass_BackdropPivot",
+            "ModernGlass_PremiumBackdropTexture",
+            "ModernGlass_BackdropBackingMat"
+          ]
+        }
+      },
+      "preview": "Previews/ModernGlass_HQPreview.png"
+    },
+    {
+      "id": "PirateShip",
+      "display_name": "Pirate Ship",
+      "files": {
+        "frame": {
+          "path": "Frames/PirateShip_PremiumFrame_HQ.glb",
+          "bytes": 2175428,
+          "mesh_parts": 13,
+          "triangles": 3428,
+          "embedded_images": 12,
+          "bounds": [
+            [
+              -22.4,
+              -2.5,
+              -9.84
+            ],
+            [
+              22.4,
+              18.3,
+              8.85
+            ]
+          ],
+          "materials": [
+            "PirateShip_Pivot",
+            "PirateShip_TopFrameTexture",
+            "PirateShip_BottomFrameTexture",
+            "PirateShip_LeftFrameTexture",
+            "PirateShip_RightFrameTexture",
+            "PirateShip_PlaqueTrim",
+            "PirateShip_PlaqueInset",
+            "PirateShip_TopBadgeTrim",
+            "PirateShip_TopBadgeInsetMat",
+            "PirateShip_RopeMat",
+            "PirateShip_PrimaryMat",
+            "PirateShip_TrimMat",
+            "PirateShip_AccentMat"
+          ]
+        },
+        "backdrop": {
+          "path": "Backdrops/PirateShip_PremiumBackdrop_HQ.glb",
+          "bytes": 1359396,
+          "mesh_parts": 3,
+          "triangles": 90,
+          "embedded_images": 2,
+          "bounds": [
+            [
+              -19.85,
+              -0.06,
+              6.93
+            ],
+            [
+              19.85,
+              14.95,
+              7.07
+            ]
+          ],
+          "materials": [
+            "PirateShip_BackdropPivot",
+            "PirateShip_PremiumBackdropTexture",
+            "PirateShip_BackdropBackingMat"
+          ]
+        },
+        "complete": {
+          "path": "Complete/PirateShip_PremiumFrameBackdrop_HQ.glb",
+          "bytes": 3533104,
+          "mesh_parts": 16,
+          "triangles": 3518,
+          "embedded_images": 14,
+          "bounds": [
+            [
+              -22.4,
+              -2.5,
+              -9.84
+            ],
+            [
+              22.4,
+              18.3,
+              8.85
+            ]
+          ],
+          "materials": [
+            "PirateShip_Pivot",
+            "PirateShip_TopFrameTexture",
+            "PirateShip_BottomFrameTexture",
+            "PirateShip_LeftFrameTexture",
+            "PirateShip_RightFrameTexture",
+            "PirateShip_PlaqueTrim",
+            "PirateShip_PlaqueInset",
+            "PirateShip_TopBadgeTrim",
+            "PirateShip_TopBadgeInsetMat",
+            "PirateShip_RopeMat",
+            "PirateShip_PrimaryMat",
+            "PirateShip_TrimMat",
+            "PirateShip_AccentMat",
+            "PirateShip_BackdropPivot",
+            "PirateShip_PremiumBackdropTexture",
+            "PirateShip_BackdropBackingMat"
+          ]
+        }
+      },
+      "preview": "Previews/PirateShip_HQPreview.png"
+    },
+    {
+      "id": "AncientRuins",
+      "display_name": "Ancient Ruins",
+      "files": {
+        "frame": {
+          "path": "Frames/AncientRuins_PremiumFrame_HQ.glb",
+          "bytes": 2108540,
+          "mesh_parts": 16,
+          "triangles": 2776,
+          "embedded_images": 12,
+          "bounds": [
+            [
+              -22.475,
+              -2.577,
+              -9.83
+            ],
+            [
+              22.475,
+              18.388,
+              8.925
+            ]
+          ],
+          "materials": [
+            "AncientRuins_Pivot",
+            "AncientRuins_TopFrameTexture",
+            "AncientRuins_BottomFrameTexture",
+            "AncientRuins_LeftFrameTexture",
+            "AncientRuins_RightFrameTexture",
+            "AncientRuins_PlaqueTrim",
+            "AncientRuins_PlaqueInset",
+            "AncientRuins_TopBadgeTrim",
+            "AncientRuins_TopBadgeInsetMat",
+            "AncientRuins_MasonryMat",
+            "AncientRuins_GoldMedallionMat",
+            "AncientRuins_MossMat",
+            "AncientRuins_PrimaryMat",
+            "AncientRuins_SecondaryMat",
+            "AncientRuins_TrimMat",
+            "AncientRuins_AccentMat"
+          ]
+        },
+        "backdrop": {
+          "path": "Backdrops/AncientRuins_PremiumBackdrop_HQ.glb",
+          "bytes": 1597720,
+          "mesh_parts": 3,
+          "triangles": 90,
+          "embedded_images": 2,
+          "bounds": [
+            [
+              -19.85,
+              -0.06,
+              6.93
+            ],
+            [
+              19.85,
+              14.95,
+              7.07
+            ]
+          ],
+          "materials": [
+            "AncientRuins_BackdropPivot",
+            "AncientRuins_PremiumBackdropTexture",
+            "AncientRuins_BackdropBackingMat"
+          ]
+        },
+        "complete": {
+          "path": "Complete/AncientRuins_PremiumFrameBackdrop_HQ.glb",
+          "bytes": 3704576,
+          "mesh_parts": 19,
+          "triangles": 2866,
+          "embedded_images": 14,
+          "bounds": [
+            [
+              -22.475,
+              -2.577,
+              -9.83
+            ],
+            [
+              22.475,
+              18.388,
+              8.925
+            ]
+          ],
+          "materials": [
+            "AncientRuins_Pivot",
+            "AncientRuins_TopFrameTexture",
+            "AncientRuins_BottomFrameTexture",
+            "AncientRuins_LeftFrameTexture",
+            "AncientRuins_RightFrameTexture",
+            "AncientRuins_PlaqueTrim",
+            "AncientRuins_PlaqueInset",
+            "AncientRuins_TopBadgeTrim",
+            "AncientRuins_TopBadgeInsetMat",
+            "AncientRuins_MasonryMat",
+            "AncientRuins_GoldMedallionMat",
+            "AncientRuins_MossMat",
+            "AncientRuins_PrimaryMat",
+            "AncientRuins_SecondaryMat",
+            "AncientRuins_TrimMat",
+            "AncientRuins_AccentMat",
+            "AncientRuins_BackdropPivot",
+            "AncientRuins_PremiumBackdropTexture",
+            "AncientRuins_BackdropBackingMat"
+          ]
+        }
+      },
+      "preview": "Previews/AncientRuins_HQPreview.png"
+    }
+  ]
+}

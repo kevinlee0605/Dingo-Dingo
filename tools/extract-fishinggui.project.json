@@ -1,0 +1,11 @@
+{
+  "name": "Extract FishingGui",
+  "tree": {
+    "$className": "DataModel",
+    "StarterGui": {
+      "FishingGui": {
+        "$path": "../src/startergui/FishingGui.rbxm"
+      }
+    }
+  }
+}

@@ -19,9 +19,9 @@ return {
 			objectiveType = "catch_specific_fish",
 			target = 5,
 			specificFishPools = {
-				BeginnerPond = { "Carp", "Bass" },
-				River = { "Salmon", "Pike" },
-				Ocean = { "Tuna", "Swordfish" },
+				LilyshoreIsland = { "Carp", "Bass" },
+				RiverbendIsland = { "Salmon", "Pike" },
+				CoralCoastIsland = { "Tuna", "Swordfish" },
 			},
 			reward = {
 				coins = 750,

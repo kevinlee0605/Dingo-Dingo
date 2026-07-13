@@ -2,37 +2,51 @@ local MonetizationConfig = {}
 
 MonetizationConfig.GamePasses = {
 	VipAngler = {
-		id = 100000001,
+		id = 1899255488,
 		name = "VIP Angler Pass",
 		priceRobux = 399,
+		purchasable = true,
 		description = "Gold VIP tag, 10% fish sell bonus, daily bait reward, and VIP Angler title.",
 	},
 	AquariumDesigner = {
-		id = 100000002,
+		id = 1904724486,
 		name = "Aquarium Designer Pass",
 		priceRobux = 299,
+		purchasable = true,
 		description = "Premium aquarium themes, decorations, lighting colors, background colors, and display sign text.",
 	},
 	SmallBag = {
-		id = 100000003,
+		id = 1904640504,
+		Id = 1904640504,
 		name = "Small Bag Upgrade",
 		priceRobux = 99,
+		Price = 99,
+		purchasable = true,
 		description = "+25 fish inventory slots forever.",
 		bonusSlots = 25,
+		ExtraSlots = 25,
 	},
 	MediumBag = {
-		id = 100000004,
+		id = 1903062870,
+		Id = 1903062870,
 		name = "Medium Bag Upgrade",
 		priceRobux = 199,
+		Price = 199,
+		purchasable = true,
 		description = "+50 fish inventory slots forever.",
 		bonusSlots = 50,
+		ExtraSlots = 50,
 	},
 	LargeBag = {
-		id = 100000005,
+		id = 1905030494,
+		Id = 1905030494,
 		name = "Large Bag Upgrade",
 		priceRobux = 349,
+		Price = 349,
+		purchasable = true,
 		description = "+100 fish inventory slots forever.",
 		bonusSlots = 100,
+		ExtraSlots = 100,
 	},
 }
 
@@ -45,29 +59,99 @@ MonetizationConfig.GamePassOrder = {
 }
 
 MonetizationConfig.DeveloperProducts = {
+	StarterCoinPack = {
+		id = 3609444402,
+		Id = 3609444402,
+		name = "Starter Coin Pack",
+		priceRobux = 29,
+		Price = 29,
+		purchasable = true,
+		description = "Adds 2,500 Coins.",
+		coinAmount = 2500,
+		CoinAmount = 2500,
+	},
+	SmallCoinPack = {
+		id = 3609446421,
+		Id = 3609446421,
+		name = "Small Coin Pack",
+		priceRobux = 79,
+		Price = 79,
+		purchasable = true,
+		description = "Adds 7,500 Coins.",
+		coinAmount = 7500,
+		CoinAmount = 7500,
+	},
+	MediumCoinPack = {
+		id = 3609447480,
+		Id = 3609447480,
+		name = "Medium Coin Pack",
+		priceRobux = 179,
+		Price = 179,
+		purchasable = true,
+		description = "Adds 20,000 Coins.",
+		coinAmount = 20000,
+		CoinAmount = 20000,
+	},
+	LargeCoinPack = {
+		id = 3609447619,
+		Id = 3609447619,
+		name = "Large Coin Pack",
+		priceRobux = 349,
+		Price = 349,
+		purchasable = true,
+		description = "Adds 50,000 Coins.",
+		coinAmount = 50000,
+		CoinAmount = 50000,
+	},
+	HugeCoinPack = {
+		id = 3609449084,
+		Id = 3609449084,
+		name = "Huge Coin Pack",
+		priceRobux = 699,
+		Price = 699,
+		purchasable = true,
+		description = "Adds 120,000 Coins.",
+		coinAmount = 120000,
+		CoinAmount = 120000,
+	},
 	SmallLuckyBaitPack = {
-		id = 200000001,
+		id = 3608759454,
+		Id = 3608759454,
 		name = "Small Lucky Bait Pack",
-		priceRobux = 49,
+		priceRobux = 79,
+		Price = 79,
+		purchasable = true,
 		description = "Adds 25 Lucky Bait.",
 		baitId = "LuckyBait",
+		BaitId = "LuckyBait",
 		amount = 25,
+		Amount = 25,
 	},
 	MediumLuckyBaitPack = {
-		id = 200000002,
+		id = 3608759498,
+		Id = 3608759498,
 		name = "Medium Lucky Bait Pack",
-		priceRobux = 129,
+		priceRobux = 199,
+		Price = 199,
+		purchasable = true,
 		description = "Adds 75 Lucky Bait.",
 		baitId = "LuckyBait",
+		BaitId = "LuckyBait",
 		amount = 75,
+		Amount = 75,
 	},
 	LargeLuckyBaitPack = {
-		id = 200000003,
+		id = 3608759535,
+		Id = 3608759535,
 		name = "Large Lucky Bait Pack",
-		priceRobux = 299,
+		priceRobux = 399,
+		Price = 399,
+		purchasable = true,
 		description = "Adds 200 Lucky Bait.",
 		baitId = "LuckyBait",
+		BaitId = "LuckyBait",
 		amount = 200,
+		Amount = 200,
 	},
 }
 
@@ -75,6 +159,14 @@ MonetizationConfig.DeveloperProductOrder = {
 	"SmallLuckyBaitPack",
 	"MediumLuckyBaitPack",
 	"LargeLuckyBaitPack",
+}
+
+MonetizationConfig.CoinProductOrder = {
+	"StarterCoinPack",
+	"SmallCoinPack",
+	"MediumCoinPack",
+	"LargeCoinPack",
+	"HugeCoinPack",
 }
 
 MonetizationConfig.Vip = {
@@ -91,10 +183,12 @@ MonetizationConfig.Vip = {
 MonetizationConfig.AquariumDesigner = {
 	defaultDesign = {
 		theme = "Classic",
+		backdropEnabled = true,
 		backgroundColor = "Aqua",
 		lightingColor = "SoftWhite",
 		signText = "",
 		decorations = {},
+		freeDecorations = {},
 	},
 	themes = {
 		Classic = {
@@ -177,6 +271,24 @@ MonetizationConfig.AquariumDesigner = {
 		FrontAccent = { name = "Front Accent", level = 4, x = 0, y = 0.12, z = -0.34, scale = 0.8 },
 	},
 	slotOrder = { "LeftBottom", "MiddleBottom", "RightBottom", "BackWall", "FloatingLeft", "FloatingRight", "BackLeft", "BackRight", "UpperBackLeft", "UpperBackRight", "CenterFeature", "FrontAccent" },
+	freePlacement = {
+		maxByLevel = {
+			[1] = 3,
+			[2] = 5,
+			[3] = 8,
+			[4] = 12,
+		},
+		bounds = {
+			xMin = -0.42,
+			xMax = 0.42,
+			yMin = 0.08,
+			yMax = 0.82,
+			zMin = -0.42,
+			zMax = 0.42,
+			scaleMin = 0.55,
+			scaleMax = 1.35,
+		},
+	},
 	decorations = {
 		None = { name = "None", premium = false },
 		Coral = { name = "Coral", premium = true, color = Color3.fromRGB(255, 112, 96) },
@@ -199,7 +311,10 @@ MonetizationConfig.GamePassById = gamePassById
 
 local developerProductById = {}
 for key, product in pairs(MonetizationConfig.DeveloperProducts) do
-	developerProductById[product.id] = key
+	local productId = tonumber(product.id) or tonumber(product.Id)
+	if productId and productId > 0 then
+		developerProductById[productId] = key
+	end
 end
 MonetizationConfig.DeveloperProductById = developerProductById
 

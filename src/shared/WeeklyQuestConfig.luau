@@ -3,8 +3,8 @@ return {
 	quests = {
 		{
 			id = "weekly_biome_species",
-			title = "Biome Collector",
-			description = "Catch every fish species in the selected biome.",
+			title = "Island Collector",
+			description = "Catch every fish species on the selected island.",
 			objectiveType = "discover_biome_species",
 			reward = {
 				coins = 10000,

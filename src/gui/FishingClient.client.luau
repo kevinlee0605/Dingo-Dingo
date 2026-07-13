@@ -1,3 +1,5 @@
+print("FishingClient started")
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -42,6 +44,7 @@ local TeleportTo = Remotes:WaitForChild("TeleportTo")
 local OpenBiomeWarp = Remotes:WaitForChild("OpenBiomeWarp", 10)
 local OpenSellFish = Remotes:WaitForChild("OpenSellFish", 10)
 local OpenRodShop = Remotes:WaitForChild("OpenRodShop", 10)
+local OpenAquariumHub = Remotes:WaitForChild("OpenAquariumHub", 10)
 local AquariumAction = Remotes:WaitForChild("AquariumAction")
 local ToggleAutoFish = Remotes:WaitForChild("ToggleAutoFish")
 local StateUpdated = Remotes:WaitForChild("StateUpdated")
@@ -49,46 +52,75 @@ local FishingPrompt = Remotes:WaitForChild("FishingPrompt")
 local Notice = Remotes:WaitForChild("Notice")
 local GetState = Remotes:WaitForChild("GetState")
 
-local function fireBaitAction(action, baitId)
-	if not BaitAction then
-		BaitAction = Remotes:FindFirstChild("BaitAction")
-	end
+local RemoteActions = require(script:WaitForChild("RemoteActions"))
+local PanelMarkers = require(script:WaitForChild("PanelMarkers"))
+local PlayerGuiDebug = require(script:WaitForChild("PlayerGuiDebug"))
+local LegacyRightUiCleanup = require(script:WaitForChild("LegacyRightUiCleanup"))
+local IslandState = require(script:WaitForChild("IslandState"))
+local GuiPrimitives = require(script:WaitForChild("GuiPrimitives"))
+local BaitHelpers = require(script:WaitForChild("BaitHelpers"))
+local QuestHelpers = require(script:WaitForChild("QuestHelpers"))
+local LeaderboardHelpers = require(script:WaitForChild("LeaderboardHelpers"))
 
-	if BaitAction then
-		BaitAction:FireServer(action, baitId)
-	else
-		warn("BaitAction remote was not available; bait shop actions are disabled until remotes resync.")
-	end
-end
-
-local function fireQuestAction(action, periodName, questId)
-	if not QuestAction then
-		QuestAction = Remotes:FindFirstChild("QuestAction")
-	end
-
-	if QuestAction then
-		QuestAction:FireServer(action, periodName, questId)
-	else
-		warn("QuestAction remote was not available; quest claiming is disabled until remotes resync.")
-	end
-end
-
-local function fireShopAction(action, category, itemKey, payload)
-	if not ShopAction then
-		ShopAction = Remotes:FindFirstChild("ShopAction")
-	end
-
-	if ShopAction then
-		ShopAction:FireServer(action, category, itemKey, payload)
-	else
-		warn("ShopAction remote was not available; shop actions are disabled until remotes resync.")
-	end
-end
+local remoteActions = RemoteActions.create({
+	Remotes = Remotes,
+	BaitAction = BaitAction,
+	QuestAction = QuestAction,
+	ShopAction = ShopAction,
+})
+local fireBaitAction = remoteActions.fireBaitAction
+local fireQuestAction = remoteActions.fireQuestAction
+local fireShopAction = remoteActions.fireShopAction
 
 local screenGui = script.Parent
-screenGui.IgnoreGuiInset = true
-screenGui.DisplayOrder = 20
+screenGui.Enabled = true
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = false
+screenGui.DisplayOrder = 100
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local panelMarkers = PanelMarkers.setup(screenGui)
+local openPanelEvent = panelMarkers.openPanelEvent
+
+local pendingPanelRequests = {}
+local openFishingPanelRequest = nil
+openPanelEvent.Event:Connect(function(tabName)
+	if openFishingPanelRequest then
+		openFishingPanelRequest(tabName)
+	else
+		table.insert(pendingPanelRequests, tabName)
+	end
+end)
+
+local playerGui = player:WaitForChild("PlayerGui")
+
+local playerGuiDebug = PlayerGuiDebug.create({
+	playerGui = playerGui,
+	screenGui = screenGui,
+})
+local printPlayerGuiChildren = playerGuiDebug.printPlayerGuiChildren
+local printFishingGuiChildren = playerGuiDebug.printFishingGuiChildren
+local printPlayerGuiScreenGuis = playerGuiDebug.printPlayerGuiScreenGuis
+
+local legacyRightUiCleanup = LegacyRightUiCleanup.create({
+	scriptFullName = script:GetFullName(),
+})
+local disableLegacyRightUi = legacyRightUiCleanup.disableLegacyRightUi
+local watchLegacyAquariumViewerTools = legacyRightUiCleanup.watchLegacyAquariumViewerTools
+
+for _, gui in ipairs(playerGui:GetChildren()) do
+	disableLegacyRightUi(gui)
+end
+playerGui.ChildAdded:Connect(function(child)
+	if child:IsA("ScreenGui") then
+		task.defer(printPlayerGuiScreenGuis, "added " .. child.Name)
+		task.defer(disableLegacyRightUi, child)
+	end
+end)
+task.defer(printPlayerGuiScreenGuis, "initial")
+task.defer(printPlayerGuiChildren)
+task.defer(printFishingGuiChildren)
+legacyRightUiCleanup.printOldRightUiDisabled()
 
 task.defer(function()
 	pcall(function()
@@ -99,13 +131,27 @@ end)
 local state = nil
 local activeTab = "Fishdex"
 local activeQuestPeriod = "Daily"
-local activeShopTab = "Game Passes"
+local activeShopTab = "Passes"
 local fishingBusy = false
 local minigameRunning = false
 local activeMinigameCleanup = nil
 local biomeWarpActualBiome = nil
-local panelCollapsed = false
+local panelCollapsed = true
 local lastFishingBiomeId = nil
+local DEFAULT_FISHING_ISLAND_ID = (GameConfig.IslandOrder and GameConfig.IslandOrder[1])
+	or (GameConfig.BiomeOrder and GameConfig.BiomeOrder[1])
+	or "LilyshoreIsland"
+
+local islandState = IslandState.create({
+	GameConfig = GameConfig,
+	getState = function()
+		return state
+	end,
+})
+local normalizeIslandId = islandState.normalizeIslandId
+local getUnlockedIslands = islandState.getUnlockedIslands
+local getCurrentIslandId = islandState.getCurrentIslandId
+local getActualIslandId = islandState.getActualIslandId
 
 local fishingBlur = Lighting:FindFirstChild("FishyFishUiBlur")
 if not fishingBlur then
@@ -116,236 +162,44 @@ end
 fishingBlur.Enabled = false
 fishingBlur.Size = 0
 
-local function clearChildren(instance)
-	for _, child in ipairs(instance:GetChildren()) do
-		if not child:IsA("UIGridLayout") and not child:IsA("UIListLayout") then
-			child:Destroy()
-		end
-	end
-end
+local guiPrimitives = GuiPrimitives.create({
+	GameConfig = GameConfig,
+})
+local clearChildren = guiPrimitives.clearChildren
+local addCorner = guiPrimitives.addCorner
+local addStroke = guiPrimitives.addStroke
+local addGradient = guiPrimitives.addGradient
+local setCornerRadius = guiPrimitives.setCornerRadius
+local styleOutlinedText = guiPrimitives.styleOutlinedText
+local forcePureWhiteText = guiPrimitives.forcePureWhiteText
+local limitTextSize = guiPrimitives.limitTextSize
+local addGloss = guiPrimitives.addGloss
+local makeText = guiPrimitives.makeText
+local makeButton = guiPrimitives.makeButton
+local makeFishIcon = guiPrimitives.makeFishIcon
+local makeRodIcon = guiPrimitives.makeRodIcon
 
-local function addCorner(parent, radius)
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, radius or 8)
-	corner.Parent = parent
-	return corner
-end
-
-local function addStroke(parent, color, thickness)
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = color or Color3.fromRGB(45, 52, 64)
-	stroke.Thickness = thickness or 1
-	stroke.Parent = parent
-	return stroke
-end
-
-local function addGradient(parent, topColor, bottomColor, rotation)
-	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, topColor),
-		ColorSequenceKeypoint.new(1, bottomColor),
-	})
-	gradient.Rotation = rotation or 90
-	gradient.Parent = parent
-	return gradient
-end
-
-local function setCornerRadius(parent, radius)
-	local corner = parent:FindFirstChildOfClass("UICorner")
-	if not corner then
-		corner = Instance.new("UICorner")
-		corner.Parent = parent
-	end
-
-	corner.CornerRadius = UDim.new(0, radius)
-	return corner
-end
-
-local function styleOutlinedText(label, size)
-	label.Font = Enum.Font.FredokaOne
-	label.TextSize = size or label.TextSize
-	label.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
-	label.TextStrokeTransparency = 1
-	label.TextColor3 = Color3.fromRGB(255, 255, 255)
-	label.TextTransparency = 0
-	label.RichText = false
-end
-
-local function forcePureWhiteText(label)
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextTransparency = 0
-	label.TextStrokeColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 1
-end
-
-local function limitTextSize(label, minSize, maxSize)
-	local constraint = label:FindFirstChildOfClass("UITextSizeConstraint")
-	if not constraint then
-		constraint = Instance.new("UITextSizeConstraint")
-		constraint.Parent = label
-	end
-
-	constraint.MinTextSize = minSize
-	constraint.MaxTextSize = maxSize
-	return constraint
-end
-
-local function addGloss(parent, position, size)
-	local gloss = Instance.new("Frame")
-	gloss.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	gloss.BackgroundTransparency = 0.72
-	gloss.Position = position
-	gloss.Size = size
-	gloss.ZIndex = (parent.ZIndex or 1) + 1
-	gloss.Parent = parent
-	addCorner(gloss, 24)
-
-	local gradient = Instance.new("UIGradient")
-	gradient.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.05),
-		NumberSequenceKeypoint.new(0.45, 0.6),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	gradient.Rotation = 18
-	gradient.Parent = gloss
-
-	return gloss
-end
-
-local function makeText(parent, text, size, color, bold)
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Font = bold and Enum.Font.GothamBold or Enum.Font.Gotham
-	label.Text = text
-	label.TextColor3 = color or Color3.fromRGB(240, 244, 248)
-	label.TextSize = size
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.TextYAlignment = Enum.TextYAlignment.Center
-	label.Parent = parent
-	return label
-end
-
-local function makeButton(parent, text, color)
-	local button = Instance.new("TextButton")
-	button.AutoButtonColor = true
-	button.BackgroundColor3 = color or Color3.fromRGB(48, 126, 230)
-	button.Font = Enum.Font.GothamBold
-	button.Text = text
-	button.TextColor3 = Color3.fromRGB(255, 255, 255)
-	button.TextSize = 14
-	button.Parent = parent
-	addCorner(button, 7)
-	addStroke(button, Color3.fromRGB(255, 255, 255), 1).Transparency = 0.85
-	return button
-end
-
-local function makeFishIcon(parent, fishId, rarity, discovered)
-	local color = GameConfig.RarityColors[rarity] or Color3.fromRGB(130, 146, 166)
-	local frame = Instance.new("Frame")
-	frame.BackgroundColor3 = Color3.fromRGB(21, 28, 38)
-	frame.Parent = parent
-	addCorner(frame, 6)
-	addStroke(frame, color, 1).Transparency = discovered == false and 0.55 or 0.2
-
-	local imageId = discovered == false and nil or GameConfig.getFishImage(fishId)
-	if imageId then
-		local image = Instance.new("ImageLabel")
-		image.BackgroundTransparency = 1
-		image.Image = imageId
-		image.ScaleType = Enum.ScaleType.Fit
-		image.Size = UDim2.fromScale(1, 1)
-		image.Position = UDim2.fromScale(0, 0)
-		image.Parent = frame
-	else
-		local label = makeText(frame, discovered == false and "?" or "FISH", 12, color, true)
-		label.TextXAlignment = Enum.TextXAlignment.Center
-		label.Size = UDim2.fromScale(1, 1)
-	end
-
-	return frame
-end
-
-local function makeRodIcon(parent, rodId)
-	local frame = Instance.new("Frame")
-	frame.BackgroundColor3 = Color3.fromRGB(21, 28, 38)
-	frame.Parent = parent
-	addCorner(frame, 6)
-	addStroke(frame, Color3.fromRGB(130, 146, 166), 1).Transparency = 0.2
-
-	local imageId = GameConfig.getRodImage(rodId)
-	if imageId then
-		local image = Instance.new("ImageLabel")
-		image.BackgroundTransparency = 1
-		image.Image = imageId
-		image.ScaleType = Enum.ScaleType.Fit
-		image.Size = UDim2.fromScale(1, 1)
-		image.Position = UDim2.fromScale(0, 0)
-		image.Parent = frame
-	else
-		local label = makeText(frame, "NO IMAGE", 10, Color3.fromRGB(160, 174, 192), true)
-		label.TextXAlignment = Enum.TextXAlignment.Center
-		label.Size = UDim2.fromScale(1, 1)
-	end
-
-	return frame
-end
-
-local function getBaitData(baitId)
-	return GameConfig.getBait(baitId)
-end
-
-local function getBaitCount(baitId)
-	if not state then
-		return 0
-	end
-
-	baitId = baitId or GameConfig.BasicBaitId
-	if baitId == GameConfig.BasicBaitId then
-		return math.huge
-	end
-
-	local inventory = state.BaitInventory or {}
-	return math.max(0, math.floor(tonumber(inventory[baitId]) or 0))
-end
-
-local function getBaitCountText(baitId, count)
-	if baitId == GameConfig.BasicBaitId or count == math.huge or count == -1 then
-		return "Unlimited"
-	end
-
-	return tostring(count or getBaitCount(baitId)) .. " left"
-end
-
-local function getEquippedBaitDisplay()
-	local baitId = state and state.EquippedBait or GameConfig.BasicBaitId
-	local bait = getBaitData(baitId)
-	local remaining = state and state.EquippedBaitRemaining or -1
-
-	return "Bait: " .. bait.displayName .. " (" .. getBaitCountText(baitId, remaining) .. ")"
-end
-
-local function getBaitEffectText(bait)
-	local parts = {}
-
-	if (tonumber(bait.biteSpeedMultiplier) or 1) < 1 then
-		table.insert(parts, "faster bites")
-	end
-	if (tonumber(bait.rareChanceBonus) or 0) > 0 then
-		table.insert(parts, "+" .. tostring(math.floor((bait.rareChanceBonus or 0) * 100)) .. "% rare luck")
-	end
-	if (tonumber(bait.valueMultiplier) or 1) > 1 then
-		table.insert(parts, "+" .. tostring(math.floor(((bait.valueMultiplier or 1) - 1) * 100 + 0.5)) .. "% value")
-	end
-	if (tonumber(bait.xpMultiplier) or 1) > 1 then
-		table.insert(parts, "+" .. tostring(math.floor(((bait.xpMultiplier or 1) - 1) * 100 + 0.5)) .. "% XP")
-	end
-
-	if #parts == 0 then
-		return bait.description or "Default fishing."
-	end
-
-	return table.concat(parts, " | ")
-end
+local baitHelpers = BaitHelpers.create({
+	GameConfig = GameConfig,
+	getState = function()
+		return state
+	end,
+})
+local getBaitData = baitHelpers.getBaitData
+local getBaitCount = baitHelpers.getBaitCount
+local getBaitCountText = baitHelpers.getBaitCountText
+local getEquippedBaitDisplay = baitHelpers.getEquippedBaitDisplay
+local getBaitEffectText = baitHelpers.getBaitEffectText
+local questHelpers = QuestHelpers.create({
+	GameConfig = GameConfig,
+	getState = function()
+		return state
+	end,
+})
+local formatQuestReward = questHelpers.formatQuestReward
+local getQuestPeriod = questHelpers.getQuestPeriod
+local getPlayerLeaderstat = LeaderboardHelpers.getPlayerLeaderstat
+local formatCompactNumber = LeaderboardHelpers.formatCompactNumber
 
 local root = Instance.new("Frame")
 root.Name = "Root"
@@ -355,56 +209,104 @@ root.Size = UDim2.new(1, 0, 1, 0)
 root.BackgroundTransparency = 1
 root.Parent = screenGui
 
-local biomeWarpOverlay = Instance.new("Frame")
-biomeWarpOverlay.Name = "BiomeWarpOverlay"
-biomeWarpOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-biomeWarpOverlay.BackgroundTransparency = 0.35
-biomeWarpOverlay.Size = UDim2.fromScale(1, 1)
-biomeWarpOverlay.Visible = false
-biomeWarpOverlay.ZIndex = 90
-biomeWarpOverlay.Parent = root
+local fishingClientModules = script.Parent:FindFirstChild("FishingClientModules")
+local HudControlsModule = script:FindFirstChild("HudControls") or (fishingClientModules and fishingClientModules:FindFirstChild("HudControls"))
+local ToolHotbarBinderModule = script:FindFirstChild("ToolHotbarBinder") or (fishingClientModules and fishingClientModules:FindFirstChild("ToolHotbarBinder"))
+if not HudControlsModule or not ToolHotbarBinderModule then
+	fishingClientModules = script.Parent:WaitForChild("FishingClientModules", 10)
+	HudControlsModule = HudControlsModule or (fishingClientModules and fishingClientModules:WaitForChild("HudControls", 10))
+	ToolHotbarBinderModule = ToolHotbarBinderModule or (fishingClientModules and fishingClientModules:WaitForChild("ToolHotbarBinder", 10))
+end
+print("FishingClient split modules:", HudControlsModule and HudControlsModule:GetFullName(), ToolHotbarBinderModule and ToolHotbarBinderModule:GetFullName())
+local HudControls = require(HudControlsModule)
+local ToolHotbarBinder = require(ToolHotbarBinderModule)
 
-local biomeWarpPanel = Instance.new("Frame")
-biomeWarpPanel.Name = "BiomeWarpPanel"
-biomeWarpPanel.AnchorPoint = Vector2.new(0.5, 0.5)
-biomeWarpPanel.BackgroundColor3 = Color3.fromRGB(17, 24, 34)
-biomeWarpPanel.Position = UDim2.fromScale(0.5, 0.5)
-biomeWarpPanel.Size = UDim2.new(0, 430, 0, 420)
-biomeWarpPanel.ZIndex = 91
-biomeWarpPanel.Parent = biomeWarpOverlay
-addCorner(biomeWarpPanel, 8)
-addStroke(biomeWarpPanel, Color3.fromRGB(74, 95, 124), 1)
+local hudRefs = HudControls.create({
+	scriptFullName = script:GetFullName(),
+	root = root,
+	screenGui = screenGui,
+	makeText = makeText,
+	makeButton = makeButton,
+	addCorner = addCorner,
+	addStroke = addStroke,
+	addGradient = addGradient,
+	setCornerRadius = setCornerRadius,
+	limitTextSize = limitTextSize,
+	forcePureWhiteText = forcePureWhiteText,
+	addGloss = addGloss,
+	maxLevel = GameConfig.MAX_LEVEL,
+})
 
-local biomeWarpTitle = makeText(biomeWarpPanel, "Biome Warp", 20, Color3.fromRGB(255, 255, 255), true)
-biomeWarpTitle.Position = UDim2.new(0, 18, 0, 12)
-biomeWarpTitle.Size = UDim2.new(1, -72, 0, 28)
-biomeWarpTitle.ZIndex = 92
+task.defer(printPlayerGuiChildren)
+task.defer(printFishingGuiChildren)
 
-local biomeWarpClose = makeButton(biomeWarpPanel, "X", Color3.fromRGB(91, 104, 124))
-biomeWarpClose.Position = UDim2.new(1, -48, 0, 12)
-biomeWarpClose.Size = UDim2.new(0, 32, 0, 28)
-biomeWarpClose.TextSize = 14
-biomeWarpClose.ZIndex = 92
+local statusText = hudRefs.statusText
+local updateCoinsHud = hudRefs.updateCoins
+local updateXPHud = hudRefs.updateXP
+local hudControls = {
+	settings = hudRefs.settingsButton,
+	quests = hudRefs.questsButton,
+	shop = hudRefs.shopButton,
+}
+local setSettingsVisible = hudRefs.setSettingsVisible
+local centerControls = hudRefs.centerControls
+local centerTitle = hudRefs.centerTitle
+local centerBaitText = hudRefs.centerBaitText
+local centerAutoButton = hudRefs.centerAutoButton
+local centerAutoGradient = hudRefs.centerAutoGradient
+local centerCastButton = hudRefs.centerCastButton
 
-local biomeWarpList = Instance.new("Frame")
-biomeWarpList.Name = "BiomeWarpList"
-biomeWarpList.BackgroundTransparency = 1
-biomeWarpList.Position = UDim2.new(0, 16, 0, 54)
-biomeWarpList.Size = UDim2.new(1, -32, 1, -70)
-biomeWarpList.ZIndex = 92
-biomeWarpList.Parent = biomeWarpPanel
+local biomeWarpUI = {}
+biomeWarpUI.biomeWarpOverlay = Instance.new("Frame")
+biomeWarpUI.biomeWarpOverlay.Name = "BiomeWarpOverlay"
+biomeWarpUI.biomeWarpOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+biomeWarpUI.biomeWarpOverlay.BackgroundTransparency = 0.35
+biomeWarpUI.biomeWarpOverlay.Size = UDim2.fromScale(1, 1)
+biomeWarpUI.biomeWarpOverlay.Visible = false
+biomeWarpUI.biomeWarpOverlay.ZIndex = 90
+biomeWarpUI.biomeWarpOverlay.Parent = root
 
-local biomeWarpListLayout = Instance.new("UIListLayout")
-biomeWarpListLayout.Padding = UDim.new(0, 10)
-biomeWarpListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-biomeWarpListLayout.Parent = biomeWarpList
+biomeWarpUI.biomeWarpPanel = Instance.new("Frame")
+biomeWarpUI.biomeWarpPanel.Name = "BiomeWarpPanel"
+biomeWarpUI.biomeWarpPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+biomeWarpUI.biomeWarpPanel.BackgroundColor3 = Color3.fromRGB(17, 24, 34)
+biomeWarpUI.biomeWarpPanel.Position = UDim2.fromScale(0.5, 0.5)
+biomeWarpUI.biomeWarpPanel.Size = UDim2.new(0, 430, 0, 420)
+biomeWarpUI.biomeWarpPanel.ZIndex = 91
+biomeWarpUI.biomeWarpPanel.Parent = biomeWarpUI.biomeWarpOverlay
+addCorner(biomeWarpUI.biomeWarpPanel, 8)
+addStroke(biomeWarpUI.biomeWarpPanel, Color3.fromRGB(74, 95, 124), 1)
+
+biomeWarpUI.biomeWarpTitle = makeText(biomeWarpUI.biomeWarpPanel, "Island Warp", 20, Color3.fromRGB(255, 255, 255), true)
+biomeWarpUI.biomeWarpTitle.Position = UDim2.new(0, 18, 0, 12)
+biomeWarpUI.biomeWarpTitle.Size = UDim2.new(1, -72, 0, 28)
+biomeWarpUI.biomeWarpTitle.ZIndex = 92
+
+biomeWarpUI.biomeWarpClose = makeButton(biomeWarpUI.biomeWarpPanel, "X", Color3.fromRGB(91, 104, 124))
+biomeWarpUI.biomeWarpClose.Position = UDim2.new(1, -48, 0, 12)
+biomeWarpUI.biomeWarpClose.Size = UDim2.new(0, 32, 0, 28)
+biomeWarpUI.biomeWarpClose.TextSize = 14
+biomeWarpUI.biomeWarpClose.ZIndex = 92
+
+biomeWarpUI.biomeWarpList = Instance.new("Frame")
+biomeWarpUI.biomeWarpList.Name = "BiomeWarpList"
+biomeWarpUI.biomeWarpList.BackgroundTransparency = 1
+biomeWarpUI.biomeWarpList.Position = UDim2.new(0, 16, 0, 54)
+biomeWarpUI.biomeWarpList.Size = UDim2.new(1, -32, 1, -70)
+biomeWarpUI.biomeWarpList.ZIndex = 92
+biomeWarpUI.biomeWarpList.Parent = biomeWarpUI.biomeWarpPanel
+
+biomeWarpUI.biomeWarpListLayout = Instance.new("UIListLayout")
+biomeWarpUI.biomeWarpListLayout.Padding = UDim.new(0, 10)
+biomeWarpUI.biomeWarpListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+biomeWarpUI.biomeWarpListLayout.Parent = biomeWarpUI.biomeWarpList
 
 local function setBiomeWarpVisible(visible)
-	biomeWarpOverlay.Visible = visible
+	biomeWarpUI.biomeWarpOverlay.Visible = visible
 end
 
 local function renderBiomeWarpOptions()
-	clearChildren(biomeWarpList)
+	clearChildren(biomeWarpUI.biomeWarpList)
 
 	if not state then
 		return
@@ -412,14 +314,14 @@ local function renderBiomeWarpOptions()
 
 	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
 		local biome = GameConfig.Biomes[biomeId]
-		local unlocked = state.UnlockedBiomes[biomeId] == true
-		local current = biomeWarpActualBiome == biomeId
+		local unlocked = getUnlockedIslands()[biomeId] == true
+		local current = normalizeIslandId(biomeWarpActualBiome) == biomeId
 		local card = Instance.new("Frame")
 		card.Name = biomeId .. "WarpOption"
 		card.BackgroundColor3 = Color3.fromRGB(24, 32, 44)
 		card.Size = UDim2.new(1, 0, 0, 92)
 		card.ZIndex = 92
-		card.Parent = biomeWarpList
+		card.Parent = biomeWarpUI.biomeWarpList
 		addCorner(card, 8)
 		addStroke(card, unlocked and biome.color or Color3.fromRGB(82, 92, 106), 1).Transparency = 0.25
 
@@ -464,86 +366,87 @@ local function openBiomeWarp(actualBiome)
 	setBiomeWarpVisible(true)
 end
 
-biomeWarpClose.MouseButton1Click:Connect(function()
+biomeWarpUI.biomeWarpClose.MouseButton1Click:Connect(function()
 	setBiomeWarpVisible(false)
 end)
 
 if OpenBiomeWarp then
 	OpenBiomeWarp.OnClientEvent:Connect(openBiomeWarp)
 else
-	warn("OpenBiomeWarp remote was not available; biome warp popup is disabled until remotes resync.")
+	warn("OpenBiomeWarp remote was not available; island warp popup is disabled until remotes resync.")
 end
 
-local fishmongerOverlay = Instance.new("Frame")
-fishmongerOverlay.Name = "FishmongerSellOverlay"
-fishmongerOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-fishmongerOverlay.BackgroundTransparency = 0.35
-fishmongerOverlay.Size = UDim2.fromScale(1, 1)
-fishmongerOverlay.Visible = false
-fishmongerOverlay.ZIndex = 95
-fishmongerOverlay.Parent = root
+local fishmongerUI = {}
+fishmongerUI.fishmongerOverlay = Instance.new("Frame")
+fishmongerUI.fishmongerOverlay.Name = "FishmongerSellOverlay"
+fishmongerUI.fishmongerOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+fishmongerUI.fishmongerOverlay.BackgroundTransparency = 0.35
+fishmongerUI.fishmongerOverlay.Size = UDim2.fromScale(1, 1)
+fishmongerUI.fishmongerOverlay.Visible = false
+fishmongerUI.fishmongerOverlay.ZIndex = 95
+fishmongerUI.fishmongerOverlay.Parent = root
 
 local activeFishmongerSort = "Recent"
 
-local fishmongerPanel = Instance.new("Frame")
-fishmongerPanel.Name = "FishmongerSellPanel"
-fishmongerPanel.AnchorPoint = Vector2.new(0.5, 0.5)
-fishmongerPanel.BackgroundColor3 = Color3.fromRGB(17, 24, 34)
-fishmongerPanel.Position = UDim2.fromScale(0.5, 0.5)
-fishmongerPanel.Size = UDim2.new(0, 460, 0, 460)
-fishmongerPanel.ZIndex = 96
-fishmongerPanel.Parent = fishmongerOverlay
-addCorner(fishmongerPanel, 8)
-addStroke(fishmongerPanel, Color3.fromRGB(108, 78, 48), 1)
+fishmongerUI.fishmongerPanel = Instance.new("Frame")
+fishmongerUI.fishmongerPanel.Name = "FishmongerSellPanel"
+fishmongerUI.fishmongerPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+fishmongerUI.fishmongerPanel.BackgroundColor3 = Color3.fromRGB(17, 24, 34)
+fishmongerUI.fishmongerPanel.Position = UDim2.fromScale(0.5, 0.5)
+fishmongerUI.fishmongerPanel.Size = UDim2.new(0, 460, 0, 460)
+fishmongerUI.fishmongerPanel.ZIndex = 96
+fishmongerUI.fishmongerPanel.Parent = fishmongerUI.fishmongerOverlay
+addCorner(fishmongerUI.fishmongerPanel, 8)
+addStroke(fishmongerUI.fishmongerPanel, Color3.fromRGB(108, 78, 48), 1)
 
-local fishmongerTitle = makeText(fishmongerPanel, "Sell Fish", 20, Color3.fromRGB(255, 255, 255), true)
-fishmongerTitle.Position = UDim2.new(0, 18, 0, 12)
-fishmongerTitle.Size = UDim2.new(1, -176, 0, 28)
-fishmongerTitle.ZIndex = 97
+fishmongerUI.fishmongerTitle = makeText(fishmongerUI.fishmongerPanel, "Sell Fish", 20, Color3.fromRGB(255, 255, 255), true)
+fishmongerUI.fishmongerTitle.Position = UDim2.new(0, 18, 0, 12)
+fishmongerUI.fishmongerTitle.Size = UDim2.new(1, -176, 0, 28)
+fishmongerUI.fishmongerTitle.ZIndex = 97
 
-local fishmongerSellAll = makeButton(fishmongerPanel, "Sell All", Color3.fromRGB(230, 126, 48))
-fishmongerSellAll.Position = UDim2.new(1, -146, 0, 12)
-fishmongerSellAll.Size = UDim2.new(0, 90, 0, 28)
-fishmongerSellAll.TextSize = 13
-fishmongerSellAll.ZIndex = 97
+fishmongerUI.fishmongerSellAll = makeButton(fishmongerUI.fishmongerPanel, "Sell All", Color3.fromRGB(230, 126, 48))
+fishmongerUI.fishmongerSellAll.Position = UDim2.new(1, -146, 0, 12)
+fishmongerUI.fishmongerSellAll.Size = UDim2.new(0, 90, 0, 28)
+fishmongerUI.fishmongerSellAll.TextSize = 13
+fishmongerUI.fishmongerSellAll.ZIndex = 97
 
-local fishmongerClose = makeButton(fishmongerPanel, "X", Color3.fromRGB(91, 104, 124))
-fishmongerClose.Position = UDim2.new(1, -48, 0, 12)
-fishmongerClose.Size = UDim2.new(0, 32, 0, 28)
-fishmongerClose.TextSize = 14
-fishmongerClose.ZIndex = 97
+fishmongerUI.fishmongerClose = makeButton(fishmongerUI.fishmongerPanel, "X", Color3.fromRGB(91, 104, 124))
+fishmongerUI.fishmongerClose.Position = UDim2.new(1, -48, 0, 12)
+fishmongerUI.fishmongerClose.Size = UDim2.new(0, 32, 0, 28)
+fishmongerUI.fishmongerClose.TextSize = 14
+fishmongerUI.fishmongerClose.ZIndex = 97
 
-local fishmongerSortBar = Instance.new("Frame")
-fishmongerSortBar.Name = "FishmongerSortBar"
-fishmongerSortBar.Position = UDim2.new(0, 16, 0, 52)
-fishmongerSortBar.Size = UDim2.new(1, -32, 0, 34)
-fishmongerSortBar.BackgroundTransparency = 1
-fishmongerSortBar.ZIndex = 97
-fishmongerSortBar.Parent = fishmongerPanel
+fishmongerUI.fishmongerSortBar = Instance.new("Frame")
+fishmongerUI.fishmongerSortBar.Name = "FishmongerSortBar"
+fishmongerUI.fishmongerSortBar.Position = UDim2.new(0, 16, 0, 52)
+fishmongerUI.fishmongerSortBar.Size = UDim2.new(1, -32, 0, 34)
+fishmongerUI.fishmongerSortBar.BackgroundTransparency = 1
+fishmongerUI.fishmongerSortBar.ZIndex = 97
+fishmongerUI.fishmongerSortBar.Parent = fishmongerUI.fishmongerPanel
 
-local fishmongerSortLayout = Instance.new("UIListLayout")
-fishmongerSortLayout.FillDirection = Enum.FillDirection.Horizontal
-fishmongerSortLayout.Padding = UDim.new(0, 7)
-fishmongerSortLayout.SortOrder = Enum.SortOrder.LayoutOrder
-fishmongerSortLayout.Parent = fishmongerSortBar
+fishmongerUI.fishmongerSortLayout = Instance.new("UIListLayout")
+fishmongerUI.fishmongerSortLayout.FillDirection = Enum.FillDirection.Horizontal
+fishmongerUI.fishmongerSortLayout.Padding = UDim.new(0, 7)
+fishmongerUI.fishmongerSortLayout.SortOrder = Enum.SortOrder.LayoutOrder
+fishmongerUI.fishmongerSortLayout.Parent = fishmongerUI.fishmongerSortBar
 
-local fishmongerList = Instance.new("ScrollingFrame")
-fishmongerList.Name = "FishmongerSellList"
-fishmongerList.Active = true
-fishmongerList.AutomaticCanvasSize = Enum.AutomaticSize.Y
-fishmongerList.BackgroundTransparency = 1
-fishmongerList.BorderSizePixel = 0
-fishmongerList.CanvasSize = UDim2.new(0, 0, 0, 0)
-fishmongerList.Position = UDim2.new(0, 16, 0, 94)
-fishmongerList.ScrollBarThickness = 6
-fishmongerList.Size = UDim2.new(1, -32, 1, -110)
-fishmongerList.ZIndex = 97
-fishmongerList.Parent = fishmongerPanel
+fishmongerUI.fishmongerList = Instance.new("ScrollingFrame")
+fishmongerUI.fishmongerList.Name = "FishmongerSellList"
+fishmongerUI.fishmongerList.Active = true
+fishmongerUI.fishmongerList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+fishmongerUI.fishmongerList.BackgroundTransparency = 1
+fishmongerUI.fishmongerList.BorderSizePixel = 0
+fishmongerUI.fishmongerList.CanvasSize = UDim2.new(0, 0, 0, 0)
+fishmongerUI.fishmongerList.Position = UDim2.new(0, 16, 0, 94)
+fishmongerUI.fishmongerList.ScrollBarThickness = 6
+fishmongerUI.fishmongerList.Size = UDim2.new(1, -32, 1, -110)
+fishmongerUI.fishmongerList.ZIndex = 97
+fishmongerUI.fishmongerList.Parent = fishmongerUI.fishmongerPanel
 
-local fishmongerListLayout = Instance.new("UIListLayout")
-fishmongerListLayout.Padding = UDim.new(0, 10)
-fishmongerListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-fishmongerListLayout.Parent = fishmongerList
+fishmongerUI.fishmongerListLayout = Instance.new("UIListLayout")
+fishmongerUI.fishmongerListLayout.Padding = UDim.new(0, 10)
+fishmongerUI.fishmongerListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+fishmongerUI.fishmongerListLayout.Parent = fishmongerUI.fishmongerList
 
 local POPUP_SCROLL_GUTTER = 18
 
@@ -572,7 +475,7 @@ local function makePopupListCard(parent, name, height, strokeColor, strokeTransp
 end
 
 local function setFishmongerSellVisible(visible)
-	fishmongerOverlay.Visible = visible
+	fishmongerUI.fishmongerOverlay.Visible = visible
 end
 
 local renderFishmongerSellOptions
@@ -591,7 +494,7 @@ local function getFishmongerRarityRank(rarity)
 end
 
 local function renderFishmongerSortButtons()
-	clearChildren(fishmongerSortBar)
+	clearChildren(fishmongerUI.fishmongerSortBar)
 
 	local sortOptions = {
 		{ mode = "Rarity", label = "Rarity" },
@@ -607,7 +510,7 @@ local function renderFishmongerSortButtons()
 			label = option.label .. (activeFishmongerSort == descendingId and ": High" or ": Low")
 		end
 
-		local button = makeButton(fishmongerSortBar, label, selected and Color3.fromRGB(230, 126, 48) or Color3.fromRGB(38, 45, 57))
+		local button = makeButton(fishmongerUI.fishmongerSortBar, label, selected and Color3.fromRGB(230, 126, 48) or Color3.fromRGB(38, 45, 57))
 		button.Size = UDim2.new(0, 132, 1, 0)
 		button.TextSize = 13
 		button.ZIndex = 98
@@ -617,7 +520,7 @@ local function renderFishmongerSortButtons()
 			else
 				activeFishmongerSort = descendingId
 			end
-			fishmongerList.CanvasPosition = Vector2.new(0, 0)
+			fishmongerUI.fishmongerList.CanvasPosition = Vector2.new(0, 0)
 			renderFishmongerSellOptions()
 		end)
 	end
@@ -625,17 +528,17 @@ end
 
 function renderFishmongerSellOptions()
 	renderFishmongerSortButtons()
-	clearChildren(fishmongerList)
+	clearChildren(fishmongerUI.fishmongerList)
 
 	if not state then
-		fishmongerSellAll.Visible = false
+		fishmongerUI.fishmongerSellAll.Visible = false
 		return
 	end
 
-	fishmongerSellAll.Visible = #state.Inventory > 0
+	fishmongerUI.fishmongerSellAll.Visible = #state.Inventory > 0
 
 	if #state.Inventory == 0 then
-		local empty = makeText(fishmongerList, "No fish in your bag.", 16, Color3.fromRGB(190, 204, 220), true)
+		local empty = makeText(fishmongerUI.fishmongerList, "No fish in your bag.", 16, Color3.fromRGB(190, 204, 220), true)
 		empty.Size = UDim2.new(1, -8, 0, 54)
 		empty.ZIndex = 98
 		return
@@ -681,7 +584,7 @@ function renderFishmongerSellOptions()
 		local index = entry.index
 		local color = GameConfig.RarityColors[fish.rarity] or Color3.fromRGB(255, 255, 255)
 
-		local card = makePopupListCard(fishmongerList, "SellOption_" .. tostring(fish.serial or index), 82, color, 0.25)
+		local card = makePopupListCard(fishmongerUI.fishmongerList, "SellOption_" .. tostring(fish.serial or index), 82, color, 0.25)
 
 		local icon = makeFishIcon(card, fish.id, fish.rarity, true)
 		icon.Position = UDim2.new(0, 8, 0, 12)
@@ -714,11 +617,11 @@ local function openFishmongerSell()
 	setFishmongerSellVisible(true)
 end
 
-fishmongerClose.MouseButton1Click:Connect(function()
+fishmongerUI.fishmongerClose.MouseButton1Click:Connect(function()
 	setFishmongerSellVisible(false)
 end)
 
-fishmongerSellAll.MouseButton1Click:Connect(function()
+fishmongerUI.fishmongerSellAll.MouseButton1Click:Connect(function()
 	if state and #state.Inventory > 0 then
 		SellFish:FireServer()
 	end
@@ -822,7 +725,8 @@ end
 local function getRodRequirementText(rod)
 	local text = string.format("Cost: %d | Unlock: Level %d | Luck: +%d%%", rod.cost, rod.unlockLevel, math.floor(rod.luck * 100))
 	if rod.requiredBiome then
-		text ..= " | Requires " .. GameConfig.Biomes[rod.requiredBiome].displayName
+		local requiredIsland = normalizeIslandId(rod.requiredBiome)
+		text ..= " | Requires " .. GameConfig.Biomes[requiredIsland].displayName
 	end
 
 	return text
@@ -843,7 +747,8 @@ function renderRodShopOptions()
 		local equipped = state.EquippedRod == rodId
 		local canAfford = state.Coins >= rod.cost
 		local levelOK = state.Level >= rod.unlockLevel
-		local biomeOK = not rod.requiredBiome or state.UnlockedBiomes[rod.requiredBiome] == true
+		local requiredIsland = normalizeIslandId(rod.requiredBiome)
+		local biomeOK = not requiredIsland or getUnlockedIslands()[requiredIsland] == true
 		local canUseButton = (owned and not equipped) or (not owned and canAfford and levelOK and biomeOK)
 
 		local card = makePopupListCard(rodShopUI.list, rodId .. "ShopOption", 92, owned and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(83, 104, 134), 0.25)
@@ -873,7 +778,7 @@ function renderRodShopOptions()
 		elseif not canAfford then
 			statusText = "Need " .. tostring(rod.cost - state.Coins) .. " more coins."
 		elseif not biomeOK then
-			statusText = "Unlock " .. GameConfig.Biomes[rod.requiredBiome].displayName .. " first."
+			statusText = "Unlock " .. GameConfig.Biomes[requiredIsland].displayName .. " first."
 		end
 
 		local status = makeText(card, statusText, 12, Color3.fromRGB(143, 160, 180), false)
@@ -962,383 +867,291 @@ rodShopUI.close.MouseButton1Click:Connect(function()
 	setRodShopVisible(false)
 end)
 
-local hud = Instance.new("Frame")
-hud.Name = "Hud"
-hud.Position = UDim2.new(0, 18, 0, 18)
-hud.Size = UDim2.new(0, 430, 0, 92)
-hud.BackgroundColor3 = Color3.fromRGB(20, 25, 32)
-hud.BackgroundTransparency = 0.08
-hud.Parent = root
-addCorner(hud, 8)
-addStroke(hud, Color3.fromRGB(71, 85, 105), 1)
+local mainPanelUI = {}
+mainPanelUI.panel = Instance.new("Frame")
+mainPanelUI.panel.Name = "MainPanel"
+mainPanelUI.panel.AnchorPoint = Vector2.new(0.5, 0.5)
+mainPanelUI.panel.Position = UDim2.fromScale(0.5, 0.52)
+mainPanelUI.panel.Size = UDim2.new(0.42, 0, 0.64, 0)
+mainPanelUI.panel.BackgroundColor3 = Color3.fromRGB(18, 22, 29)
+mainPanelUI.panel.BackgroundTransparency = 0.04
+mainPanelUI.panel.Visible = false
+mainPanelUI.panel.ZIndex = 50
+mainPanelUI.panel.Parent = root
+addCorner(mainPanelUI.panel, 8)
+addStroke(mainPanelUI.panel, Color3.fromRGB(71, 85, 105), 1)
 
-local title = makeText(hud, "Fishy Fish", 22, Color3.fromRGB(255, 255, 255), true)
-title.Position = UDim2.new(0, 16, 0, 8)
-title.Size = UDim2.new(1, -32, 0, 28)
+mainPanelUI.panelConstraint = Instance.new("UISizeConstraint")
+mainPanelUI.panelConstraint.MinSize = Vector2.new(330, 360)
+mainPanelUI.panelConstraint.MaxSize = Vector2.new(560, 580)
+mainPanelUI.panelConstraint.Parent = mainPanelUI.panel
 
-local statsText = makeText(hud, "Loading...", 15, Color3.fromRGB(196, 211, 227), false)
-statsText.Position = UDim2.new(0, 16, 0, 40)
-statsText.Size = UDim2.new(1, -32, 0, 22)
+mainPanelUI.panelTitle = makeText(mainPanelUI.panel, "Fishdex", 20, Color3.fromRGB(255, 255, 255), true)
+mainPanelUI.panelTitle.Position = UDim2.new(0, 18, 0, 12)
+mainPanelUI.panelTitle.Size = UDim2.new(1, -86, 0, 30)
+mainPanelUI.panelTitle.ZIndex = 51
 
-local statusText = makeText(hud, "Ready.", 14, Color3.fromRGB(143, 215, 255), false)
-statusText.Position = UDim2.new(0, 16, 0, 64)
-statusText.Size = UDim2.new(1, -32, 0, 20)
+mainPanelUI.panelClose = makeButton(mainPanelUI.panel, "X", Color3.fromRGB(91, 104, 124))
+mainPanelUI.panelClose.Position = UDim2.new(1, -50, 0, 12)
+mainPanelUI.panelClose.Size = UDim2.new(0, 32, 0, 30)
+mainPanelUI.panelClose.ZIndex = 51
 
-local centerControls = Instance.new("Frame")
-centerControls.Name = "CenterControls"
-centerControls.AnchorPoint = Vector2.new(0.5, 1)
-centerControls.Position = UDim2.new(0.5, 0, 1, -84)
-centerControls.Size = UDim2.new(0.68, 0, 0, 126)
-centerControls.BackgroundColor3 = Color3.fromRGB(7, 48, 115)
-centerControls.BackgroundTransparency = 0
-centerControls.ZIndex = 20
-centerControls.Parent = root
-addCorner(centerControls, 28)
-addStroke(centerControls, Color3.fromRGB(0, 88, 215), 7)
-addStroke(centerControls, Color3.fromRGB(87, 198, 255), 2).Transparency = 0.08
-addGradient(centerControls, Color3.fromRGB(11, 65, 147), Color3.fromRGB(4, 34, 91), 90)
-
-local centerConstraint = Instance.new("UISizeConstraint")
-centerConstraint.MinSize = Vector2.new(560, 110)
-centerConstraint.MaxSize = Vector2.new(980, 138)
-centerConstraint.Parent = centerControls
-
-local centerInner = Instance.new("Frame")
-centerInner.Name = "InnerGlow"
-centerInner.Position = UDim2.new(0, 13, 0, 13)
-centerInner.Size = UDim2.new(1, -26, 1, -26)
-centerInner.BackgroundTransparency = 1
-centerInner.ZIndex = 21
-centerInner.Parent = centerControls
-addCorner(centerInner, 28)
-addStroke(centerInner, Color3.fromRGB(73, 180, 255), 2).Transparency = 0.35
-addGloss(centerControls, UDim2.new(0, 24, 0, 15), UDim2.new(0, 108, 0, 10))
-
-local centerTitle = makeText(centerControls, "Beginner Pond", 15, Color3.fromRGB(230, 238, 248), true)
-centerTitle.AnchorPoint = Vector2.new(0.5, 0)
-centerTitle.Position = UDim2.new(0.5, 0, 0, -34)
-centerTitle.Size = UDim2.new(0.43, 0, 0, 62)
-centerTitle.BackgroundColor3 = Color3.fromRGB(20, 143, 255)
-centerTitle.BackgroundTransparency = 1
-centerTitle.ZIndex = 25
-centerTitle.Visible = false
-centerTitle.TextXAlignment = Enum.TextXAlignment.Center
-styleOutlinedText(centerTitle, 36)
-centerTitle.TextScaled = true
-limitTextSize(centerTitle, 18, 26)
-forcePureWhiteText(centerTitle)
-setCornerRadius(centerTitle, 30)
-addStroke(centerTitle, Color3.fromRGB(0, 66, 168), 6)
-addStroke(centerTitle, Color3.fromRGB(104, 208, 255), 2).Transparency = 0.18
-addGradient(centerTitle, Color3.fromRGB(47, 156, 255), Color3.fromRGB(6, 95, 226), 90)
-addGloss(centerTitle, UDim2.new(0, 22, 0, 12), UDim2.new(0, 82, 0, 12))
-
-local centerCastButton = makeButton(centerControls, "Cast Rod", Color3.fromRGB(28, 160, 92))
-centerCastButton.Position = UDim2.new(0, 42, 0, 34)
-centerCastButton.Size = UDim2.new(0.48, -58, 0, 62)
-centerCastButton.ZIndex = 24
-styleOutlinedText(centerCastButton, 38)
-centerCastButton.TextScaled = true
-limitTextSize(centerCastButton, 16, 28)
-forcePureWhiteText(centerCastButton)
-setCornerRadius(centerCastButton, 24)
-addStroke(centerCastButton, Color3.fromRGB(0, 91, 16), 7)
-local centerCastGradient = addGradient(centerCastButton, Color3.fromRGB(135, 255, 119), Color3.fromRGB(25, 218, 46), 90)
-addGloss(centerCastButton, UDim2.new(0, 20, 0, 11), UDim2.new(0, 104, 0, 10))
-
-local centerAutoButton = makeButton(centerControls, "AutoFish: OFF", Color3.fromRGB(53, 130, 246))
-centerAutoButton.Position = UDim2.new(0.52, 16, 0, 34)
-centerAutoButton.Size = UDim2.new(0.48, -58, 0, 62)
-centerAutoButton.ZIndex = 24
-styleOutlinedText(centerAutoButton, 34)
-centerAutoButton.TextScaled = true
-limitTextSize(centerAutoButton, 15, 28)
-forcePureWhiteText(centerAutoButton)
-setCornerRadius(centerAutoButton, 24)
-addStroke(centerAutoButton, Color3.fromRGB(0, 58, 147), 7)
-local centerAutoGradient = addGradient(centerAutoButton, Color3.fromRGB(92, 191, 255), Color3.fromRGB(16, 126, 255), 90)
-addGloss(centerAutoButton, UDim2.new(0, 20, 0, 11), UDim2.new(0, 104, 0, 10))
-
-local centerBaitText = makeText(centerControls, "Bait: Basic Bait (Unlimited)", 13, Color3.fromRGB(210, 230, 255), true)
-centerBaitText.Position = UDim2.new(0, 42, 0, 8)
-centerBaitText.Size = UDim2.new(1, -84, 0, 18)
-centerBaitText.TextXAlignment = Enum.TextXAlignment.Center
-centerBaitText.ZIndex = 24
-
-local panel = Instance.new("Frame")
-panel.Name = "MainPanel"
-panel.AnchorPoint = Vector2.new(1, 0.5)
-panel.Position = UDim2.new(1, -18, 0.42, 0)
-panel.Size = UDim2.new(0, 430, 0, 500)
-panel.BackgroundColor3 = Color3.fromRGB(18, 22, 29)
-panel.BackgroundTransparency = 0.04
-panel.Parent = root
-addCorner(panel, 8)
-addStroke(panel, Color3.fromRGB(71, 85, 105), 1)
-
-local panelToggle = makeButton(root, ">", Color3.fromRGB(38, 45, 57))
-panelToggle.Name = "PanelToggle"
-panelToggle.AnchorPoint = Vector2.new(1, 0.5)
-panelToggle.Position = UDim2.new(1, -456, 0.42, 0)
-panelToggle.Size = UDim2.new(0, 34, 0, 64)
-panelToggle.ZIndex = 30
-panelToggle.TextSize = 18
+mainPanelUI.panelToggle = makeButton(root, ">", Color3.fromRGB(38, 45, 57))
+mainPanelUI.panelToggle.Name = "PanelToggle"
+mainPanelUI.panelToggle.Visible = false
+mainPanelUI.panelToggle.ZIndex = 30
 
 local function updatePanelCollapsed()
-	if panelCollapsed then
-		panel.Position = UDim2.new(1, 430, 0.42, 0)
-		panelToggle.Position = UDim2.new(1, -10, 0.42, 0)
-		panelToggle.Text = "<"
-	else
-		panel.Position = UDim2.new(1, -18, 0.42, 0)
-		panelToggle.Position = UDim2.new(1, -456, 0.42, 0)
-		panelToggle.Text = ">"
-	end
+	mainPanelUI.panel.Visible = not panelCollapsed
+	mainPanelUI.panelToggle.Visible = false
 end
 
-panelToggle.MouseButton1Click:Connect(function()
-	panelCollapsed = not panelCollapsed
+mainPanelUI.panelClose.MouseButton1Click:Connect(function()
+	panelCollapsed = true
 	updatePanelCollapsed()
 end)
 
 updatePanelCollapsed()
 
-local tabs = Instance.new("Frame")
-tabs.Name = "Tabs"
-tabs.Position = UDim2.new(0, 12, 0, 12)
-tabs.Size = UDim2.new(1, -24, 0, 78)
-tabs.BackgroundTransparency = 1
-tabs.Parent = panel
+mainPanelUI.tabs = Instance.new("Frame")
+mainPanelUI.tabs.Name = "Tabs"
+mainPanelUI.tabs.Position = UDim2.new(0, 12, 0, 12)
+mainPanelUI.tabs.Size = UDim2.new(1, -24, 0, 0)
+mainPanelUI.tabs.BackgroundTransparency = 1
+mainPanelUI.tabs.Visible = false
+mainPanelUI.tabs.Parent = mainPanelUI.panel
 
-local tabGrid = Instance.new("UIGridLayout")
-tabGrid.CellSize = UDim2.new(0, 96, 0, 32)
-tabGrid.CellPadding = UDim2.new(0, 7, 0, 7)
-tabGrid.SortOrder = Enum.SortOrder.LayoutOrder
-tabGrid.Parent = tabs
+mainPanelUI.tabGrid = Instance.new("UIGridLayout")
+mainPanelUI.tabGrid.CellSize = UDim2.new(0, 96, 0, 32)
+mainPanelUI.tabGrid.CellPadding = UDim2.new(0, 7, 0, 7)
+mainPanelUI.tabGrid.SortOrder = Enum.SortOrder.LayoutOrder
+mainPanelUI.tabGrid.Parent = mainPanelUI.tabs
 
-local content = Instance.new("ScrollingFrame")
-content.Name = "Content"
-content.Position = UDim2.new(0, 12, 0, 100)
-content.Size = UDim2.new(1, -24, 1, -112)
-content.BackgroundTransparency = 1
-content.ScrollBarThickness = 6
-content.CanvasSize = UDim2.new(0, 0, 0, 0)
-content.AutomaticCanvasSize = Enum.AutomaticSize.Y
-content.Parent = panel
+mainPanelUI.content = Instance.new("ScrollingFrame")
+mainPanelUI.content.Name = "Content"
+mainPanelUI.content.Position = UDim2.new(0, 12, 0, 54)
+mainPanelUI.content.Size = UDim2.new(1, -24, 1, -66)
+mainPanelUI.content.BackgroundTransparency = 1
+mainPanelUI.content.ScrollBarThickness = 6
+mainPanelUI.content.CanvasSize = UDim2.new(0, 0, 0, 0)
+mainPanelUI.content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+mainPanelUI.content.ZIndex = 51
+mainPanelUI.content.Parent = mainPanelUI.panel
 
-local contentLayout = Instance.new("UIListLayout")
-contentLayout.Padding = UDim.new(0, 8)
-contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-contentLayout.Parent = content
+mainPanelUI.contentLayout = Instance.new("UIListLayout")
+mainPanelUI.contentLayout.Padding = UDim.new(0, 8)
+mainPanelUI.contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+mainPanelUI.contentLayout.Parent = mainPanelUI.content
 
-local minigame = Instance.new("Frame")
-minigame.Name = "FishingMinigame"
-minigame.AnchorPoint = Vector2.new(0.5, 0.5)
-minigame.Position = UDim2.new(0.5, 0, 0.48, 0)
-minigame.Size = UDim2.new(0, 540, 0, 520)
-minigame.BackgroundColor3 = Color3.fromRGB(10, 68, 155)
-minigame.Visible = false
-minigame.ZIndex = 40
-minigame.Parent = root
-addCorner(minigame, 30)
-addStroke(minigame, Color3.fromRGB(0, 78, 190), 7)
-addStroke(minigame, Color3.fromRGB(99, 210, 255), 2).Transparency = 0.08
-addGradient(minigame, Color3.fromRGB(18, 92, 198), Color3.fromRGB(7, 52, 132), 90)
+local minigameUI = {}
+minigameUI.minigame = Instance.new("Frame")
+minigameUI.minigame.Name = "FishingMinigame"
+minigameUI.minigame.AnchorPoint = Vector2.new(0.5, 0.5)
+minigameUI.minigame.Position = UDim2.new(0.5, 0, 0.48, 0)
+minigameUI.minigame.Size = UDim2.new(0, 540, 0, 520)
+minigameUI.minigame.BackgroundColor3 = Color3.fromRGB(10, 68, 155)
+minigameUI.minigame.Visible = false
+minigameUI.minigame.ZIndex = 40
+minigameUI.minigame.Parent = root
+addCorner(minigameUI.minigame, 30)
+addStroke(minigameUI.minigame, Color3.fromRGB(0, 78, 190), 7)
+addStroke(minigameUI.minigame, Color3.fromRGB(99, 210, 255), 2).Transparency = 0.08
+addGradient(minigameUI.minigame, Color3.fromRGB(18, 92, 198), Color3.fromRGB(7, 52, 132), 90)
 
-local minigameConstraint = Instance.new("UISizeConstraint")
-minigameConstraint.MinSize = Vector2.new(500, 450)
-minigameConstraint.MaxSize = Vector2.new(620, 560)
-minigameConstraint.Parent = minigame
+minigameUI.minigameConstraint = Instance.new("UISizeConstraint")
+minigameUI.minigameConstraint.MinSize = Vector2.new(500, 450)
+minigameUI.minigameConstraint.MaxSize = Vector2.new(620, 560)
+minigameUI.minigameConstraint.Parent = minigameUI.minigame
 
-local minigameInner = Instance.new("Frame")
-minigameInner.Name = "InnerStroke"
-minigameInner.Position = UDim2.new(0, 14, 0, 14)
-minigameInner.Size = UDim2.new(1, -28, 1, -28)
-minigameInner.BackgroundTransparency = 1
-minigameInner.ZIndex = 41
-minigameInner.Parent = minigame
-addCorner(minigameInner, 26)
-addStroke(minigameInner, Color3.fromRGB(91, 193, 255), 2).Transparency = 0.38
-addGloss(minigame, UDim2.new(0, 22, 0, 18), UDim2.new(0, 90, 0, 12))
+minigameUI.minigameInner = Instance.new("Frame")
+minigameUI.minigameInner.Name = "InnerStroke"
+minigameUI.minigameInner.Position = UDim2.new(0, 14, 0, 14)
+minigameUI.minigameInner.Size = UDim2.new(1, -28, 1, -28)
+minigameUI.minigameInner.BackgroundTransparency = 1
+minigameUI.minigameInner.ZIndex = 41
+minigameUI.minigameInner.Parent = minigameUI.minigame
+addCorner(minigameUI.minigameInner, 26)
+addStroke(minigameUI.minigameInner, Color3.fromRGB(91, 193, 255), 2).Transparency = 0.38
+addGloss(minigameUI.minigame, UDim2.new(0, 22, 0, 18), UDim2.new(0, 90, 0, 12))
 
-local minigameText = makeText(minigame, "Wait for a bite...", 18, Color3.fromRGB(255, 255, 255), true)
-minigameText.Position = UDim2.new(0, 40, 0, 24)
-minigameText.Size = UDim2.new(1, -80, 0, 44)
-minigameText.ZIndex = 44
-styleOutlinedText(minigameText, 36)
-minigameText.TextScaled = true
-forcePureWhiteText(minigameText)
+minigameUI.minigameText = makeText(minigameUI.minigame, "Wait for a bite...", 18, Color3.fromRGB(255, 255, 255), true)
+minigameUI.minigameText.Position = UDim2.new(0, 40, 0, 24)
+minigameUI.minigameText.Size = UDim2.new(1, -80, 0, 44)
+minigameUI.minigameText.ZIndex = 44
+styleOutlinedText(minigameUI.minigameText, 36)
+minigameUI.minigameText.TextScaled = true
+forcePureWhiteText(minigameUI.minigameText)
 
-local minigameTextSizeConstraint = Instance.new("UITextSizeConstraint")
-minigameTextSizeConstraint.MinTextSize = 16
-minigameTextSizeConstraint.MaxTextSize = 24
-minigameTextSizeConstraint.Parent = minigameText
+minigameUI.minigameTextSizeConstraint = Instance.new("UITextSizeConstraint")
+minigameUI.minigameTextSizeConstraint.MinTextSize = 16
+minigameUI.minigameTextSizeConstraint.MaxTextSize = 24
+minigameUI.minigameTextSizeConstraint.Parent = minigameUI.minigameText
 
-local timingBar = Instance.new("Frame")
-timingBar.Name = "Bar"
-timingBar.Position = UDim2.new(0, 40, 0, 86)
-timingBar.Size = UDim2.new(1, -80, 0, 44)
-timingBar.BackgroundColor3 = Color3.fromRGB(57, 99, 150)
-timingBar.ZIndex = 43
-timingBar.Parent = minigame
-timingBar.Visible = false
-addCorner(timingBar, 24)
-addStroke(timingBar, Color3.fromRGB(7, 52, 121), 5)
-addStroke(timingBar, Color3.fromRGB(147, 178, 212), 2).Transparency = 0.22
-addGradient(timingBar, Color3.fromRGB(92, 132, 181), Color3.fromRGB(48, 88, 143), 90)
+minigameUI.timingBar = Instance.new("Frame")
+minigameUI.timingBar.Name = "Bar"
+minigameUI.timingBar.Position = UDim2.new(0, 40, 0, 86)
+minigameUI.timingBar.Size = UDim2.new(1, -80, 0, 44)
+minigameUI.timingBar.BackgroundColor3 = Color3.fromRGB(57, 99, 150)
+minigameUI.timingBar.ZIndex = 43
+minigameUI.timingBar.Parent = minigameUI.minigame
+minigameUI.timingBar.Visible = false
+addCorner(minigameUI.timingBar, 24)
+addStroke(minigameUI.timingBar, Color3.fromRGB(7, 52, 121), 5)
+addStroke(minigameUI.timingBar, Color3.fromRGB(147, 178, 212), 2).Transparency = 0.22
+addGradient(minigameUI.timingBar, Color3.fromRGB(92, 132, 181), Color3.fromRGB(48, 88, 143), 90)
 
-local zone = Instance.new("Frame")
-zone.Name = "Zone"
-zone.BackgroundColor3 = Color3.fromRGB(30, 231, 53)
-zone.Size = UDim2.new(0.22, 0, 1, 0)
-zone.Position = UDim2.new(0.39, 0, 0, 0)
-zone.ZIndex = 44
-zone.Parent = timingBar
-zone.Visible = false
-addCorner(zone, 16)
-addStroke(zone, Color3.fromRGB(3, 96, 19), 4)
-addGradient(zone, Color3.fromRGB(104, 255, 81), Color3.fromRGB(16, 194, 38), 90)
-addGloss(zone, UDim2.new(0, 14, 0, 8), UDim2.new(0, 66, 0, 9))
+minigameUI.zone = Instance.new("Frame")
+minigameUI.zone.Name = "Zone"
+minigameUI.zone.BackgroundColor3 = Color3.fromRGB(30, 231, 53)
+minigameUI.zone.Size = UDim2.new(0.22, 0, 1, 0)
+minigameUI.zone.Position = UDim2.new(0.39, 0, 0, 0)
+minigameUI.zone.ZIndex = 44
+minigameUI.zone.Parent = minigameUI.timingBar
+minigameUI.zone.Visible = false
+addCorner(minigameUI.zone, 16)
+addStroke(minigameUI.zone, Color3.fromRGB(3, 96, 19), 4)
+addGradient(minigameUI.zone, Color3.fromRGB(104, 255, 81), Color3.fromRGB(16, 194, 38), 90)
+addGloss(minigameUI.zone, UDim2.new(0, 14, 0, 8), UDim2.new(0, 66, 0, 9))
 
-local marker = Instance.new("Frame")
-marker.Name = "Marker"
-marker.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-marker.Size = UDim2.new(0, 16, 1, 28)
-marker.Position = UDim2.new(0, 0, 0, -14)
-marker.ZIndex = 45
-marker.Parent = timingBar
-marker.Visible = false
-addCorner(marker, 9)
-addStroke(marker, Color3.fromRGB(7, 55, 128), 3)
+minigameUI.marker = Instance.new("Frame")
+minigameUI.marker.Name = "Marker"
+minigameUI.marker.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+minigameUI.marker.Size = UDim2.new(0, 16, 1, 28)
+minigameUI.marker.Position = UDim2.new(0, 0, 0, -14)
+minigameUI.marker.ZIndex = 45
+minigameUI.marker.Parent = minigameUI.timingBar
+minigameUI.marker.Visible = false
+addCorner(minigameUI.marker, 9)
+addStroke(minigameUI.marker, Color3.fromRGB(7, 55, 128), 3)
 
-local catchButton = makeButton(minigame, "", Color3.fromRGB(28, 160, 92))
-catchButton.AnchorPoint = Vector2.new(0.5, 1)
-catchButton.Position = UDim2.new(0.5, 0, 1, -18)
-catchButton.Size = UDim2.new(0.29, 0, 0, 52)
-catchButton.ZIndex = 44
-catchButton.Visible = false
-catchButton.Active = false
-catchButton.AutoButtonColor = false
-styleOutlinedText(catchButton, 34)
-catchButton.TextScaled = true
-limitTextSize(catchButton, 15, 24)
-forcePureWhiteText(catchButton)
-setCornerRadius(catchButton, 24)
-addStroke(catchButton, Color3.fromRGB(0, 92, 18), 7)
-addGradient(catchButton, Color3.fromRGB(104, 255, 91), Color3.fromRGB(17, 196, 38), 90)
-addGloss(catchButton, UDim2.new(0, 22, 0, 13), UDim2.new(0, 90, 0, 12))
+minigameUI.catchButton = makeButton(minigameUI.minigame, "", Color3.fromRGB(28, 160, 92))
+minigameUI.catchButton.AnchorPoint = Vector2.new(0.5, 1)
+minigameUI.catchButton.Position = UDim2.new(0.5, 0, 1, -18)
+minigameUI.catchButton.Size = UDim2.new(0.29, 0, 0, 52)
+minigameUI.catchButton.ZIndex = 44
+minigameUI.catchButton.Visible = false
+minigameUI.catchButton.Active = false
+minigameUI.catchButton.AutoButtonColor = false
+styleOutlinedText(minigameUI.catchButton, 34)
+minigameUI.catchButton.TextScaled = true
+limitTextSize(minigameUI.catchButton, 15, 24)
+forcePureWhiteText(minigameUI.catchButton)
+setCornerRadius(minigameUI.catchButton, 24)
+addStroke(minigameUI.catchButton, Color3.fromRGB(0, 92, 18), 7)
+addGradient(minigameUI.catchButton, Color3.fromRGB(104, 255, 91), Color3.fromRGB(17, 196, 38), 90)
+addGloss(minigameUI.catchButton, UDim2.new(0, 22, 0, 13), UDim2.new(0, 90, 0, 12))
 
-local fishingGameContent = Instance.new("Frame")
-fishingGameContent.Name = "FishingGameContent"
-fishingGameContent.Position = UDim2.new(0, 34, 0, 82)
-fishingGameContent.Size = UDim2.new(1, -68, 1, -106)
-fishingGameContent.BackgroundTransparency = 1
-fishingGameContent.ZIndex = 44
-fishingGameContent.Parent = minigame
+minigameUI.fishingGameContent = Instance.new("Frame")
+minigameUI.fishingGameContent.Name = "FishingGameContent"
+minigameUI.fishingGameContent.Position = UDim2.new(0, 34, 0, 82)
+minigameUI.fishingGameContent.Size = UDim2.new(1, -68, 1, -106)
+minigameUI.fishingGameContent.BackgroundTransparency = 1
+minigameUI.fishingGameContent.ZIndex = 44
+minigameUI.fishingGameContent.Parent = minigameUI.minigame
 
-local verticalPanel = Instance.new("Frame")
-verticalPanel.Name = "VerticalFishingPanel"
-verticalPanel.Position = UDim2.new(0, 18, 0, 0)
-verticalPanel.Size = UDim2.new(0, 180, 1, -58)
-verticalPanel.BackgroundColor3 = Color3.fromRGB(31, 95, 156)
-verticalPanel.ZIndex = 45
-verticalPanel.Parent = fishingGameContent
-addCorner(verticalPanel, 20)
-addStroke(verticalPanel, Color3.fromRGB(7, 48, 106), 5)
-addStroke(verticalPanel, Color3.fromRGB(126, 219, 255), 2).Transparency = 0.18
-addGradient(verticalPanel, Color3.fromRGB(55, 154, 210), Color3.fromRGB(18, 71, 140), 90)
+minigameUI.verticalPanel = Instance.new("Frame")
+minigameUI.verticalPanel.Name = "VerticalFishingPanel"
+minigameUI.verticalPanel.Position = UDim2.new(0, 18, 0, 0)
+minigameUI.verticalPanel.Size = UDim2.new(0, 180, 1, -58)
+minigameUI.verticalPanel.BackgroundColor3 = Color3.fromRGB(31, 95, 156)
+minigameUI.verticalPanel.ZIndex = 45
+minigameUI.verticalPanel.Parent = minigameUI.fishingGameContent
+addCorner(minigameUI.verticalPanel, 20)
+addStroke(minigameUI.verticalPanel, Color3.fromRGB(7, 48, 106), 5)
+addStroke(minigameUI.verticalPanel, Color3.fromRGB(126, 219, 255), 2).Transparency = 0.18
+addGradient(minigameUI.verticalPanel, Color3.fromRGB(55, 154, 210), Color3.fromRGB(18, 71, 140), 90)
 
-local panelWater = Instance.new("Frame")
-panelWater.Name = "Water"
-panelWater.Position = UDim2.new(0, 14, 0, 14)
-panelWater.Size = UDim2.new(1, -28, 1, -28)
-panelWater.BackgroundColor3 = Color3.fromRGB(28, 135, 204)
-panelWater.ZIndex = 46
-panelWater.Parent = verticalPanel
-addCorner(panelWater, 16)
-addStroke(panelWater, Color3.fromRGB(12, 68, 128), 2).Transparency = 0.2
-addGradient(panelWater, Color3.fromRGB(70, 190, 230), Color3.fromRGB(17, 98, 177), 90)
+minigameUI.panelWater = Instance.new("Frame")
+minigameUI.panelWater.Name = "Water"
+minigameUI.panelWater.Position = UDim2.new(0, 14, 0, 14)
+minigameUI.panelWater.Size = UDim2.new(1, -28, 1, -28)
+minigameUI.panelWater.BackgroundColor3 = Color3.fromRGB(28, 135, 204)
+minigameUI.panelWater.ZIndex = 46
+minigameUI.panelWater.Parent = minigameUI.verticalPanel
+addCorner(minigameUI.panelWater, 16)
+addStroke(minigameUI.panelWater, Color3.fromRGB(12, 68, 128), 2).Transparency = 0.2
+addGradient(minigameUI.panelWater, Color3.fromRGB(70, 190, 230), Color3.fromRGB(17, 98, 177), 90)
 
-local catchBar = Instance.new("Frame")
-catchBar.Name = "CatchBar"
-catchBar.AnchorPoint = Vector2.new(0.5, 0)
-catchBar.Position = UDim2.new(0.5, 0, 0.68, 0)
-catchBar.Size = UDim2.new(1, -32, 0.24, 0)
-catchBar.BackgroundColor3 = Color3.fromRGB(43, 225, 70)
-catchBar.ZIndex = 48
-catchBar.Parent = panelWater
-addCorner(catchBar, 14)
-addStroke(catchBar, Color3.fromRGB(8, 94, 24), 3)
-addGradient(catchBar, Color3.fromRGB(111, 255, 94), Color3.fromRGB(20, 177, 46), 90)
-addGloss(catchBar, UDim2.new(0, 12, 0, 7), UDim2.new(0, 54, 0, 8))
+minigameUI.catchBar = Instance.new("Frame")
+minigameUI.catchBar.Name = "CatchBar"
+minigameUI.catchBar.AnchorPoint = Vector2.new(0.5, 0)
+minigameUI.catchBar.Position = UDim2.new(0.5, 0, 0.68, 0)
+minigameUI.catchBar.Size = UDim2.new(1, -32, 0.24, 0)
+minigameUI.catchBar.BackgroundColor3 = Color3.fromRGB(43, 225, 70)
+minigameUI.catchBar.ZIndex = 48
+minigameUI.catchBar.Parent = minigameUI.panelWater
+addCorner(minigameUI.catchBar, 14)
+addStroke(minigameUI.catchBar, Color3.fromRGB(8, 94, 24), 3)
+addGradient(minigameUI.catchBar, Color3.fromRGB(111, 255, 94), Color3.fromRGB(20, 177, 46), 90)
+addGloss(minigameUI.catchBar, UDim2.new(0, 12, 0, 7), UDim2.new(0, 54, 0, 8))
 
-local fishMarker = Instance.new("Frame")
-fishMarker.Name = "FishMarker"
-fishMarker.AnchorPoint = Vector2.new(0.5, 0.5)
-fishMarker.Position = UDim2.new(0.5, 0, 0.5, 0)
-fishMarker.Size = UDim2.new(0, 46, 0, 46)
-fishMarker.BackgroundColor3 = Color3.fromRGB(17, 28, 43)
-fishMarker.ZIndex = 50
-fishMarker.Parent = panelWater
-addCorner(fishMarker, 23)
-addStroke(fishMarker, Color3.fromRGB(255, 255, 255), 2).Transparency = 0.08
+minigameUI.fishMarker = Instance.new("Frame")
+minigameUI.fishMarker.Name = "FishMarker"
+minigameUI.fishMarker.AnchorPoint = Vector2.new(0.5, 0.5)
+minigameUI.fishMarker.Position = UDim2.new(0.5, 0, 0.5, 0)
+minigameUI.fishMarker.Size = UDim2.new(0, 46, 0, 46)
+minigameUI.fishMarker.BackgroundColor3 = Color3.fromRGB(17, 28, 43)
+minigameUI.fishMarker.ZIndex = 50
+minigameUI.fishMarker.Parent = minigameUI.panelWater
+addCorner(minigameUI.fishMarker, 23)
+addStroke(minigameUI.fishMarker, Color3.fromRGB(255, 255, 255), 2).Transparency = 0.08
 
-local fishMarkerImage = Instance.new("ImageLabel")
-fishMarkerImage.Name = "FishImage"
-fishMarkerImage.BackgroundTransparency = 1
-fishMarkerImage.Position = UDim2.new(0, 5, 0, 5)
-fishMarkerImage.Size = UDim2.new(1, -10, 1, -10)
-fishMarkerImage.ScaleType = Enum.ScaleType.Fit
-fishMarkerImage.ZIndex = 51
-fishMarkerImage.Parent = fishMarker
+minigameUI.fishMarkerImage = Instance.new("ImageLabel")
+minigameUI.fishMarkerImage.Name = "FishImage"
+minigameUI.fishMarkerImage.BackgroundTransparency = 1
+minigameUI.fishMarkerImage.Position = UDim2.new(0, 5, 0, 5)
+minigameUI.fishMarkerImage.Size = UDim2.new(1, -10, 1, -10)
+minigameUI.fishMarkerImage.ScaleType = Enum.ScaleType.Fit
+minigameUI.fishMarkerImage.ZIndex = 51
+minigameUI.fishMarkerImage.Parent = minigameUI.fishMarker
 
-local fishMarkerLabel = makeText(fishMarker, "FISH", 11, Color3.fromRGB(255, 255, 255), true)
-fishMarkerLabel.Position = UDim2.fromScale(0, 0)
-fishMarkerLabel.Size = UDim2.fromScale(1, 1)
-fishMarkerLabel.TextXAlignment = Enum.TextXAlignment.Center
-fishMarkerLabel.ZIndex = 52
-styleOutlinedText(fishMarkerLabel, 11)
-forcePureWhiteText(fishMarkerLabel)
+minigameUI.fishMarkerLabel = makeText(minigameUI.fishMarker, "FISH", 11, Color3.fromRGB(255, 255, 255), true)
+minigameUI.fishMarkerLabel.Position = UDim2.fromScale(0, 0)
+minigameUI.fishMarkerLabel.Size = UDim2.fromScale(1, 1)
+minigameUI.fishMarkerLabel.TextXAlignment = Enum.TextXAlignment.Center
+minigameUI.fishMarkerLabel.ZIndex = 52
+styleOutlinedText(minigameUI.fishMarkerLabel, 11)
+forcePureWhiteText(minigameUI.fishMarkerLabel)
 
-local progressTrack = Instance.new("Frame")
-progressTrack.Name = "ProgressTrack"
-progressTrack.Position = UDim2.new(0, 226, 0, 0)
-progressTrack.Size = UDim2.new(0, 42, 1, -58)
-progressTrack.BackgroundColor3 = Color3.fromRGB(29, 35, 46)
-progressTrack.ZIndex = 45
-progressTrack.Parent = fishingGameContent
-addCorner(progressTrack, 16)
-addStroke(progressTrack, Color3.fromRGB(92, 111, 138), 2)
+minigameUI.progressTrack = Instance.new("Frame")
+minigameUI.progressTrack.Name = "ProgressTrack"
+minigameUI.progressTrack.Position = UDim2.new(0, 226, 0, 0)
+minigameUI.progressTrack.Size = UDim2.new(0, 42, 1, -58)
+minigameUI.progressTrack.BackgroundColor3 = Color3.fromRGB(29, 35, 46)
+minigameUI.progressTrack.ZIndex = 45
+minigameUI.progressTrack.Parent = minigameUI.fishingGameContent
+addCorner(minigameUI.progressTrack, 16)
+addStroke(minigameUI.progressTrack, Color3.fromRGB(92, 111, 138), 2)
 
-local progressFill = Instance.new("Frame")
-progressFill.Name = "ProgressFill"
-progressFill.AnchorPoint = Vector2.new(0, 1)
-progressFill.Position = UDim2.new(0, 0, 1, 0)
-progressFill.Size = UDim2.new(1, 0, 0.34, 0)
-progressFill.BackgroundColor3 = Color3.fromRGB(62, 190, 255)
-progressFill.ZIndex = 46
-progressFill.Parent = progressTrack
-addCorner(progressFill, 16)
-addGradient(progressFill, Color3.fromRGB(130, 235, 255), Color3.fromRGB(26, 132, 255), 90)
+minigameUI.progressFill = Instance.new("Frame")
+minigameUI.progressFill.Name = "ProgressFill"
+minigameUI.progressFill.AnchorPoint = Vector2.new(0, 1)
+minigameUI.progressFill.Position = UDim2.new(0, 0, 1, 0)
+minigameUI.progressFill.Size = UDim2.new(1, 0, 0.34, 0)
+minigameUI.progressFill.BackgroundColor3 = Color3.fromRGB(62, 190, 255)
+minigameUI.progressFill.ZIndex = 46
+minigameUI.progressFill.Parent = minigameUI.progressTrack
+addCorner(minigameUI.progressFill, 16)
+addGradient(minigameUI.progressFill, Color3.fromRGB(130, 235, 255), Color3.fromRGB(26, 132, 255), 90)
 
-local minigameFishInfo = makeText(fishingGameContent, "Fish", 18, Color3.fromRGB(255, 255, 255), true)
-minigameFishInfo.Position = UDim2.new(0, 296, 0, 18)
-minigameFishInfo.Size = UDim2.new(1, -306, 0, 46)
-minigameFishInfo.ZIndex = 45
-minigameFishInfo.TextWrapped = true
-styleOutlinedText(minigameFishInfo, 18)
-forcePureWhiteText(minigameFishInfo)
+minigameUI.minigameFishInfo = makeText(minigameUI.fishingGameContent, "Fish", 18, Color3.fromRGB(255, 255, 255), true)
+minigameUI.minigameFishInfo.Position = UDim2.new(0, 296, 0, 18)
+minigameUI.minigameFishInfo.Size = UDim2.new(1, -306, 0, 46)
+minigameUI.minigameFishInfo.ZIndex = 45
+minigameUI.minigameFishInfo.TextWrapped = true
+styleOutlinedText(minigameUI.minigameFishInfo, 18)
+forcePureWhiteText(minigameUI.minigameFishInfo)
 
-local minigameProgressText = makeText(fishingGameContent, "Progress 34%", 15, Color3.fromRGB(210, 230, 255), true)
-minigameProgressText.Position = UDim2.new(0, 296, 0, 76)
-minigameProgressText.Size = UDim2.new(1, -306, 0, 30)
-minigameProgressText.ZIndex = 45
+minigameUI.minigameProgressText = makeText(minigameUI.fishingGameContent, "Progress 34%", 15, Color3.fromRGB(210, 230, 255), true)
+minigameUI.minigameProgressText.Position = UDim2.new(0, 296, 0, 76)
+minigameUI.minigameProgressText.Size = UDim2.new(1, -306, 0, 30)
+minigameUI.minigameProgressText.ZIndex = 45
 
-local minigameInstruction = makeText(fishingGameContent, "Hold mouse, tap, or Space to lift the green bar.", 14, Color3.fromRGB(210, 230, 255), false)
-minigameInstruction.Position = UDim2.new(0, 296, 0, 116)
-minigameInstruction.Size = UDim2.new(1, -306, 0, 70)
-minigameInstruction.TextWrapped = true
-minigameInstruction.ZIndex = 45
+minigameUI.minigameInstruction = makeText(minigameUI.fishingGameContent, "Hold mouse, tap, or Space to lift the green bar.", 14, Color3.fromRGB(210, 230, 255), false)
+minigameUI.minigameInstruction.Position = UDim2.new(0, 296, 0, 116)
+minigameUI.minigameInstruction.Size = UDim2.new(1, -306, 0, 70)
+minigameUI.minigameInstruction.TextWrapped = true
+minigameUI.minigameInstruction.ZIndex = 45
 
 local CastPower = {
 	running = false,
@@ -1351,7 +1164,7 @@ CastPower.content.Size = UDim2.new(1, -80, 1, -126)
 CastPower.content.BackgroundTransparency = 1
 CastPower.content.Visible = false
 CastPower.content.ZIndex = 44
-CastPower.content.Parent = minigame
+CastPower.content.Parent = minigameUI.minigame
 
 CastPower.title = makeText(CastPower.content, "Hold to charge. Release to cast.", 18, Color3.fromRGB(255, 255, 255), true)
 CastPower.title.Position = UDim2.new(0, 0, 0, 8)
@@ -1508,7 +1321,7 @@ function CastPower.updateVisual(power)
 	elseif rating == "Great" then
 		CastPower.status.Text = "Great timing. Nudge closer for Perfect."
 	else
-		CastPower.status.Text = "Aim for the green perfect zone."
+		CastPower.status.Text = "Aim for the green perfect minigameUI.zone."
 	end
 end
 
@@ -1537,18 +1350,18 @@ local function setMinigameFishIcon(fish)
 	local imageId = fishId and GameConfig.getFishImage(fishId)
 
 	if imageId then
-		fishMarkerImage.Image = imageId
-		fishMarkerImage.Visible = true
-		fishMarkerLabel.Visible = false
+		minigameUI.fishMarkerImage.Image = imageId
+		minigameUI.fishMarkerImage.Visible = true
+		minigameUI.fishMarkerLabel.Visible = false
 	else
-		fishMarkerImage.Image = ""
-		fishMarkerImage.Visible = false
-		fishMarkerLabel.Visible = true
+		minigameUI.fishMarkerImage.Image = ""
+		minigameUI.fishMarkerImage.Visible = false
+		minigameUI.fishMarkerLabel.Visible = true
 	end
 end
 
 local function setMinigameVisible(visible)
-	minigame.Visible = visible
+	minigameUI.minigame.Visible = visible
 	fishingBlur.Enabled = visible
 	fishingBlur.Size = visible and 10 or 0
 end
@@ -1636,26 +1449,25 @@ end
 
 local function refreshHud()
 	if not state then
-		statsText.Text = "Loading..."
+		updateCoinsHud(0)
+		updateXPHud(nil)
 		return
 	end
 
-	local nextText = state.NextLevelXP > 0 and (state.LevelProgressXP .. "/" .. state.NextLevelXP .. " XP") or "MAX"
-	statsText.Text = string.format(
-		"Coins: %d   Level: %d   XP: %s   Bag: %d/%d",
-		state.Coins,
-		state.Level,
-		nextText,
-		#state.Inventory,
-		state.BackpackSize
-	)
+	updateCoinsHud(state.Coins)
+	updateXPHud(state)
 end
 
 local renderContent
 
-local function isBeginnerPondInstance(instance)
+local function isLilyshoreIslandInstance(instance)
 	while instance do
-		if instance.Name == "BeginnerPond_ExtraLarge" or instance.Name == "Beginner Pond" then
+		if instance.Name == "LilyshoreIsland"
+			or instance.Name == "LilyshoreFishingZone"
+			or instance.Name == "BeginnerPondArea"
+			or instance.Name == "BeginnerPond_ExtraLarge"
+			or instance.Name == "Beginner Pond"
+		then
 			return true
 		end
 		instance = instance.Parent
@@ -1670,8 +1482,8 @@ local function getGroundBiomeId(position, character)
 	params.FilterDescendantsInstances = character and { character } or {}
 
 	local result = workspace:Raycast(position + Vector3.new(0, 12, 0), Vector3.new(0, -90, 0), params)
-	if result and isBeginnerPondInstance(result.Instance) then
-		return "BeginnerPond"
+	if result and isLilyshoreIslandInstance(result.Instance) then
+		return DEFAULT_FISHING_ISLAND_ID
 	end
 
 	return nil
@@ -1690,7 +1502,7 @@ local function getLocalFishingBiomeId()
 	end
 
 	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
-		if biomeId == "BeginnerPond" then
+		if biomeId == DEFAULT_FISHING_ISLAND_ID then
 			continue
 		end
 
@@ -1720,11 +1532,12 @@ local function getActiveFishingBiomeId()
 		return localBiomeId
 	end
 
-	if not state or not state.ActualBiome or not GameConfig.Biomes[state.ActualBiome] then
+	local actualIslandId = getActualIslandId()
+	if not actualIslandId or not GameConfig.Biomes[actualIslandId] then
 		return nil
 	end
 
-	return state.ActualBiome
+	return actualIslandId
 end
 
 local function getLocalTravelLocation()
@@ -1748,7 +1561,13 @@ local function getLocalTravelLocation()
 		end
 	end
 
-	return (state and state.ActualLocation) or "Lobby"
+	return (state and normalizeIslandId(state.ActualLocation)) or "Lobby"
+end
+
+local function isHoldingFishingRod()
+	local character = player.Character
+	local tool = character and character:FindFirstChild("Fishing Rod")
+	return tool ~= nil and tool:IsA("Tool")
 end
 
 function CastPower.isInput(input)
@@ -1786,15 +1605,15 @@ function CastPower.run(biomeId)
 	CastPower.title.Text = "Hold to charge. Release to cast."
 	CastPower.status.Text = "Release in the green zone for a Perfect cast."
 	CastPower.hint.Text = string.format("Left start - %s speed", castConfig.speedName or "Random")
-	fishingGameContent.Visible = false
-	catchButton.Visible = false
-	timingBar.Visible = false
-	zone.Visible = false
-	marker.Visible = false
+	minigameUI.fishingGameContent.Visible = false
+	minigameUI.catchButton.Visible = false
+	minigameUI.timingBar.Visible = false
+	minigameUI.zone.Visible = false
+	minigameUI.marker.Visible = false
 
-	minigameText.Text = "Cast into " .. ((biome and biome.displayName) or "the water")
-	forcePureWhiteText(minigameText)
-	forcePureWhiteText(catchButton)
+	minigameUI.minigameText.Text = "Cast into " .. ((biome and biome.displayName) or "the water")
+	forcePureWhiteText(minigameUI.minigameText)
+	forcePureWhiteText(minigameUI.catchButton)
 	CastPower.updateVisual(power)
 
 	local function disconnectAll()
@@ -1826,16 +1645,27 @@ function CastPower.run(biomeId)
 			return
 		end
 
+		if not isHoldingFishingRod() then
+			if activeMinigameCleanup then
+				activeMinigameCleanup()
+			end
+			fishingBusy = false
+			setMinigameVisible(false)
+			showToast("Hold your fishing rod before fishing.")
+			renderContent()
+			return
+		end
+
 		finished = true
 		disconnectAll()
 		activeMinigameCleanup = nil
 		CastPower.running = false
-		fishingGameContent.Visible = false
+		minigameUI.fishingGameContent.Visible = false
 		local rating, displayName = CastPower.getLocalRating(power)
 		CastPower.title.Text = displayName .. " Cast!"
 		CastPower.status.Text = "Bobber landed. Waiting for a bite..."
-		minigameText.Text = displayName .. " Cast! Waiting for a bite..."
-		forcePureWhiteText(minigameText)
+		minigameUI.minigameText.Text = displayName .. " Cast! Waiting for a bite..."
+		forcePureWhiteText(minigameUI.minigameText)
 		if rating == "Perfect" then
 			CastPower.showSparkle()
 		end
@@ -1892,7 +1722,12 @@ function CastPower.run(biomeId)
 end
 
 function startManualFishing()
-	if fishingBusy or not state then
+	if fishingBusy or minigameRunning or not state then
+		return
+	end
+
+	if not isHoldingFishingRod() then
+		showToast("Hold your fishing rod before fishing.")
 		return
 	end
 
@@ -1901,6 +1736,9 @@ function startManualFishing()
 		showToast("Move to a fishing area first.")
 		return
 	end
+
+	panelCollapsed = true
+	updatePanelCollapsed()
 
 	local biome = GameConfig.Biomes[biomeId]
 	fishingBusy = true
@@ -1913,17 +1751,24 @@ end
 
 local function refreshCenterControls()
 	local biomeId = getActiveFishingBiomeId()
+	local autoEnabled = state and state.AutoFishEnabled == true
+
+	centerControls.Visible = true
+	centerTitle.Visible = false
+	centerCastButton.Visible = true
+	centerAutoButton.Visible = true
+	centerBaitText.Visible = false
+	centerCastButton.Text = fishingBusy and "Fishing..." or "Tap"
+	centerCastButton.AutoButtonColor = state ~= nil and biomeId ~= nil and not fishingBusy
+	centerAutoButton.Text = autoEnabled and "AutoFish ON" or "AutoFish OFF"
+	centerBaitText.Text = state and getEquippedBaitDisplay() or "Bait: Basic Bait (Unlimited)"
+	forcePureWhiteText(centerTitle)
+	centerCastButton.TextColor3 = Color3.fromRGB(10, 20, 30)
+	centerCastButton.TextStrokeTransparency = 1
+	forcePureWhiteText(centerAutoButton)
 
 	if not state or not biomeId then
-		centerControls.Visible = false
-		centerTitle.Text = "Beginner Pond"
-		centerTitle.Visible = false
-		centerCastButton.Text = "Cast Rod"
-		centerAutoButton.Text = "AutoFish: OFF"
-		centerBaitText.Text = "Bait: Basic Bait (Unlimited)"
-		forcePureWhiteText(centerTitle)
-		forcePureWhiteText(centerCastButton)
-		forcePureWhiteText(centerAutoButton)
+		centerTitle.Text = "Lilyshore Island"
 		centerAutoButton.BackgroundColor3 = Color3.fromRGB(53, 130, 246)
 		centerAutoGradient.Color = ColorSequence.new({
 			ColorSequenceKeypoint.new(0, Color3.fromRGB(92, 191, 255)),
@@ -1932,18 +1777,10 @@ local function refreshCenterControls()
 		return
 	end
 
-	centerControls.Visible = true
 	local biome = GameConfig.Biomes[biomeId]
 	centerTitle.Text = biome.displayName
-	centerTitle.Visible = false
-	centerCastButton.Text = fishingBusy and "Fishing..." or "Cast Rod"
-	centerAutoButton.Text = state.AutoFishEnabled and "AutoFish: ON" or "AutoFish: OFF"
-	centerBaitText.Text = getEquippedBaitDisplay()
-	forcePureWhiteText(centerTitle)
-	forcePureWhiteText(centerCastButton)
-	forcePureWhiteText(centerAutoButton)
 
-	if state.AutoFishEnabled then
+	if autoEnabled then
 		centerAutoButton.BackgroundColor3 = Color3.fromRGB(43, 142, 255)
 		centerAutoGradient.Color = ColorSequence.new({
 			ColorSequenceKeypoint.new(0, Color3.fromRGB(92, 191, 255)),
@@ -1958,73 +1795,105 @@ local function refreshCenterControls()
 	end
 end
 
-centerCastButton.MouseButton1Click:Connect(startManualFishing)
+centerCastButton.MouseButton1Click:Connect(function()
+	print("Tap clicked")
+	startManualFishing()
+end)
 
 centerAutoButton.MouseButton1Click:Connect(function()
-	if not getActiveFishingBiomeId() then
-		showToast("Move to a fishing area first.")
+	print("AutoFish clicked")
+	if state and not state.AutoFishEnabled and not isHoldingFishingRod() then
+		showToast("Hold your fishing rod before turning on AutoFish.")
 		return
 	end
-
 	ToggleAutoFish:FireServer()
 end)
 
 local function setTab(tabName)
+	local isUtilityPanel = tabName == "Bag" or tabName == "Fishdex"
+	if isUtilityPanel
+		and (UserInputService:GetFocusedTextBox() ~= nil
+			or fishingBusy
+			or minigameRunning
+			or CastPower.running)
+	then
+		return
+	end
+
+	if tabName == "Bag" then
+		mainPanelUI.activeBagTab = "Fish"
+		mainPanelUI.bagFishSort = mainPanelUI.bagFishSort or "Recently caught"
+	end
+
 	activeTab = tabName
+	panelCollapsed = false
+	updatePanelCollapsed()
 	renderContent()
 end
 
-local connectedAquariumViewerTools = {}
+local function hasHudPanel(tabName)
+	if tabName == "Bag" or tabName == "Fishdex" then
+		local panels = screenGui:FindFirstChild("Panels")
+		local namedPanel = panels and panels:FindFirstChild(tabName .. "Panel")
+		return mainPanelUI.panel ~= nil or namedPanel ~= nil
+	end
 
-local function openAquariumViewer()
-	panelCollapsed = false
-	updatePanelCollapsed()
-	setTab("Aquarium")
+	return true
 end
 
-local function connectAquariumViewerTool(tool)
-	if not tool:IsA("Tool") or tool.Name ~= "Aquarium Viewer" then
+local function openFishingPanelFromHotbar(tabName)
+	if tabName == "__CloseFishingPanels" then
+		panelCollapsed = true
+		updatePanelCollapsed()
 		return
 	end
 
-	if connectedAquariumViewerTools[tool] then
-		return
-	end
+	if tabName == "Bag" then
+		if not hasHudPanel("Bag") then
+			warn("BagPanel not found")
+			return
+		end
 
-	connectedAquariumViewerTools[tool] = true
-	tool.Equipped:Connect(openAquariumViewer)
-	tool.Activated:Connect(openAquariumViewer)
-	tool.Destroying:Connect(function()
-		connectedAquariumViewerTools[tool] = nil
-	end)
+		print("Opening Bag UI")
+		setTab("Bag")
+	elseif tabName == "Fishdex" then
+		if not hasHudPanel("Fishdex") then
+			warn("FishdexPanel not found")
+			return
+		end
+
+		print("Opening Fishdex UI")
+		setTab("Fishdex")
+	end
 end
 
-local function watchAquariumViewerTools(container)
-	if not container then
-		return
-	end
-
-	for _, child in ipairs(container:GetChildren()) do
-		connectAquariumViewerTool(child)
-	end
-
-	container.ChildAdded:Connect(connectAquariumViewerTool)
+openFishingPanelRequest = openFishingPanelFromHotbar
+for _, tabName in ipairs(pendingPanelRequests) do
+	openFishingPanelRequest(tabName)
 end
+table.clear(pendingPanelRequests)
 
-task.spawn(function()
-	local backpack = player:WaitForChild("Backpack", 10)
-	if backpack then
-		watchAquariumViewerTools(backpack)
-	end
+hudControls.settings.MouseButton1Click:Connect(function()
+	print("Settings clicked")
+	setSettingsVisible(true)
 end)
 
-if player.Character then
-	task.defer(watchAquariumViewerTools, player.Character)
-end
-
-player.CharacterAdded:Connect(function(character)
-	task.defer(watchAquariumViewerTools, character)
+hudControls.quests.MouseButton1Click:Connect(function()
+	print("Quests clicked")
+	setTab("Quests")
 end)
+
+hudControls.shop.MouseButton1Click:Connect(function()
+	print("Shop clicked")
+	setTab("Shop")
+end)
+
+ToolHotbarBinder.start({
+	player = player,
+	setTab = setTab,
+	hasPanel = hasHudPanel,
+	watchLegacyAquariumViewerTools = watchLegacyAquariumViewerTools,
+})
 
 local function refreshLeaderboardTabIfOpen()
 	if activeTab == "Leaderboard" then
@@ -2046,34 +1915,71 @@ else
 	warn("OpenRodShop remote was not available; rod shop prompt is disabled until remotes resync.")
 end
 
-local function refreshTabs()
-	clearChildren(tabs)
+local function openAquariumHub()
+	print("Aquarium Viewer opened")
+	print("Opening Aquarium Viewer GUI")
+	panelCollapsed = false
+	updatePanelCollapsed()
+	setTab("Aquarium")
+end
 
-	local tabNames = { "Fishdex", "Bag", "Aquarium", "Teleport", "Quests", "Shop", "Leaderboard" }
-	for _, tabName in ipairs(tabNames) do
-		local color = activeTab == tabName and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(38, 45, 57)
-		local button = makeButton(tabs, tabName, color)
-		if tabName == "Quests" then
-			attachNotificationBadge(button, state and state.QuestUnclaimedCount or 0)
-		end
-		button.MouseButton1Click:Connect(function()
-			setTab(tabName)
-		end)
+if OpenAquariumHub then
+	OpenAquariumHub.OnClientEvent:Connect(openAquariumHub)
+else
+	warn("OpenAquariumHub remote was not available; aquarium hub kiosk is disabled until remotes resync.")
+end
+
+local AQUARIUM_HUB_CENTER = Vector3.new(6000, 0, 6000)
+
+local function isInAquariumHub()
+	if getLocalTravelLocation() == "AquariumHub" then
+		return true
 	end
+
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	return root ~= nil and (root.Position - AQUARIUM_HUB_CENTER).Magnitude <= 130
+end
+
+local aquariumViewerFallbackButton = makeButton(screenGui, "Open Viewer", Color3.fromRGB(53, 130, 246))
+local aquariumViewerMobileLayout = UserInputService.TouchEnabled
+	or (workspace.CurrentCamera ~= nil and workspace.CurrentCamera.ViewportSize.X < 720)
+local aquariumViewerButtonWidth = aquariumViewerMobileLayout and 158 or 146
+local aquariumViewerButtonHeight = aquariumViewerMobileLayout and 52 or 48
+aquariumViewerFallbackButton.AnchorPoint = Vector2.new(0.5, 1)
+aquariumViewerFallbackButton.Position = UDim2.new(1, -(18 + aquariumViewerButtonWidth / 2), 1, -(34 + aquariumViewerButtonHeight))
+aquariumViewerFallbackButton.Size = UDim2.fromOffset(aquariumViewerButtonWidth, aquariumViewerButtonHeight)
+aquariumViewerFallbackButton.TextSize = 14
+aquariumViewerFallbackButton.ZIndex = 31
+aquariumViewerFallbackButton.Visible = false
+aquariumViewerFallbackButton.MouseButton1Click:Connect(openAquariumHub)
+
+local function updateAquariumViewerFallbackButton()
+	local shouldShow = state ~= nil
+		and isInAquariumHub()
+		and not minigameRunning
+		and not CastPower.running
+		and not (activeTab == "Aquarium" and mainPanelUI.panel.Visible and not panelCollapsed)
+	aquariumViewerFallbackButton.Visible = shouldShow
+end
+
+local function refreshTabs()
+	clearChildren(mainPanelUI.tabs)
+	mainPanelUI.tabs.Visible = false
 end
 
 local function renderBiomesTab()
 	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
 		local biome = GameConfig.Biomes[biomeId]
-		local unlocked = state and state.UnlockedBiomes[biomeId]
-		local current = state and state.CurrentBiome == biomeId
+		local unlocked = getUnlockedIslands()[biomeId]
+		local current = getCurrentIslandId() == biomeId
 
-		local card = makeCard(content, 96)
+		local card = makeCard(mainPanelUI.content, 96)
 		local name = makeText(card, biome.displayName, 16, biome.color, true)
 		name.Position = UDim2.new(0, 12, 0, 8)
 		name.Size = UDim2.new(1, -132, 0, 22)
 
-		local info = makeText(card, "Unlock: " .. GameConfig.getBiomeUnlockText(biomeId), 13, Color3.fromRGB(190, 204, 220), false)
+		local info = makeText(card, "Unlock Island: " .. GameConfig.getBiomeUnlockText(biomeId), 13, Color3.fromRGB(190, 204, 220), false)
 		info.Position = UDim2.new(0, 12, 0, 34)
 		info.Size = UDim2.new(1, -132, 0, 20)
 
@@ -2100,52 +2006,75 @@ local function renderBiomesTab()
 	end
 end
 
-local function renderBagTab()
-	local top = makeCard(content, 82)
-	local value = state and state.InventoryValue or 0
-	local ownedRodCount = 0
-	for _, rodId in ipairs(GameConfig.RodOrder) do
-		if state and state.OwnedRods[rodId] then
-			ownedRodCount += 1
-		end
+mainPanelUI.activeBagTab = "Fish"
+mainPanelUI.bagFishSort = "Recently caught"
+
+function mainPanelUI.renderBagTabBar()
+	local tabBar = Instance.new("Frame")
+	tabBar.Name = "BagCategoryTabs"
+	tabBar.Size = UDim2.new(1, -8, 0, 38)
+	tabBar.BackgroundTransparency = 1
+	tabBar.Parent = mainPanelUI.content
+
+	local tabs = {
+		{ id = "Fishing Rods", text = "Fishing Rods" },
+		{ id = "Bait", text = "Bait" },
+		{ id = "Fish", text = "Fish" },
+	}
+	for index, tab in ipairs(tabs) do
+		local selected = mainPanelUI.activeBagTab == tab.id
+		local button = makeButton(tabBar, tab.text, selected and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(38, 45, 57))
+		button.Name = tab.id:gsub("%s", "") .. "Tab"
+		button.Position = UDim2.new((index - 1) / 3, index == 1 and 0 or 4, 0, 0)
+		button.Size = UDim2.new(1 / 3, -6, 1, 0)
+		button.TextSize = 12
+		button.MouseButton1Click:Connect(function()
+			mainPanelUI.activeBagTab = tab.id
+			renderContent()
+		end)
 	end
+end
 
-	local heading = makeText(top, "Inventory", 17, Color3.fromRGB(255, 255, 255), true)
-	heading.Position = UDim2.new(0, 12, 0, 8)
-	heading.Size = UDim2.new(1, -24, 0, 24)
-
-	local detail = makeText(top, string.format("%d/%d fish | %d rods | Total value: %d coins", #state.Inventory, state.BackpackSize, ownedRodCount, value), 14, Color3.fromRGB(190, 204, 220), false)
-	detail.Position = UDim2.new(0, 12, 0, 38)
-	detail.Size = UDim2.new(1, -24, 0, 22)
-
-	local rodsHeader = makeText(content, "Rods", 16, Color3.fromRGB(255, 255, 255), true)
-	rodsHeader.Size = UDim2.new(1, -8, 0, 28)
-
+function mainPanelUI.renderBagRods()
+	local ownedCount = 0
 	for _, rodId in ipairs(GameConfig.RodOrder) do
 		if state.OwnedRods[rodId] then
+			ownedCount += 1
 			local rod = GameConfig.Rods[rodId]
 			local equipped = state.EquippedRod == rodId
-			local card = makeCard(content, 76)
+			local card = makeCard(mainPanelUI.content, 96)
+			addStroke(card, equipped and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(60, 72, 90), 1).Transparency = equipped and 0.15 or 0.45
 
 			local icon = makeRodIcon(card, rodId)
-			icon.Position = UDim2.new(0, 8, 0, 6)
+			icon.Position = UDim2.new(0, 8, 0, 16)
 			icon.Size = UDim2.new(0, 64, 0, 64)
 
 			local name = makeText(card, rod.displayName, 15, Color3.fromRGB(255, 255, 255), true)
 			name.Position = UDim2.new(0, 84, 0, 8)
-			name.Size = UDim2.new(1, -204, 0, 22)
+			name.Size = UDim2.new(1, -202, 0, 22)
 
-			local info = makeText(card, string.format("Luck: +%d%% | Speed: %d%%", math.floor(rod.luck * 100), math.floor((1 / rod.speed) * 100)), 12, Color3.fromRGB(190, 204, 220), false)
-			info.Position = UDim2.new(0, 84, 0, 34)
-			info.Size = UDim2.new(1, -204, 0, 18)
+			local barBonus = (((GameConfig.FishingMinigame or {}).RodBonuses or {})[rodId] or {}).barSizeMultiplier or 1
+			local stats = string.format("Catch bar +%d%% | Luck +%d%% | Speed +%d%%", math.floor((barBonus - 1) * 100 + 0.5), math.floor((rod.luck or 0) * 100 + 0.5), math.floor((1 - (rod.speed or 1)) * 100 + 0.5))
+			local info = makeText(card, stats, 11, Color3.fromRGB(190, 204, 220), false)
+			info.Position = UDim2.new(0, 84, 0, 32)
+			info.Size = UDim2.new(1, -202, 0, 30)
+			info.TextWrapped = true
 
-			local status = makeText(card, equipped and "Equipped" or "Owned", 12, equipped and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(143, 160, 180), true)
-			status.Position = UDim2.new(0, 84, 0, 52)
-			status.Size = UDim2.new(1, -204, 0, 18)
+			local requirementText = equipped and "Equipped" or "Owned"
+			if rod.requiredBiome then
+				local requiredId = normalizeIslandId(rod.requiredBiome)
+				local requiredIsland = GameConfig.Biomes[requiredId]
+				requirementText ..= " | " .. ((requiredIsland and requiredIsland.displayName) or tostring(requiredId))
+			end
+			local status = makeText(card, requirementText, 11, equipped and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(143, 160, 180), true)
+			status.Position = UDim2.new(0, 84, 0, 67)
+			status.Size = UDim2.new(1, -202, 0, 18)
 
 			local button = makeButton(card, equipped and "Equipped" or "Equip", equipped and Color3.fromRGB(91, 104, 124) or Color3.fromRGB(53, 130, 246))
-			button.Position = UDim2.new(1, -110, 0, 20)
-			button.Size = UDim2.new(0, 94, 0, 36)
+			button.Position = UDim2.new(1, -106, 0, 30)
+			button.Size = UDim2.new(0, 90, 0, 36)
+			button.TextSize = 12
+			button.AutoButtonColor = not equipped
 			button.MouseButton1Click:Connect(function()
 				if not equipped then
 					BuyRod:FireServer(rodId)
@@ -2154,95 +2083,179 @@ local function renderBagTab()
 		end
 	end
 
-	local baitsHeader = makeText(content, "Bait", 16, Color3.fromRGB(255, 255, 255), true)
-	baitsHeader.Size = UDim2.new(1, -8, 0, 28)
+	if ownedCount == 0 then
+		local empty = makeText(mainPanelUI.content, "You do not own any fishing rods yet.", 14, Color3.fromRGB(190, 204, 220), false)
+		empty.Size = UDim2.new(1, -8, 0, 48)
+		empty.TextXAlignment = Enum.TextXAlignment.Center
+	end
+end
 
+function mainPanelUI.renderBagBait()
 	for _, baitId in ipairs(GameConfig.BaitOrder) do
 		local bait = GameConfig.Baits[baitId]
 		local count = getBaitCount(baitId)
 		local equipped = state.EquippedBait == baitId
 		local isBasic = baitId == GameConfig.BasicBaitId
 		local canEquip = isBasic or count > 0
-		local canBuy = not isBasic and state.Level >= (bait.unlockLevel or 1) and state.Coins >= (bait.cost or 0)
-
-		local card = makeCard(content, 104)
+		local card = makeCard(mainPanelUI.content, 92)
 		addStroke(card, equipped and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(60, 72, 90), 1).Transparency = equipped and 0.15 or 0.45
 
-		local name = makeText(card, bait.displayName, 15, Color3.fromRGB(255, 255, 255), true)
-		name.Position = UDim2.new(0, 12, 0, 6)
-		name.Size = UDim2.new(1, -222, 0, 22)
+		local badge = Instance.new("Frame")
+		badge.Position = UDim2.new(0, 10, 0, 18)
+		badge.Size = UDim2.new(0, 56, 0, 56)
+		badge.BackgroundColor3 = isBasic and Color3.fromRGB(58, 174, 205) or Color3.fromRGB(53, 130, 246)
+		badge.Parent = card
+		addCorner(badge, 7)
+		local badgeText = makeText(badge, bait.displayName:sub(1, 1), 22, Color3.fromRGB(255, 255, 255), true)
+		badgeText.Size = UDim2.fromScale(1, 1)
+		badgeText.TextXAlignment = Enum.TextXAlignment.Center
 
-		local effect = makeText(card, getBaitEffectText(bait), 12, Color3.fromRGB(190, 204, 220), false)
-		effect.Position = UDim2.new(0, 12, 0, 30)
-		effect.Size = UDim2.new(1, -222, 0, 34)
+		local name = makeText(card, bait.displayName, 15, Color3.fromRGB(255, 255, 255), true)
+		name.Position = UDim2.new(0, 78, 0, 8)
+		name.Size = UDim2.new(1, -194, 0, 22)
+
+		local effect = makeText(card, bait.description or getBaitEffectText(bait), 11, Color3.fromRGB(190, 204, 220), false)
+		effect.Position = UDim2.new(0, 78, 0, 31)
+		effect.Size = UDim2.new(1, -194, 0, 30)
 		effect.TextWrapped = true
 
-		local countText = getBaitCountText(baitId, count)
-		if not isBasic then
-			countText ..= string.format(" | %d coins / %d | Lv %d", bait.cost or 0, bait.purchaseAmount or 1, bait.unlockLevel or 1)
-		end
-		local detail = makeText(card, countText, 12, equipped and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(143, 160, 180), false)
-		detail.Position = UDim2.new(0, 12, 0, 68)
-		detail.Size = UDim2.new(1, -222, 0, 18)
-
-		if not isBasic then
-			local buy = makeButton(card, "Buy +" .. tostring(bait.purchaseAmount or 1), canBuy and Color3.fromRGB(28, 160, 92) or Color3.fromRGB(86, 98, 115))
-			buy.Position = UDim2.new(1, -194, 0, 35)
-			buy.Size = UDim2.new(0, 84, 0, 34)
-			buy.TextSize = 12
-			buy.AutoButtonColor = canBuy
-			buy.MouseButton1Click:Connect(function()
-				fireBaitAction("Buy", baitId)
-			end)
-		end
+		local countText = isBasic and "Unlimited" or ("Quantity: " .. tostring(count))
+		local detail = makeText(card, equipped and (countText .. " | Equipped") or countText, 11, equipped and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(143, 160, 180), equipped)
+		detail.Position = UDim2.new(0, 78, 0, 65)
+		detail.Size = UDim2.new(1, -194, 0, 18)
 
 		local equip = makeButton(card, equipped and "Equipped" or "Equip", equipped and Color3.fromRGB(91, 104, 124) or (canEquip and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(86, 98, 115)))
-		equip.Position = UDim2.new(1, -102, 0, 35)
-		equip.Size = UDim2.new(0, 86, 0, 34)
+		equip.Position = UDim2.new(1, -106, 0, 28)
+		equip.Size = UDim2.new(0, 90, 0, 36)
 		equip.TextSize = 12
 		equip.AutoButtonColor = canEquip and not equipped
 		equip.MouseButton1Click:Connect(function()
-			if not equipped then
+			if canEquip and not equipped then
 				fireBaitAction("Equip", baitId)
 			end
 		end)
 	end
+end
 
-	local fishHeader = makeText(content, "Fish", 16, Color3.fromRGB(255, 255, 255), true)
-	fishHeader.Size = UDim2.new(1, -8, 0, 28)
+function mainPanelUI.renderBagFish()
+	local storage = makeCard(mainPanelUI.content, 58)
+	local storageTitle = makeText(storage, string.format("Fish Storage: %d / %d", #state.Inventory, state.BackpackSize), 16, Color3.fromRGB(255, 255, 255), true)
+	storageTitle.Position = UDim2.new(0, 12, 0, 6)
+	storageTitle.Size = UDim2.new(1, -24, 0, 22)
+	local storageValue = makeText(storage, string.format("Bag value: %d coins", state.InventoryValue or 0), 12, Color3.fromRGB(190, 204, 220), false)
+	storageValue.Position = UDim2.new(0, 12, 0, 30)
+	storageValue.Size = UDim2.new(1, -24, 0, 18)
 
-	for index = #state.Inventory, 1, -1 do
-		local fish = state.Inventory[index]
-		local card = makeCard(content, 84)
+	local sortBar = Instance.new("Frame")
+	sortBar.Name = "FishSortBar"
+	sortBar.Size = UDim2.new(1, -8, 0, 62)
+	sortBar.BackgroundTransparency = 1
+	sortBar.Parent = mainPanelUI.content
+	local sortLabel = makeText(sortBar, "Sort", 12, Color3.fromRGB(190, 204, 220), true)
+	sortLabel.Size = UDim2.new(1, 0, 0, 18)
+
+	local sortOptions = {
+		{ id = "Rarity", text = "Rarity" },
+		{ id = "Value", text = "Value" },
+		{ id = "Name", text = "Name" },
+		{ id = "Recently caught", text = "Recent" },
+	}
+	for index, option in ipairs(sortOptions) do
+		local selected = mainPanelUI.bagFishSort == option.id
+		local button = makeButton(sortBar, option.text, selected and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(38, 45, 57))
+		button.Position = UDim2.new((index - 1) / 4, index == 1 and 0 or 4, 0, 22)
+		button.Size = UDim2.new(0.25, -6, 0, 34)
+		button.TextSize = 11
+		button.MouseButton1Click:Connect(function()
+			mainPanelUI.bagFishSort = option.id
+			renderContent()
+		end)
+	end
+
+	local fishRows = {}
+	for index, fish in ipairs(state.Inventory) do
+		table.insert(fishRows, { fish = fish, originalIndex = index })
+	end
+	table.sort(fishRows, function(left, right)
+		local leftFish = left.fish
+		local rightFish = right.fish
+		if mainPanelUI.bagFishSort == "Name" then
+			return string.lower(leftFish.name or leftFish.id or "") < string.lower(rightFish.name or rightFish.id or "")
+		elseif mainPanelUI.bagFishSort == "Value" then
+			if (leftFish.value or 0) ~= (rightFish.value or 0) then
+				return (leftFish.value or 0) > (rightFish.value or 0)
+			end
+		elseif mainPanelUI.bagFishSort == "Rarity" then
+			local rarityRank = { Common = 1, Uncommon = 2, Rare = 3, Epic = 4, Legendary = 5, Mythic = 6 }
+			if (rarityRank[leftFish.rarity] or 0) ~= (rarityRank[rightFish.rarity] or 0) then
+				return (rarityRank[leftFish.rarity] or 0) > (rarityRank[rightFish.rarity] or 0)
+			end
+		end
+		return left.originalIndex > right.originalIndex
+	end)
+
+	if #fishRows == 0 then
+		local empty = makeText(mainPanelUI.content, "Your fish bag is empty.", 14, Color3.fromRGB(190, 204, 220), false)
+		empty.Size = UDim2.new(1, -8, 0, 48)
+		empty.TextXAlignment = Enum.TextXAlignment.Center
+		return
+	end
+
+	local canEditAquarium = state.AquariumView and state.AquariumView.CanEdit == true
+	for _, row in ipairs(fishRows) do
+		local fish = row.fish
+		local card = makeCard(mainPanelUI.content, 92)
 		local color = GameConfig.RarityColors[fish.rarity] or Color3.fromRGB(255, 255, 255)
-
 		local icon = makeFishIcon(card, fish.id, fish.rarity, true)
-		icon.Position = UDim2.new(0, 8, 0, 13)
+		icon.Position = UDim2.new(0, 8, 0, 17)
 		icon.Size = UDim2.new(0, 58, 0, 58)
 
-		local name = makeText(card, fish.name .. " [" .. fish.rarity .. "]", 15, color, true)
-		name.Position = UDim2.new(0, 76, 0, 9)
-		name.Size = UDim2.new(1, -176, 0, 22)
+		local name = makeText(card, (fish.name or fish.id or "Fish") .. " [" .. (fish.rarity or "Common") .. "]", 14, color, true)
+		name.Position = UDim2.new(0, 76, 0, 8)
+		name.Size = UDim2.new(1, -190, 0, 22)
+		name.TextTruncate = Enum.TextTruncate.AtEnd
 
-		local fishSpace = GameConfig.getAquariumFishSpace(fish)
-		local info = makeText(card, string.format("Value: %d | Aquarium: %d space", fish.value, fishSpace), 13, Color3.fromRGB(190, 204, 220), false)
-		info.Position = UDim2.new(0, 76, 0, 34)
-		info.Size = UDim2.new(1, -176, 0, 18)
+		local scoreText = fish.score and (" | Score: " .. tostring(fish.score)) or ""
+		local info = makeText(card, string.format("Value: %d%s", fish.value or 0, scoreText), 11, Color3.fromRGB(190, 204, 220), false)
+		info.Position = UDim2.new(0, 76, 0, 33)
+		info.Size = UDim2.new(1, -190, 0, 18)
 
-		local display = makeButton(card, "Display", Color3.fromRGB(53, 130, 246))
-		display.Position = UDim2.new(1, -110, 0, 24)
-		display.Size = UDim2.new(0, 94, 0, 36)
-		display.TextSize = 12
+		local islandId = normalizeIslandId(fish.biome)
+		local island = islandId and GameConfig.Biomes[islandId]
+		local islandText = (island and island.displayName) or fish.biome or "Unknown Island"
+		local location = makeText(card, "Caught at: " .. tostring(islandText), 11, Color3.fromRGB(143, 160, 180), false)
+		location.Position = UDim2.new(0, 76, 0, 55)
+		location.Size = UDim2.new(1, -190, 0, 18)
+		location.TextTruncate = Enum.TextTruncate.AtEnd
+
+		local display = makeButton(card, canEditAquarium and "Display" or "View Only", canEditAquarium and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(86, 98, 115))
+		display.Position = UDim2.new(1, -106, 0, 28)
+		display.Size = UDim2.new(0, 90, 0, 36)
+		display.TextSize = 11
+		display.AutoButtonColor = canEditAquarium
 		display.MouseButton1Click:Connect(function()
-			AquariumAction:FireServer("DisplayFish", fish.serial, index)
+			if canEditAquarium then
+				AquariumAction:FireServer("DisplayFish", fish.serial, row.originalIndex)
+			end
 		end)
+	end
+end
+
+local function renderBagTab()
+	mainPanelUI.renderBagTabBar()
+	if mainPanelUI.activeBagTab == "Fishing Rods" then
+		mainPanelUI.renderBagRods()
+	elseif mainPanelUI.activeBagTab == "Bait" then
+		mainPanelUI.renderBagBait()
+	else
+		mainPanelUI.renderBagFish()
 	end
 end
 
 local function renderFishdexTab()
 	local biomeId = getActiveFishingBiomeId()
 	local biome = biomeId and GameConfig.Biomes[biomeId]
-	local summary = makeCard(content, biome and 112 or 82)
+	local summary = makeCard(mainPanelUI.content, biome and 112 or 82)
 
 	local titleLabel = makeText(summary, "Fishdex Collection: " .. getDiscoveredCount() .. "/" .. GameConfig.getFishCount(), 17, Color3.fromRGB(255, 255, 255), true)
 	titleLabel.Position = UDim2.new(0, 12, 0, 8)
@@ -2252,7 +2265,7 @@ local function renderFishdexTab()
 		local rod = state and GameConfig.Rods[state.EquippedRod] or GameConfig.Rods.WoodenRod
 		local autoStatus = state.AutoFishEnabled and "ON" or "OFF"
 
-		local location = makeText(summary, "Current Biome: " .. biome.displayName, 14, biome.color, true)
+		local location = makeText(summary, "Current Island: " .. biome.displayName, 14, biome.color, true)
 		location.Position = UDim2.new(0, 12, 0, 36)
 		location.Size = UDim2.new(1, -24, 0, 20)
 
@@ -2260,24 +2273,24 @@ local function renderFishdexTab()
 		detail.Position = UDim2.new(0, 12, 0, 60)
 		detail.Size = UDim2.new(1, -24, 0, 18)
 
-		local species = makeText(summary, "Species in this biome: " .. #biome.fish, 12, Color3.fromRGB(143, 160, 180), false)
+		local species = makeText(summary, "Species on this island: " .. #biome.fish, 12, Color3.fromRGB(143, 160, 180), false)
 		species.Position = UDim2.new(0, 12, 0, 82)
 		species.Size = UDim2.new(1, -24, 0, 18)
 	else
-		local detail = makeText(summary, "Enter a fishing biome to see your active area here.", 13, Color3.fromRGB(190, 204, 220), false)
+		local detail = makeText(summary, "Enter a fishing island to see your active area here.", 13, Color3.fromRGB(190, 204, 220), false)
 		detail.Position = UDim2.new(0, 12, 0, 38)
 		detail.Size = UDim2.new(1, -24, 0, 20)
 	end
 
 	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
 		local biome = GameConfig.Biomes[biomeId]
-		local header = makeText(content, biome.displayName, 16, biome.color, true)
+		local header = makeText(mainPanelUI.content, biome.displayName, 16, biome.color, true)
 		header.Size = UDim2.new(1, -8, 0, 28)
 
 		for _, fish in ipairs(biome.fish) do
 			local count = state.Fishdex[fish.id] or 0
 			local discovered = count > 0
-			local card = makeCard(content, 76)
+			local card = makeCard(mainPanelUI.content, 76)
 			local color = discovered and (GameConfig.RarityColors[fish.rarity] or Color3.new(1, 1, 1)) or Color3.fromRGB(115, 125, 140)
 
 			local icon = makeFishIcon(card, fish.id, fish.rarity, discovered)
@@ -2307,20 +2320,37 @@ local function renderAquariumTab()
 	local aquarium = state.Aquarium
 	local capacity = aquarium.Capacity
 	local usedCapacity = aquarium.UsedCapacity or GameConfig.getAquariumUsedSpace(aquarium.Fish)
+	local aquariumView = state.AquariumView or {}
+	local viewLoaded = aquariumView.IsLoaded == true
+	local canEditAquarium = aquariumView.CanEdit == true
+	local ownerName = aquariumView.OwnerName or "Player"
+	local viewOnly = viewLoaded and not canEditAquarium
 
-	local top = makeCard(content, 96)
-	local heading = makeText(top, "Personal Aquarium", 17, Color3.fromRGB(255, 255, 255), true)
+	local top = makeCard(mainPanelUI.content, 96)
+	local headingText = canEditAquarium and "My Aquarium" or (viewOnly and ("Viewing " .. ownerName .. "'s Aquarium") or "Aquarium Hub")
+	local heading = makeText(top, headingText, 17, Color3.fromRGB(255, 255, 255), true)
 	heading.Position = UDim2.new(0, 12, 0, 8)
 	heading.Size = UDim2.new(1, -24, 0, 24)
 
-	local info = makeText(top, string.format("Level %d | Space %d/%d", aquarium.Level, usedCapacity, capacity), 14, Color3.fromRGB(190, 204, 220), false)
+	local infoText = string.format("Level %d | Space %d/%d", aquarium.Level, usedCapacity, capacity)
+	if viewOnly then
+		infoText = "View-only. Select My Aquarium to edit."
+	elseif not viewLoaded then
+		infoText = "Use the hub controls to load an aquarium."
+	end
+	local info = makeText(top, infoText, 14, Color3.fromRGB(190, 204, 220), false)
 	info.Position = UDim2.new(0, 12, 0, 36)
 	info.Size = UDim2.new(1, -24, 0, 22)
 
-	local best = state.BestCatch and ("Best: " .. state.BestCatch.name .. " (" .. state.BestCatch.value .. " coins)") or "Best: None yet"
+	local best = viewOnly and "Editing disabled for other players' aquariums." or (state.BestCatch and ("Best: " .. state.BestCatch.name .. " (" .. state.BestCatch.value .. " coins)") or "Best: None yet")
 	local bestText = makeText(top, best, 13, Color3.fromRGB(143, 160, 180), false)
 	bestText.Position = UDim2.new(0, 12, 0, 60)
 	bestText.Size = UDim2.new(1, -184, 0, 20)
+
+	if not canEditAquarium then
+		renderAquariumVisitorsSection()
+		return
+	end
 
 	local nextCost = GameConfig.AquariumUpgradeCosts[aquarium.Level + 1]
 	local upgrade = makeButton(top, nextCost and ("Upgrade " .. nextCost) or "Max Level", Color3.fromRGB(28, 160, 92))
@@ -2331,7 +2361,7 @@ local function renderAquariumTab()
 	end)
 
 	for index, fish in ipairs(aquarium.Fish) do
-		local card = makeCard(content, 62)
+		local card = makeCard(mainPanelUI.content, 62)
 		local color = GameConfig.RarityColors[fish.rarity] or Color3.new(1, 1, 1)
 		local name = makeText(card, index .. ". " .. fish.name .. " [" .. fish.rarity .. "]", 14, color, true)
 		name.Position = UDim2.new(0, 12, 0, 6)
@@ -2357,17 +2387,120 @@ end
 renderAquariumVisitorsSection = function()
 	local visitors = state.AquariumVisitors or {}
 
-	local top = makeCard(content, 84)
-	local heading = makeText(top, "Visit Aquariums", 17, Color3.fromRGB(255, 255, 255), true)
+	local top = makeCard(mainPanelUI.content, 84)
+	local heading = makeText(top, "Aquarium Hub", 17, Color3.fromRGB(255, 255, 255), true)
 	heading.Position = UDim2.new(0, 12, 0, 8)
 	heading.Size = UDim2.new(1, -24, 0, 24)
 
-	local info = makeText(top, "Pick an online player's aquarium and jump straight to it.", 13, Color3.fromRGB(190, 204, 220), false)
+	local info = makeText(top, "Choose one aquarium to load into the main hub tank.", 13, Color3.fromRGB(190, 204, 220), false)
 	info.Position = UDim2.new(0, 12, 0, 38)
 	info.Size = UDim2.new(1, -24, 0, 22)
 
+	local directory = makeCard(mainPanelUI.content, 204)
+	local directoryTitle = makeText(directory, "Directory", 15, Color3.fromRGB(255, 255, 255), true)
+	directoryTitle.Position = UDim2.new(0, 12, 0, 8)
+	directoryTitle.Size = UDim2.new(1, -24, 0, 20)
+
+	local function makeDirectoryButton(text, column, row, color, callback)
+		local button = makeButton(directory, text, color or Color3.fromRGB(53, 130, 246))
+		button.Position = UDim2.new(column == 1 and 0 or 0.5, column == 1 and 12 or 6, 0, 36 + ((row - 1) * 38))
+		button.Size = UDim2.new(0.5, -18, 0, 32)
+		button.TextSize = 12
+		button.MouseButton1Click:Connect(callback)
+		return button
+	end
+
+	local function visitSingleTank(userId)
+		print("Loading aquarium:", tostring(userId))
+		TeleportTo:FireServer({
+			kind = "PlayerAquarium",
+			userId = userId,
+		})
+	end
+
+	local function getPublicVisitor(randomize)
+		local choices = {}
+		for _, visitor in ipairs(visitors) do
+			if visitor.UserId then
+				table.insert(choices, visitor)
+			end
+		end
+
+		if #choices == 0 then
+			return nil
+		end
+
+		if randomize then
+			return choices[math.random(1, #choices)]
+		end
+
+		table.sort(choices, function(left, right)
+			local leftBest = left.BestCatch and left.BestCatch.value or 0
+			local rightBest = right.BestCatch and right.BestCatch.value or 0
+			if leftBest ~= rightBest then
+				return leftBest > rightBest
+			end
+
+			return (left.FishCount or 0) > (right.FishCount or 0)
+		end)
+
+		return choices[1]
+	end
+
+	makeDirectoryButton("My Aquarium", 1, 1, Color3.fromRGB(53, 130, 246), function()
+		print("Aquarium Viewer option clicked:", "My Aquarium")
+		visitSingleTank(player.UserId)
+	end)
+	makeDirectoryButton("Friends", 2, 1, Color3.fromRGB(38, 145, 118), function()
+		print("Aquarium Viewer option clicked:", "Friends' Aquariums")
+		showToast("Friends' aquariums are listed below.")
+	end)
+	makeDirectoryButton("Featured", 1, 2, Color3.fromRGB(86, 118, 220), function()
+		print("Aquarium Viewer option clicked:", "Featured Aquariums")
+		local visitor = getPublicVisitor(false)
+		if visitor then
+			print("Loading aquarium:", visitor.DisplayName or visitor.Name or "Featured")
+			visitSingleTank(visitor.UserId)
+		else
+			showToast("No featured aquariums are ready yet.")
+		end
+	end)
+	makeDirectoryButton("Most Liked", 2, 2, Color3.fromRGB(225, 156, 58), function()
+		print("Aquarium Viewer option clicked:", "Most Liked Aquariums")
+		local visitor = getPublicVisitor(false)
+		if visitor then
+			print("Loading aquarium:", visitor.DisplayName or visitor.Name or "Most Liked")
+			visitSingleTank(visitor.UserId)
+		else
+			showToast("No liked aquariums are ready yet.")
+		end
+	end)
+	makeDirectoryButton("Random Public", 1, 3, Color3.fromRGB(55, 170, 190), function()
+		print("Aquarium Viewer option clicked:", "Random Public Aquarium")
+		local visitor = getPublicVisitor(true)
+		if visitor then
+			print("Loading aquarium:", visitor.DisplayName or visitor.Name or "Random Public")
+			visitSingleTank(visitor.UserId)
+		else
+			showToast("No public aquariums are ready yet.")
+		end
+	end)
+	makeDirectoryButton("Search Player", 2, 3, Color3.fromRGB(196, 95, 128), function()
+		print("Aquarium Viewer option clicked:", "Search Player Aquarium")
+		showToast("Search Player Aquarium is coming soon.")
+	end)
+
+	local returnButton = makeButton(directory, "Return to Seaside Island", Color3.fromRGB(38, 45, 57))
+	returnButton.Position = UDim2.new(0, 12, 0, 150)
+	returnButton.Size = UDim2.new(1, -24, 0, 32)
+	returnButton.TextSize = 12
+	returnButton.MouseButton1Click:Connect(function()
+		print("Aquarium Viewer option clicked:", "Return to Seaside Island")
+		TeleportTo:FireServer("Lobby")
+	end)
+
 	if #visitors == 0 then
-		local empty = makeCard(content, 64)
+		local empty = makeCard(mainPanelUI.content, 64)
 		local emptyText = makeText(empty, "No aquariums are ready yet.", 15, Color3.fromRGB(190, 204, 220), true)
 		emptyText.Position = UDim2.new(0, 12, 0, 16)
 		emptyText.Size = UDim2.new(1, -24, 0, 24)
@@ -2375,7 +2508,7 @@ renderAquariumVisitorsSection = function()
 	end
 
 	for _, visitor in ipairs(visitors) do
-		local card = makeCard(content, 92)
+		local card = makeCard(mainPanelUI.content, 92)
 		local nameText = visitor.DisplayName or visitor.Name or "Player"
 		if visitor.IsSelf then
 			nameText = nameText .. " (You)"
@@ -2399,7 +2532,7 @@ renderAquariumVisitorsSection = function()
 		best.Position = UDim2.new(0, 12, 0, 56)
 		best.Size = UDim2.new(1, -122, 0, 18)
 
-		local visit = makeButton(card, visitor.IsSelf and "Go Home" or "Visit", Color3.fromRGB(53, 130, 246))
+		local visit = makeButton(card, visitor.IsSelf and "My Tank" or "Visit", Color3.fromRGB(53, 130, 246))
 		visit.Position = UDim2.new(1, -102, 0, 28)
 		visit.Size = UDim2.new(0, 86, 0, 36)
 		visit.TextSize = 13
@@ -2415,8 +2548,8 @@ end
 local function renderTeleportTab()
 	local currentLocation = getLocalTravelLocation()
 	local targets = {
-		{ id = "Lobby", name = "Lobby" },
-		{ id = "Home", name = "Home Aquarium" },
+		{ id = "Lobby", name = "Seaside Island" },
+		{ id = "AquariumHub", name = "Aquarium Hub" },
 	}
 
 	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
@@ -2425,15 +2558,15 @@ local function renderTeleportTab()
 			id = biomeId,
 			name = biome.displayName,
 			biome = biome,
-			requirement = biomeId ~= "BeginnerPond" and GameConfig.getBiomeUnlockText(biomeId) or nil,
+			requirement = biomeId ~= DEFAULT_FISHING_ISLAND_ID and GameConfig.getBiomeUnlockText(biomeId) or nil,
 		})
 	end
 
 	for _, target in ipairs(targets) do
 		local biome = target.biome
-		local unlocked = not biome or state.UnlockedBiomes[target.id]
+		local unlocked = not biome or getUnlockedIslands()[target.id]
 		local current = currentLocation == target.id
-		local card = makeCard(content, biome and 96 or 72)
+		local card = makeCard(mainPanelUI.content, biome and 96 or 72)
 		local nameColor = biome and biome.color or Color3.fromRGB(255, 255, 255)
 		if not unlocked then
 			nameColor = Color3.fromRGB(130, 140, 155)
@@ -2476,51 +2609,11 @@ local function renderTeleportTab()
 	end
 end
 
-local function formatQuestReward(reward)
-	local parts = {}
-	reward = type(reward) == "table" and reward or {}
-
-	if (tonumber(reward.coins) or 0) > 0 then
-		table.insert(parts, tostring(reward.coins) .. " Coins")
-	end
-	if (tonumber(reward.xp) or 0) > 0 then
-		table.insert(parts, tostring(reward.xp) .. " Fishing XP")
-	end
-	if type(reward.bait) == "table" then
-		for _, baitId in ipairs(GameConfig.BaitOrder) do
-			local amount = tonumber(reward.bait[baitId]) or 0
-			if amount > 0 then
-				local bait = GameConfig.Baits[baitId]
-				table.insert(parts, tostring(amount) .. " " .. (bait and bait.displayName or baitId))
-			end
-		end
-	end
-	if type(reward.decorations) == "table" then
-		for _, amount in pairs(reward.decorations) do
-			amount = tonumber(amount) or 0
-			if amount > 0 then
-				table.insert(parts, amount > 1 and (tostring(amount) .. " Aquarium Decorations") or "Aquarium Decoration")
-			end
-		end
-	end
-
-	if #parts == 0 then
-		return "Reward ready"
-	end
-
-	return table.concat(parts, " | ")
-end
-
-local function getQuestPeriod(periodName)
-	local quests = state and state.Quests
-	return quests and quests[periodName] or nil
-end
-
 local function renderQuestPeriodTabs()
 	local selector = Instance.new("Frame")
 	selector.Size = UDim2.new(1, -8, 0, 38)
 	selector.BackgroundTransparency = 1
-	selector.Parent = content
+	selector.Parent = mainPanelUI.content
 
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
@@ -2543,14 +2636,14 @@ local function renderQuestsTab()
 
 	local period = getQuestPeriod(activeQuestPeriod)
 	if not period then
-		local loading = makeCard(content, 64)
+		local loading = makeCard(mainPanelUI.content, 64)
 		local loadingText = makeText(loading, "Loading quests...", 15, Color3.fromRGB(190, 204, 220), true)
 		loadingText.Position = UDim2.new(0, 12, 0, 16)
 		loadingText.Size = UDim2.new(1, -24, 0, 24)
 		return
 	end
 
-	local summary = makeCard(content, 72)
+	local summary = makeCard(mainPanelUI.content, 72)
 	local heading = makeText(summary, activeQuestPeriod .. " Quests", 17, Color3.fromRGB(255, 255, 255), true)
 	heading.Position = UDim2.new(0, 12, 0, 8)
 	heading.Size = UDim2.new(1, -24, 0, 24)
@@ -2567,7 +2660,7 @@ local function renderQuestsTab()
 	detail.Size = UDim2.new(1, -24, 0, 20)
 
 	for _, quest in ipairs(period.quests or {}) do
-		local card = makeCard(content, 124)
+		local card = makeCard(mainPanelUI.content, 124)
 		local complete = quest.completed == true
 		local claimed = quest.claimed == true
 		addStroke(card, claimed and Color3.fromRGB(112, 255, 156) or (complete and Color3.fromRGB(255, 219, 92) or Color3.fromRGB(60, 72, 90)), 1).Transparency = complete and 0.16 or 0.45
@@ -2653,14 +2746,28 @@ function fishyFishCopyAquariumDesignWith(changes)
 	local current = monetization.AquariumPreviewDesign or monetization.AquariumDesign or MonetizationConfig.AquariumDesigner.defaultDesign
 	local design = {
 		theme = current.theme,
+		backdropEnabled = current.backdropEnabled ~= false,
 		backgroundColor = current.backgroundColor,
 		lightingColor = current.lightingColor,
 		signText = current.signText or "",
 		decorations = {},
+		freeDecorations = {},
 	}
 
 	for slotId, decorationId in pairs(current.decorations or {}) do
 		design.decorations[slotId] = decorationId
+	end
+
+	for _, item in ipairs(current.freeDecorations or {}) do
+		if type(item) == "table" then
+			table.insert(design.freeDecorations, {
+				decorationId = item.decorationId,
+				x = item.x,
+				y = item.y,
+				z = item.z,
+				scale = item.scale,
+			})
+		end
 	end
 
 	if type(changes) == "table" then
@@ -2671,6 +2778,19 @@ function fishyFishCopyAquariumDesignWith(changes)
 						design.decorations[slotId] = nil
 					else
 						design.decorations[slotId] = decorationId
+					end
+				end
+			elseif key == "freeDecorations" and type(value) == "table" then
+				design.freeDecorations = {}
+				for _, item in ipairs(value) do
+					if type(item) == "table" then
+						table.insert(design.freeDecorations, {
+							decorationId = item.decorationId,
+							x = item.x,
+							y = item.y,
+							z = item.z,
+							scale = item.scale,
+						})
 					end
 				end
 			else
@@ -2702,7 +2822,7 @@ function fishyFishRenderShopSubTabs()
 	local selector = Instance.new("Frame")
 	selector.Size = UDim2.new(1, -8, 0, 38)
 	selector.BackgroundTransparency = 1
-	selector.Parent = content
+	selector.Parent = mainPanelUI.content
 
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
@@ -2710,7 +2830,7 @@ function fishyFishRenderShopSubTabs()
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = selector
 
-	for _, tabName in ipairs({ "Game Passes", "Bait", "Aquarium", "Storage" }) do
+	for _, tabName in ipairs({ "Passes", "Items", "Coins", "Upgrades" }) do
 		local button = makeButton(selector, tabName, activeShopTab == tabName and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(38, 45, 57))
 		button.Size = UDim2.new(0.25, -5, 1, 0)
 		button.TextSize = 12
@@ -2722,7 +2842,7 @@ function fishyFishRenderShopSubTabs()
 end
 
 function fishyFishRenderRobuxItem(itemKey, item, purchaseAction, owned, iconText, iconColor)
-	local card = makeCard(content, 104)
+	local card = makeCard(mainPanelUI.content, 104)
 	fishyFishMakeShopIcon(card, iconText, iconColor)
 
 	local name = makeText(card, item.name, 15, Color3.fromRGB(255, 255, 255), true)
@@ -2755,7 +2875,7 @@ end
 
 function fishyFishRenderShopGamePasses()
 	local monetization = fishyFishGetMonetizationState()
-	local reward = makeCard(content, 92)
+	local reward = makeCard(mainPanelUI.content, 92)
 	fishyFishMakeShopIcon(reward, "VIP", Color3.fromRGB(255, 181, 36))
 	local title = makeText(reward, "VIP Daily Reward", 16, Color3.fromRGB(255, 255, 255), true)
 	title.Position = UDim2.new(0, 76, 0, 10)
@@ -2788,8 +2908,19 @@ function fishyFishRenderShopBait()
 	end
 end
 
+function fishyFishRenderShopCoins()
+	for _, productKey in ipairs(MonetizationConfig.CoinProductOrder or {}) do
+		local product = MonetizationConfig.DeveloperProducts[productKey]
+		if product then
+			fishyFishRenderRobuxItem(productKey, product, function(key)
+				fireShopAction("PromptProduct", "Product", key)
+			end, false, "COIN", Color3.fromRGB(255, 181, 36))
+		end
+	end
+end
+
 function fishyFishRenderShopStorage()
-	local summary = makeCard(content, 74)
+	local summary = makeCard(mainPanelUI.content, 74)
 	local heading = makeText(summary, "Fish Bag Storage", 16, Color3.fromRGB(255, 255, 255), true)
 	heading.Position = UDim2.new(0, 12, 0, 10)
 	heading.Size = UDim2.new(1, -24, 0, 22)
@@ -2809,28 +2940,34 @@ function fishyFishRenderAquariumDesignerControls()
 	local monetization = fishyFishGetMonetizationState()
 	local ownsDesigner = fishyFishOwnsGamePass("AquariumDesigner")
 	local currentDesign = monetization.AquariumPreviewDesign or monetization.AquariumDesign or MonetizationConfig.AquariumDesigner.defaultDesign
-	local aquariumLevel = (state and state.Aquarium and tonumber(state.Aquarium.Level)) or 1
+	local canEditAquarium = state.AquariumView and state.AquariumView.CanEdit == true
 
-	local summary = makeCard(content, 96)
+	local summary = makeCard(mainPanelUI.content, 96)
 	fishyFishMakeShopIcon(summary, ownsDesigner and "OPEN" or "LOCK", ownsDesigner and Color3.fromRGB(58, 174, 205) or Color3.fromRGB(96, 106, 122))
 	local heading = makeText(summary, "Aquarium Designer", 16, Color3.fromRGB(255, 255, 255), true)
 	heading.Position = UDim2.new(0, 76, 0, 8)
 	heading.Size = UDim2.new(1, -194, 0, 22)
-	local status = ownsDesigner and "Owned | Preview, apply, and save premium designs." or "Preview is free. Apply premium designs after buying the pass."
+	local status = "Select My Aquarium in the Hub to edit."
+	if canEditAquarium then
+		status = ownsDesigner and "Owned | Preview, apply, and save premium designs." or "Preview is free. Apply premium designs after buying the pass."
+	end
 	local detail = makeText(summary, status, 12, Color3.fromRGB(190, 204, 220), false)
 	detail.Position = UDim2.new(0, 76, 0, 34)
 	detail.Size = UDim2.new(1, -194, 0, 34)
 	detail.TextWrapped = true
-	local cancel = makeButton(summary, monetization.AquariumPreviewActive and "Cancel" or "Preview", monetization.AquariumPreviewActive and Color3.fromRGB(230, 126, 48) or Color3.fromRGB(86, 98, 115))
+	local cancel = makeButton(summary, monetization.AquariumPreviewActive and "Cancel" or "Preview", canEditAquarium and (monetization.AquariumPreviewActive and Color3.fromRGB(230, 126, 48) or Color3.fromRGB(86, 98, 115)) or Color3.fromRGB(86, 98, 115))
 	cancel.Position = UDim2.new(1, -104, 0, 31)
 	cancel.Size = UDim2.new(0, 88, 0, 34)
+	cancel.AutoButtonColor = canEditAquarium
 	cancel.MouseButton1Click:Connect(function()
-		fireShopAction("CancelAquariumPreview", "Aquarium")
+		if canEditAquarium then
+			fireShopAction("CancelAquariumPreview", "Aquarium")
+		end
 	end)
 
 	local function renderDesignOption(kind, id, item, labelPrefix)
 		local premium = item.premium == true
-		local card = makeCard(content, 124)
+		local card = makeCard(mainPanelUI.content, 124)
 		fishyFishMakeShopIcon(card, premium and "LOCK" or "FREE", premium and Color3.fromRGB(255, 181, 36) or Color3.fromRGB(58, 174, 205))
 		local name = makeText(card, (labelPrefix or "") .. item.name, 15, Color3.fromRGB(255, 255, 255), true)
 		name.Position = UDim2.new(0, 76, 0, 8)
@@ -2843,30 +2980,36 @@ function fishyFishRenderAquariumDesignerControls()
 		statusText.Position = UDim2.new(0, 76, 0, 58)
 		statusText.Size = UDim2.new(1, -96, 0, 18)
 
-		local preview = makeButton(card, "Preview", Color3.fromRGB(53, 130, 246))
+		local preview = makeButton(card, canEditAquarium and "Preview" or "View Only", canEditAquarium and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(86, 98, 115))
 		preview.Position = UDim2.new(1, -196, 0, 82)
 		preview.Size = UDim2.new(0, 84, 0, 32)
 		preview.TextSize = 12
+		preview.AutoButtonColor = canEditAquarium
 		preview.MouseButton1Click:Connect(function()
-			fireShopAction("PreviewAquariumDesign", "Aquarium", kind, fishyFishCopyAquariumDesignWith({ [kind] = id }))
+			if canEditAquarium then
+				fireShopAction("PreviewAquariumDesign", "Aquarium", kind, fishyFishCopyAquariumDesignWith({ [kind] = id }))
+			end
 		end)
 
-		local apply = makeButton(card, premium and "Apply" or "Apply", premium and Color3.fromRGB(28, 160, 92) or Color3.fromRGB(28, 160, 92))
+		local apply = makeButton(card, "Apply", canEditAquarium and Color3.fromRGB(28, 160, 92) or Color3.fromRGB(86, 98, 115))
 		apply.Position = UDim2.new(1, -104, 0, 82)
 		apply.Size = UDim2.new(0, 88, 0, 32)
 		apply.TextSize = 12
+		apply.AutoButtonColor = canEditAquarium
 		apply.MouseButton1Click:Connect(function()
-			fireShopAction("ApplyAquariumDesign", "Aquarium", kind, fishyFishCopyAquariumDesignWith({ [kind] = id }))
+			if canEditAquarium then
+				fireShopAction("ApplyAquariumDesign", "Aquarium", kind, fishyFishCopyAquariumDesignWith({ [kind] = id }))
+			end
 		end)
 	end
 
-	local themeHeader = makeText(content, "Themes", 16, Color3.fromRGB(255, 255, 255), true)
+	local themeHeader = makeText(mainPanelUI.content, "Themes", 16, Color3.fromRGB(255, 255, 255), true)
 	themeHeader.Size = UDim2.new(1, -8, 0, 28)
 	for _, themeId in ipairs(MonetizationConfig.AquariumDesigner.themeOrder) do
 		renderDesignOption("theme", themeId, MonetizationConfig.AquariumDesigner.themes[themeId])
 	end
 
-	local signCard = makeCard(content, 104)
+	local signCard = makeCard(mainPanelUI.content, 104)
 	fishyFishMakeShopIcon(signCard, "TEXT", Color3.fromRGB(255, 181, 36))
 	local signTitle = makeText(signCard, "Display Sign Text", 15, Color3.fromRGB(255, 255, 255), true)
 	signTitle.Position = UDim2.new(0, 76, 0, 8)
@@ -2884,127 +3027,30 @@ function fishyFishRenderAquariumDesignerControls()
 	signBox.Parent = signCard
 	addCorner(signBox, 6)
 	addStroke(signBox, Color3.fromRGB(60, 72, 90), 1)
-	local applySign = makeButton(signCard, "Apply", Color3.fromRGB(28, 160, 92))
+	local applySign = makeButton(signCard, "Apply", canEditAquarium and Color3.fromRGB(28, 160, 92) or Color3.fromRGB(86, 98, 115))
 	applySign.Position = UDim2.new(1, -104, 0, 72)
 	applySign.Size = UDim2.new(0, 88, 0, 26)
 	applySign.TextSize = 12
+	applySign.AutoButtonColor = canEditAquarium
 	applySign.MouseButton1Click:Connect(function()
-		fireShopAction("ApplyAquariumDesign", "Aquarium", "signText", fishyFishCopyAquariumDesignWith({ signText = signBox.Text }))
+		if canEditAquarium then
+			fireShopAction("ApplyAquariumDesign", "Aquarium", "signText", fishyFishCopyAquariumDesignWith({ signText = signBox.Text }))
+		end
 	end)
-
-	local decorHeader = makeText(content, "Fixed Decoration Slots", 16, Color3.fromRGB(255, 255, 255), true)
-	decorHeader.Size = UDim2.new(1, -8, 0, 28)
-	for _, slotId in ipairs(MonetizationConfig.AquariumDesigner.slotOrder) do
-		local slot = MonetizationConfig.AquariumDesigner.slots[slotId]
-		local card = makeCard(content, 190)
-		local requiredLevel = tonumber(slot.level) or 1
-		local lockedByLevel = requiredLevel > aquariumLevel
-		local lockedByPass = not ownsDesigner
-		local locked = lockedByLevel
-		local selectedDecoration = currentDesign.decorations and currentDesign.decorations[slotId] or "None"
-		local lockLabel = ""
-		if lockedByLevel then
-			lockLabel = "  [Level " .. tostring(requiredLevel) .. "]"
-		elseif lockedByPass then
-			lockLabel = "  [LOCK]"
-		end
-		local name = makeText(card, slot.name .. lockLabel, 15, (lockedByLevel or lockedByPass) and Color3.fromRGB(143, 160, 180) or Color3.fromRGB(255, 255, 255), true)
-		name.Position = UDim2.new(0, 12, 0, 8)
-		name.Size = UDim2.new(1, -24, 0, 22)
-		local detailText
-		if lockedByLevel then
-			detailText = "Locked until aquarium level " .. tostring(requiredLevel)
-		elseif lockedByPass then
-			detailText = "Requires Aquarium Designer Pass. Preview is allowed."
-		else
-			detailText = "Selected: " .. ((MonetizationConfig.AquariumDesigner.decorations[selectedDecoration] or {}).name or "None")
-		end
-		local detail = makeText(card, detailText, 12, (lockedByLevel or lockedByPass) and Color3.fromRGB(255, 190, 105) or Color3.fromRGB(190, 204, 220), false)
-		detail.Position = UDim2.new(0, 12, 0, 32)
-		detail.Size = UDim2.new(1, -24, 0, 18)
-
-		local x = 12
-		local rowY = 56
-		for _, decorationId in ipairs(MonetizationConfig.AquariumDesigner.decorationOrder) do
-			local decoration = MonetizationConfig.AquariumDesigner.decorations[decorationId]
-			local wideButton = decorationId == "TreasureChest" or decorationId == "ShipwreckPiece" or decorationId == "BubbleMachine"
-			local buttonWidth = wideButton and 112 or 76
-			if x + buttonWidth > 380 then
-				x = 12
-				rowY += 32
-			end
-			local buttonColor = locked and Color3.fromRGB(64, 72, 86) or (decorationId == selectedDecoration and Color3.fromRGB(91, 104, 124) or Color3.fromRGB(53, 130, 246))
-			local button = makeButton(card, decoration.name, buttonColor)
-			button.Position = UDim2.new(0, x, 0, rowY)
-			button.Size = UDim2.new(0, buttonWidth, 0, 28)
-			button.TextSize = 10
-			button.AutoButtonColor = not locked
-			if locked then
-				button.TextColor3 = Color3.fromRGB(160, 171, 190)
-			else
-				button.MouseButton1Click:Connect(function()
-					fireShopAction("PreviewAquariumDesign", "Aquarium", slotId, fishyFishCopyAquariumDesignWith({
-						decorations = {
-							[slotId] = decorationId,
-						},
-					}))
-				end)
-			end
-			x += buttonWidth + 6
-		end
-
-		local applyText = lockedByLevel and "Locked" or (lockedByPass and "Buy Pass" or "Apply Slot")
-		local applyColor = (lockedByLevel or lockedByPass) and Color3.fromRGB(86, 98, 115) or Color3.fromRGB(28, 160, 92)
-		local apply = makeButton(card, applyText, applyColor)
-		apply.Position = UDim2.new(1, -112, 0, 150)
-		apply.Size = UDim2.new(0, 96, 0, 28)
-		apply.TextSize = 12
-		apply.AutoButtonColor = not lockedByLevel
-		if lockedByPass and not lockedByLevel then
-			apply.MouseButton1Click:Connect(function()
-				fireShopAction("PromptGamePass", "GamePass", "AquariumDesigner")
-			end)
-		elseif not lockedByLevel then
-			apply.MouseButton1Click:Connect(function()
-				fireShopAction("ApplyAquariumDesign", "Aquarium", slotId, currentDesign)
-			end)
-		end
-	end
 end
 
 local function renderShopTab()
 	fishyFishRenderShopSubTabs()
 
-	if activeShopTab == "Game Passes" then
+	if activeShopTab == "Passes" then
 		fishyFishRenderShopGamePasses()
-	elseif activeShopTab == "Bait" then
+	elseif activeShopTab == "Items" then
 		fishyFishRenderShopBait()
-	elseif activeShopTab == "Aquarium" then
-		fishyFishRenderAquariumDesignerControls()
-	elseif activeShopTab == "Storage" then
+	elseif activeShopTab == "Coins" then
+		fishyFishRenderShopCoins()
+	elseif activeShopTab == "Upgrades" then
 		fishyFishRenderShopStorage()
 	end
-end
-
-local function getPlayerLeaderstat(targetPlayer, statName)
-	local leaderstats = targetPlayer:FindFirstChild("leaderstats")
-	local stat = leaderstats and leaderstats:FindFirstChild(statName)
-	if stat and stat:IsA("ValueBase") then
-		return stat.Value
-	end
-
-	return 0
-end
-
-local function formatCompactNumber(value)
-	value = tonumber(value) or 0
-	if value >= 1000000 then
-		return string.format("%.1fM", value / 1000000):gsub("%.0M", "M")
-	elseif value >= 1000 then
-		return string.format("%.1fK", value / 1000):gsub("%.0K", "K")
-	end
-
-	return tostring(value)
 end
 
 local function renderLeaderboardTab()
@@ -3013,7 +3059,7 @@ local function renderLeaderboardTab()
 		wrapper.Name = "LeaderboardCardRow"
 		wrapper.Size = UDim2.new(1, 0, 0, height)
 		wrapper.BackgroundTransparency = 1
-		wrapper.Parent = content
+		wrapper.Parent = mainPanelUI.content
 
 		local card = Instance.new("Frame")
 		card.Name = "LeaderboardCard"
@@ -3129,15 +3175,16 @@ renderContent = function()
 	refreshHud()
 	refreshCenterControls()
 	refreshTabs()
-	clearChildren(content)
+	mainPanelUI.panelTitle.Text = activeTab
+	clearChildren(mainPanelUI.content)
 
 	if not state then
-		local loading = makeText(content, "Loading player data...", 16, Color3.fromRGB(255, 255, 255), true)
+		local loading = makeText(mainPanelUI.content, "Loading player data...", 16, Color3.fromRGB(255, 255, 255), true)
 		loading.Size = UDim2.new(1, -8, 0, 40)
 		return
 	end
 
-	if activeTab == "Bag" then
+	if activeTab == "Bag" and not panelCollapsed then
 		renderBagTab()
 	elseif activeTab == "Fishdex" then
 		renderFishdexTab()
@@ -3154,7 +3201,7 @@ renderContent = function()
 	end
 end
 
-local function runMinigame(prompt)
+function minigameUI.legacyRunMinigame(prompt)
 	if minigameRunning then
 		return
 	end
@@ -3176,19 +3223,19 @@ local function runMinigame(prompt)
 	CastPower.activeConfig = nil
 	setMinigameVisible(true)
 	CastPower.content.Visible = false
-	catchButton.Visible = false
-	timingBar.Visible = false
-	zone.Visible = false
-	marker.Visible = false
-	fishingGameContent.Visible = true
+	minigameUI.catchButton.Visible = false
+	minigameUI.timingBar.Visible = false
+	minigameUI.zone.Visible = false
+	minigameUI.marker.Visible = false
+	minigameUI.fishingGameContent.Visible = true
 	setMinigameFishIcon(fish)
 
-	minigameText.Text = isAutoFish and "AutoFish is waiting for a bite..." or "Waiting for a bite..."
-	minigameFishInfo.Text = "Something is biting..."
-	minigameProgressText.Text = "Progress --"
-	minigameInstruction.Text = promptBaitText .. castText
-	progressFill.Size = UDim2.new(1, 0, 0, 0)
-	forcePureWhiteText(minigameText)
+	minigameUI.minigameText.Text = isAutoFish and "AutoFish is waiting for a bite..." or "Waiting for a bite..."
+	minigameUI.minigameFishInfo.Text = "Something is biting..."
+	minigameUI.minigameProgressText.Text = "Progress --"
+	minigameUI.minigameInstruction.Text = promptBaitText .. castText
+	minigameUI.progressFill.Size = UDim2.new(1, 0, 0, 0)
+	forcePureWhiteText(minigameUI.minigameText)
 
 	task.wait(tonumber(prompt.biteDelay) or 0)
 
@@ -3213,15 +3260,15 @@ local function runMinigame(prompt)
 	local holding = false
 	local finished = false
 
-	catchBar.Size = UDim2.new(1, -32, barSize, 0)
-	catchBar.Position = UDim2.new(0.5, 0, barTop, 0)
-	fishMarker.Position = UDim2.new(0.5, 0, fishY, 0)
-	progressFill.Size = UDim2.new(1, 0, progress, 0)
-	minigameText.Text = isAutoFish and "AutoFish is reeling..." or "Keep the fish inside the green bar!"
-	minigameFishInfo.Text = string.format("%s [%s]\nValue: %d | XP: %d", fish.name or "Fish", fish.rarity or "Common", fish.value or 0, fish.xp or 0)
-	minigameProgressText.Text = string.format("Progress %d%%", math.floor(progress * 100 + 0.5))
-	minigameInstruction.Text = promptBaitText .. castText .. "\n" .. (isAutoFish and "AutoFish is handling this catch." or "Hold mouse, tap, or Space to lift the green bar. Release to let it fall.")
-	forcePureWhiteText(minigameText)
+	minigameUI.catchBar.Size = UDim2.new(1, -32, barSize, 0)
+	minigameUI.catchBar.Position = UDim2.new(0.5, 0, barTop, 0)
+	minigameUI.fishMarker.Position = UDim2.new(0.5, 0, fishY, 0)
+	minigameUI.progressFill.Size = UDim2.new(1, 0, progress, 0)
+	minigameUI.minigameText.Text = isAutoFish and "AutoFish is reeling..." or "Keep the fish inside the green bar!"
+	minigameUI.minigameFishInfo.Text = string.format("%s [%s]\nValue: %d | XP: %d", fish.name or "Fish", fish.rarity or "Common", fish.value or 0, fish.xp or 0)
+	minigameUI.minigameProgressText.Text = string.format("Progress %d%%", math.floor(progress * 100 + 0.5))
+	minigameUI.minigameInstruction.Text = promptBaitText .. castText .. "\n" .. (isAutoFish and "AutoFish is handling this catch." or "Hold mouse, tap, or Space to lift the green bar. Release to let it fall.")
+	forcePureWhiteText(minigameUI.minigameText)
 
 	local renderConnection
 	local inputBeganConnection
@@ -3392,35 +3439,108 @@ local function runMinigame(prompt)
 			progress = math.clamp(progress, 0, 1)
 		end
 
-		catchBar.Position = UDim2.new(0.5, 0, barTop, 0)
-		fishMarker.Position = UDim2.new(0.5, 0, fishY, 0)
-		progressFill.Size = UDim2.new(1, 0, progress, 0)
-		minigameProgressText.Text = string.format("Progress %d%%", math.floor(progress * 100 + 0.5))
+		minigameUI.catchBar.Position = UDim2.new(0.5, 0, barTop, 0)
+		minigameUI.fishMarker.Position = UDim2.new(0.5, 0, fishY, 0)
+		minigameUI.progressFill.Size = UDim2.new(1, 0, progress, 0)
+		minigameUI.minigameProgressText.Text = string.format("Progress %d%%", math.floor(progress * 100 + 0.5))
 
 		if isAutoFish and elapsed >= (prompt.visualTime or 3) then
-			minigameText.Text = "AutoFish caught it!"
+			minigameUI.minigameText.Text = "AutoFish caught it!"
 			finish(true)
 		elseif not isAutoFish and progress >= 1 and elapsed >= minSuccessDuration then
-			minigameText.Text = "Caught!"
+			minigameUI.minigameText.Text = "Caught!"
 			finish(true)
 		elseif not isAutoFish and progress <= 0 then
-			minigameText.Text = "The fish escaped!"
+			minigameUI.minigameText.Text = "The fish escaped!"
 			finish(false)
 		elseif not isAutoFish and elapsed >= maxDuration then
-			minigameText.Text = "The fish escaped!"
+			minigameUI.minigameText.Text = "The fish escaped!"
 			finish(false)
 		end
 	end)
+end
+
+local function runMinigame(prompt)
+	if minigameRunning then
+		return
+	end
+
+	panelCollapsed = true
+	updatePanelCollapsed()
+
+	minigameRunning = true
+	CastPower.running = false
+	CastPower.activeConfig = nil
+	setMinigameVisible(true)
+	CastPower.content.Visible = false
+
+	local lifecycleFinished = false
+	local function complete(success, isAutoFish)
+		if lifecycleFinished then
+			return
+		end
+
+		lifecycleFinished = true
+		activeMinigameCleanup = nil
+		setMinigameVisible(false)
+		minigameRunning = false
+		fishingBusy = false
+
+		if not isAutoFish then
+			FinishMinigame:FireServer({
+				success = success == true,
+				sessionId = prompt.sessionId,
+			})
+		end
+
+		renderContent()
+	end
+
+	local ok, cleanupOrError = pcall(function()
+		local controller = script:WaitForChild("RarityCatchController", 5)
+		assert(controller, "RarityCatchController was not synced")
+		return require(controller).start({
+			prompt = prompt,
+			state = state,
+			GameConfig = GameConfig,
+			ui = minigameUI,
+			RunService = RunService,
+			UserInputService = UserInputService,
+			tapButton = centerCastButton,
+			getBaitData = getBaitData,
+			getBaitCountText = getBaitCountText,
+			setFishIcon = setMinigameFishIcon,
+			forcePureWhiteText = forcePureWhiteText,
+			onFinish = complete,
+		})
+	end)
+
+	if not ok then
+		warn("[FishingClient] Rarity catch controller failed:", cleanupOrError)
+		complete(false, prompt.autoFish == true)
+		return
+	end
+
+	activeMinigameCleanup = function()
+		if lifecycleFinished then
+			return
+		end
+
+		lifecycleFinished = true
+		cleanupOrError()
+		activeMinigameCleanup = nil
+	end
 end
 
 StateUpdated.OnClientEvent:Connect(function(newState)
 	state = newState
 	refreshHud()
 	renderContent()
-	if biomeWarpOverlay.Visible then
+	updateAquariumViewerFallbackButton()
+	if biomeWarpUI.biomeWarpOverlay.Visible then
 		renderBiomeWarpOptions()
 	end
-	if fishmongerOverlay.Visible then
+	if fishmongerUI.fishmongerOverlay.Visible then
 		renderFishmongerSellOptions()
 	end
 	if rodShopUI.overlay.Visible then
@@ -3459,7 +3579,8 @@ Notice.OnClientEvent:Connect(function(message)
 end)
 
 UserInputService.InputBegan:Connect(function(input, processed)
-	if processed then
+	local isAquariumViewerFallbackInput = input.KeyCode == Enum.KeyCode.E and state and isInAquariumHub()
+	if processed and not isAquariumViewerFallbackInput then
 		return
 	end
 
@@ -3467,7 +3588,9 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		return
 	end
 
-	if input.KeyCode == Enum.KeyCode.F and state and not fishingBusy and getActiveFishingBiomeId() then
+	if isAquariumViewerFallbackInput then
+		openAquariumHub()
+	elseif input.KeyCode == Enum.KeyCode.F and state and not fishingBusy and getActiveFishingBiomeId() then
 		startManualFishing()
 	elseif input.KeyCode == Enum.KeyCode.B then
 		setTab("Bag")
@@ -3484,6 +3607,7 @@ task.spawn(function()
 	end
 
 	renderContent()
+	updateAquariumViewerFallbackButton()
 end)
 
 local locationCheckElapsed = 0
@@ -3499,4 +3623,5 @@ RunService.RenderStepped:Connect(function(deltaTime)
 		lastFishingBiomeId = biomeId
 		renderContent()
 	end
+	updateAquariumViewerFallbackButton()
 end)

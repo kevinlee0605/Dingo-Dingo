@@ -21,6 +21,14 @@ local function getCastingConfig()
 	return GameConfig.Casting or {}
 end
 
+local function normalizeIslandId(areaId)
+	if GameConfig.normalizeIslandId then
+		return GameConfig.normalizeIslandId(areaId) or areaId
+	end
+
+	return areaId
+end
+
 local function getRodPerfectBonus(rodId)
 	local casting = getCastingConfig()
 	local bonuses = casting.RodPerfectZoneBonuses or {}
@@ -172,17 +180,18 @@ GetCastConfig.OnServerInvoke = function(player, biomeId)
 		return { ok = false, message = "Player data is still loading." }
 	end
 
-	local currentBiome = options.getPlayerFishingBiome and options.getPlayerFishingBiome(player)
+	local currentBiome = normalizeIslandId(options.getPlayerFishingBiome and options.getPlayerFishingBiome(player))
 	if not currentBiome then
 		return { ok = false, message = "Move to a fishing area first." }
 	end
 
+	biomeId = normalizeIslandId(biomeId)
 	if biomeId and biomeId ~= currentBiome then
 		return { ok = false, message = "You can only cast where you are standing." }
 	end
 
 	if options.isBiomeUnlocked and not options.isBiomeUnlocked(data, currentBiome) then
-		return { ok = false, message = "Unlock that biome first." }
+		return { ok = false, message = "Unlock that island first." }
 	end
 
 	return publicConfig(generateConfig(player, data, currentBiome))
