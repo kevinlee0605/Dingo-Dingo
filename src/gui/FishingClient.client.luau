@@ -1878,10 +1878,8 @@ hudControls.settings.MouseButton1Click:Connect(function()
 	setSettingsVisible(true)
 end)
 
-hudControls.quests.MouseButton1Click:Connect(function()
-	print("Quests clicked")
-	setTab("Quests")
-end)
+-- QuestModernUI owns the quest button. Registering the legacy Quests tab here
+-- gives one click two competing handlers and can reopen the retired panel.
 
 hudControls.shop.MouseButton1Click:Connect(function()
 	print("Shop clicked")

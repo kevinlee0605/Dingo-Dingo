@@ -232,6 +232,7 @@ workspace.ChildAdded:Connect(function(child)
 end)
 
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
+IslandConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("IslandConfig"))
 local DailyQuestConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("DailyQuestConfig"))
 local WeeklyQuestConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("WeeklyQuestConfig"))
 local MonthlyQuestConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("MonthlyQuestConfig"))
@@ -311,6 +312,7 @@ local RodVisual = {
 	GripInset = 0.82,
 	VisualOffset = Vector3.new(0, -0.34, -0.18),
 	VisualRotation = CFrame.Angles(math.rad(-18), math.rad(10), math.rad(16)),
+	ReelFacingRotation = CFrame.Angles(0, math.rad(90), 0),
 	UseWoodenShapeForAllRods = false,
 	ToolsEnabled = true,
 	Visuals3DEnabled = true,
@@ -379,6 +381,22 @@ local function normalizeBiomeId(biomeId)
 
 	if GameConfig.Biomes[biomeId] then
 		return biomeId
+	end
+
+	return nil
+end
+
+function normalizeTravelTarget(target)
+	if type(target) ~= "string" then
+		return nil
+	end
+
+	local normalized = IslandConfig.normalizeIslandId(target)
+	if normalized == IslandConfig.SeasideIslandId
+		or normalized == IslandConfig.AquariumHubId
+		or GameConfig.Biomes[normalized]
+	then
+		return normalized
 	end
 
 	return nil
@@ -1545,6 +1563,10 @@ local function applyOwnerGrants(player, data)
 end
 
 local function saveData(player)
+	if RunService:IsStudio() then
+		return
+	end
+
 	local data = playerData[player]
 	if not data then
 		return
@@ -2383,7 +2405,12 @@ local function attachRodTemplateToTool(tool, handle, template, rodId)
 		scale = math.clamp(RodVisual.VisualLength / largestAxis, 0.01, RodVisual.MaxTemplateScale)
 	end
 
-	local targetPivot = handle.CFrame * CFrame.new(RodVisual.VisualOffset) * RodVisual.VisualRotation
+	-- Rotate the imported model around its shaft independently of Tool.Grip so
+	-- the reel faces the character's left without changing the hand placement.
+	local targetPivot = handle.CFrame
+		* CFrame.new(RodVisual.VisualOffset)
+		* RodVisual.VisualRotation
+		* RodVisual.ReelFacingRotation
 	local tipWorldPosition = targetPivot:PointToWorldSpace((tipPoint - gripPoint) * scale)
 
 	visual:ScaleTo(scale)
@@ -4213,7 +4240,7 @@ local function buildAquariumSlotModel(slot, ownerPlayer, ownerData)
 
 	local baseDrop = 2.8
 	local base = makePart(model, "AquariumBase", Vector3.new(dimensions.baseWidth, 1, dimensions.baseDepth), origin + Vector3.new(0, 0.8 - baseDrop, 0), Color3.fromRGB(74, 82, 88), Enum.Material.Metal)
-	makePart(model, "AquariumBaseTopPlate", Vector3.new(dimensions.baseWidth - 1.4, 0.18, dimensions.baseDepth - 1.4), origin + Vector3.new(0, 1.39, 0), Color3.fromRGB(132, 142, 150), Enum.Material.Metal)
+	makePart(model, "AquariumBaseTopPlate", Vector3.new(dimensions.tankWidth + 1, 0.18, dimensions.tankDepth + 1), origin + Vector3.new(0, 1.39, 0), Color3.fromRGB(132, 142, 150), Enum.Material.Metal)
 
 	local halfWidth = dimensions.tankWidth / 2
 	local halfDepth = dimensions.tankDepth / 2
@@ -6188,7 +6215,43 @@ local function ensureSeasideShopDisplayAquarium()
 	if not success then
 		return
 	end
-	baseCFrame = pivot * CFrame.new(0, -4, 0)
+		baseCFrame = pivot * CFrame.new(0, -4, 0)
+	end
+
+	local function populateRestoredTankWithGameFish(tank)
+		local fishFolder = tank:FindFirstChild("DisplayFish", true)
+		if not fishFolder then
+			fishFolder = Instance.new("Folder")
+			fishFolder.Name = "DisplayFish"
+			fishFolder.Parent = tank
+		end
+
+		for _, child in ipairs(fishFolder:GetChildren()) do
+			child:Destroy()
+		end
+
+		local tankCFrame, tankSize = tank:GetBoundingBox()
+		local dimensions = {
+			level = 1,
+			tankWidth = math.max(6, tankSize.X - 4),
+			tankHeight = math.max(5, tankSize.Y - 1.7),
+			tankDepth = math.max(5, tankSize.Z - 3),
+			baseWidth = tankSize.X,
+			baseDepth = tankSize.Z,
+		}
+		local origin = tankCFrame.Position - Vector3.new(0, tankSize.Y / 2, 0)
+
+		for index, fish in ipairs({
+			{ id = "SmallFish", name = "Small Fish", rarity = "Common", value = 5 },
+			{ id = "Bluegill", name = "Bluegill", rarity = "Common", value = 12 },
+			{ id = "Koi", name = "Koi", rarity = "Rare", value = 75 },
+			{ id = "GoldenCarp", name = "Golden Carp", rarity = "Epic", value = 160 },
+		}) do
+			makeAquariumFish(fishFolder, fish, origin, index, 604200, dimensions)
+		end
+
+		tank:SetAttribute("UsesPersonalAquariumFish", true)
+		tank:SetAttribute("LiveGameFishPopulated", true)
 	end
 
 	local function displayTankHasDetailedFish(tank)
@@ -6214,6 +6277,12 @@ local function ensureSeasideShopDisplayAquarium()
 	if existing then
 		existing:SetAttribute("DisplayOnly", true)
 		existing:SetAttribute("PlayerLinked", false)
+		if existing:GetAttribute("RestoredFromTransferBackup") == true then
+			if existing:GetAttribute("LiveGameFishPopulated") ~= true then
+				populateRestoredTankWithGameFish(existing)
+			end
+			return
+		end
 		if displayTankHasDetailedFish(existing) then
 			return
 		end
@@ -7019,7 +7088,10 @@ local function canUnlockBiome(data, biomeId)
 end
 
 function teleportPlayer(player, target)
-	target = normalizeBiomeId(target) or target
+	target = normalizeTravelTarget(target)
+	if not target then
+		return false
+	end
 
 	local position
 	local destination
@@ -7028,15 +7100,12 @@ function teleportPlayer(player, target)
 		sourceArea = player:GetAttribute("FishyFishTravelSource") or sourceArea
 	end
 
-	if target == "Lobby" then
+	if target == IslandConfig.SeasideIslandId then
 		position = Travel.getLobbyTeleportPosition()
-	elseif target == "AquariumHub" then
+	elseif target == IslandConfig.AquariumHubId then
 		refreshPlayerAquarium(player)
 		sendStateToAll()
 		position = AquariumLayout.getHubSpawnPosition()
-	elseif target == "Home" or target == "MyAquarium" then
-		refreshPlayerAquarium(player)
-		position = AquariumLayout.getViewerSpawnPosition(player)
 	elseif target == DEFAULT_FISHING_ISLAND_ID then
 		destination = Travel.Lilyshore.getSpawnCFrame(sourceArea)
 		if not destination then
@@ -7047,30 +7116,35 @@ function teleportPlayer(player, target)
 	end
 
 	if position or destination then
-		if target == "Home" or target == "MyAquarium" then
-			destination = CFrame.lookAt(position, getPlayerAquariumOrigin(player) + Vector3.new(0, 5, 0))
-		elseif target == "AquariumHub" then
+		if target == IslandConfig.AquariumHubId then
 			destination = CFrame.lookAt(position, AquariumLayout.AreaOrigin + Vector3.new(0, 4, 0))
 		elseif not destination then
 			destination = CFrame.new(position)
 		end
 
-		AquariumLayout.safePivotPlayer(player, destination)
+		local moved = AquariumLayout.safePivotPlayer(player, destination)
+		if not moved then
+			return false
+		end
+
 		player:SetAttribute("FishyFishTravelTarget", target)
-		player:SetAttribute("FishyFishTravelSource", sourceArea or "Lobby")
+		player:SetAttribute("FishyFishTravelSource", sourceArea or IslandConfig.SeasideIslandId)
+		return true
 	end
+
+	return false
 end
 
 function teleportPlayerToAquariumOwner(player, ownerPlayer)
 	if not ownerPlayer or not ownerPlayer.Parent then
 		notify(player, "That player is no longer online.")
-		return
+		return false
 	end
 
 	local ownerData = playerData[ownerPlayer]
 	if not ownerData then
 		notify(player, "That aquarium is not ready yet.")
-		return
+		return false
 	end
 
 	print("Loading aquarium:", ownerPlayer.DisplayName or ownerPlayer.Name)
@@ -7078,27 +7152,55 @@ function teleportPlayerToAquariumOwner(player, ownerPlayer)
 
 	local position = AquariumLayout.getViewerSpawnPosition(ownerPlayer)
 	local lookAt = getAquariumSlotOrigin(getPlayerAquariumSlot(ownerPlayer)) + Vector3.new(0, 5, 0)
-	AquariumLayout.safePivotPlayer(player, CFrame.lookAt(position, lookAt))
+	local moved = AquariumLayout.safePivotPlayer(player, CFrame.lookAt(position, lookAt))
+	if not moved then
+		return false
+	end
+
 	sendStateToAll()
 	notify(player, "Visiting " .. ownerPlayer.DisplayName .. "'s aquarium.")
+	return true
 end
 
 function teleportPlayerToAquariumUserId(player, ownerUserId)
 	ownerUserId = tonumber(ownerUserId)
 	if not ownerUserId then
-		return
+		return false
 	end
 
 	local ownerPlayer = Players:GetPlayerByUserId(ownerUserId)
 	if ownerPlayer then
-		teleportPlayerToAquariumOwner(player, ownerPlayer)
-		return
+		return teleportPlayerToAquariumOwner(player, ownerPlayer)
 	end
 
 	notify(player, "That player is not online.")
+	return false
 end
 
 areaPortalTouchCooldowns = {}
+remoteTravelRequests = {}
+REMOTE_TRAVEL_DEBOUNCE_SECONDS = 1
+
+function tryBeginRemoteTravel(player)
+	local now = os.clock()
+	local request = remoteTravelRequests[player]
+	if request and (request.inFlight or now - request.lastStarted < REMOTE_TRAVEL_DEBOUNCE_SECONDS) then
+		return false
+	end
+
+	remoteTravelRequests[player] = {
+		inFlight = true,
+		lastStarted = now,
+	}
+	return true
+end
+
+function finishRemoteTravel(player)
+	local request = remoteTravelRequests[player]
+	if request then
+		request.inFlight = false
+	end
+end
 
 function connectAreaPortalTrigger(part)
 	if not part:IsA("BasePart") then
@@ -7144,8 +7246,6 @@ function connectAreaPortalTrigger(part)
 		if not target and part.Name == "AquariumWarpTrigger" and part:FindFirstAncestor("LobbyAquariumWarp") then
 			target = "AquariumHub"
 		end
-		target = normalizeBiomeId(target) or target
-
 		if not data or not target then
 			return
 		end
@@ -7155,16 +7255,21 @@ function connectAreaPortalTrigger(part)
 			return
 		end
 
+		target = normalizeTravelTarget(target)
+		if not target then
+			return
+		end
+
 		if GameConfig.Biomes[target] and not isBiomeUnlocked(data, target) then
 			notify(player, "Unlock that island first.")
 			return
 		end
 
-		if target == "Lobby" or target == "Home" or target == "AquariumHub" or target == "MyAquarium" or GameConfig.Biomes[target] then
+		local moved = teleportPlayer(player, target)
+		if moved then
 			if GameConfig.Biomes[target] then
 				data.CurrentBiome = target
 			end
-			teleportPlayer(player, target)
 			sendState(player)
 		end
 	end)
@@ -7208,7 +7313,7 @@ function setupPlayer(player)
 			end
 
 			local respawnTarget = player:GetAttribute("FishyFishTravelTarget")
-			if respawnTarget and respawnTarget ~= "Lobby" then
+			if respawnTarget and respawnTarget ~= IslandConfig.SeasideIslandId then
 				task.wait(0.2)
 				teleportPlayer(player, respawnTarget)
 			end
@@ -7222,7 +7327,6 @@ function setupPlayer(player)
 			ensurePrebuiltAquariumSlots()
 			applyCharacterMonetizationVisuals(player)
 		end
-		teleportPlayer(player, "Lobby")
 		sendState(player)
 		if addedStudioFish and not studioFishNoticeSent then
 			studioFishNoticeSent = true
@@ -7753,28 +7857,63 @@ TeleportTo.OnServerEvent:Connect(function(player, target)
 		return
 	end
 
-	if type(target) == "table" and target.kind == "PlayerAquarium" then
-		local userId = tonumber(target.userId)
-		if not userId then
+	local aquariumOwnerUserId = nil
+	local normalizedTarget = nil
+	if type(target) == "table" then
+		if target.kind ~= "PlayerAquarium" then
 			return
 		end
 
-		teleportPlayerToAquariumUserId(player, userId)
-		sendState(player)
-		return
+		aquariumOwnerUserId = tonumber(target.userId)
+		if not aquariumOwnerUserId
+			or aquariumOwnerUserId <= 0
+			or math.floor(aquariumOwnerUserId) ~= aquariumOwnerUserId
+		then
+			return
+		end
+	else
+		normalizedTarget = normalizeTravelTarget(target)
+		if not normalizedTarget then
+			return
+		end
 	end
 
-	target = normalizeBiomeId(target) or target
-	if GameConfig.Biomes[target] and not isBiomeUnlocked(data, target) then
+	if normalizedTarget and GameConfig.Biomes[normalizedTarget] and not isBiomeUnlocked(data, normalizedTarget) then
 		notify(player, "Unlock that island first.")
 		return
 	end
 
-	if GameConfig.Biomes[target] then
-		data.CurrentBiome = target
+	local character = player.Character
+	if not (character and character:FindFirstChild("HumanoidRootPart")) then
+		return
 	end
 
-	teleportPlayer(player, target)
+	if not tryBeginRemoteTravel(player) then
+		return
+	end
+
+	local success, movedOrError = pcall(function()
+		if aquariumOwnerUserId then
+			return teleportPlayerToAquariumUserId(player, aquariumOwnerUserId)
+		end
+
+		return teleportPlayer(player, normalizedTarget)
+	end)
+	finishRemoteTravel(player)
+
+	if not success then
+		warn("Travel failed for", player.Name, movedOrError)
+		return
+	end
+
+	if movedOrError ~= true then
+		return
+	end
+
+	if normalizedTarget and GameConfig.Biomes[normalizedTarget] then
+		data.CurrentBiome = normalizedTarget
+	end
+
 	sendState(player)
 end)
 
@@ -8005,12 +8144,22 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 	local slot = playerAquariumSlots[player]
 	if slot then
-		buildAquariumSlotModel(slot, nil, nil)
+		local folder = getAquariumsFolder()
+		local aquarium = folder and folder:FindFirstChild(getAquariumSlotName(slot))
+		if aquarium and aquarium:GetAttribute("OccupantUserId") == player.UserId then
+			buildAquariumSlotModel(slot, nil, nil)
+		end
 	end
 
 	playerData[player] = nil
 	pendingFishing[player] = nil
 	CastConfigService.clearPlayer(player)
+	biomeWarpTouchCooldowns[player] = nil
+	areaPortalTouchCooldowns[player] = nil
+	remoteTravelRequests[player] = nil
+	if AquariumLayout.FallSafetyCooldowns then
+		AquariumLayout.FallSafetyCooldowns[player] = nil
+	end
 	playerAquariumSlots[player] = nil
 end)
 

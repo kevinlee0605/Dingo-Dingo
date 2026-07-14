@@ -967,7 +967,10 @@ local function updatePanelCollapsed()
 	end
 
 	local showingFishdex = activeTab == "Fishdex" and not panelCollapsed
-	mainPanelUI.panel.Visible = not panelCollapsed and activeTab ~= "Fishdex" and activeTab ~= "Bag"
+	mainPanelUI.panel.Visible = not panelCollapsed
+		and activeTab ~= "Fishdex"
+		and activeTab ~= "Bag"
+		and activeTab ~= "Quests"
 	mainPanelUI.panelToggle.Visible = false
 
 	if fishdexModernUI.root then
@@ -1971,10 +1974,8 @@ hudControls.settings.MouseButton1Click:Connect(function()
 	setSettingsVisible(true)
 end)
 
-hudControls.quests.MouseButton1Click:Connect(function()
-	print("Quests clicked")
-	setTab("Quests")
-end)
+-- QuestModernUI owns the quest button. Registering the legacy Quests tab here
+-- gives one click two competing handlers and can reopen the retired panel.
 
 hudControls.shop.MouseButton1Click:Connect(function()
 	print("Shop clicked")
@@ -3577,7 +3578,7 @@ renderContent = function()
 	if fishdexModernUI.root and activeTab ~= "Fishdex" then
 		fishdexModernUI.root.Visible = false
 	end
-	if activeTab ~= "Fishdex" and activeTab ~= "Bag" then
+	if activeTab ~= "Fishdex" and activeTab ~= "Bag" and activeTab ~= "Quests" then
 		mainPanelUI.panel.Visible = not panelCollapsed
 	else
 		mainPanelUI.panel.Visible = false
@@ -5682,9 +5683,11 @@ local function hideLegacyQuestUi(parentGui, modernRoot, store)
 end
 
 local function restoreLegacyQuestUi(store)
-	for guiObject, wasVisible in pairs(store) do
+	for guiObject in pairs(store) do
 		if guiObject and guiObject.Parent and guiObject:IsA("GuiObject") then
-			guiObject.Visible = wasVisible
+			-- The modern quest menu permanently replaces this panel. Restoring a
+			-- captured true value lets the legacy menu reappear after state updates.
+			guiObject.Visible = false
 		end
 		store[guiObject] = nil
 	end
@@ -5805,10 +5808,6 @@ function QuestModernUI.create(config)
 		-- FishingClient can rebuild the old quest panel after the modern UI
 		-- has already opened. Keep suppressing it while this UI is visible.
 		controller.legacySuppressConnection = RunService.RenderStepped:Connect(function(deltaTime)
-			if not controller.root.Visible then
-				return
-			end
-
 			controller.legacySuppressElapsed += deltaTime
 			if controller.legacySuppressElapsed < 0.08 then
 				return
@@ -5825,6 +5824,7 @@ function QuestModernUI.create(config)
 
 	controller.startLegacyQuestSuppression = startLegacyQuestSuppression
 	controller.stopLegacyQuestSuppression = stopLegacyQuestSuppression
+	startLegacyQuestSuppression()
 
 	local scale = Instance.new("UIScale")
 	scale.Name = "ResponsiveScale"
@@ -6813,7 +6813,6 @@ function QuestModernUI.create(config)
 			self:Render()
 			task.defer(self.updateScrollbar)
 		else
-			self.stopLegacyQuestSuppression()
 			restoreLegacyQuestUi(self.hiddenLegacyQuestGuis)
 		end
 	end
