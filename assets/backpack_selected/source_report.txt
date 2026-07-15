@@ -1,0 +1,7 @@
+Source: C:\Users\Andrew\Downloads\Backpack_New.glb
+Mesh objects: 12
+Materials: 3
+Minimum XYZ: (-1.399959, -1.587147, -1.784116)
+Maximum XYZ: (1.400637, 0.000245, 1.117031)
+Dimensions XYZ: (2.800596, 1.587392, 2.901147)
+Triangles: 53716

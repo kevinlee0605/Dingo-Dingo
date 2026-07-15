@@ -32,6 +32,9 @@
                                                                   "QuestAction":  {
                                                                                       "$className":  "RemoteEvent"
                                                                                   },
+                                                                  "LoginRewardAction":  {
+                                                                                            "$className":  "RemoteEvent"
+                                                                                        },
                                                                   "ShopAction":  {
                                                                                      "$className":  "RemoteEvent"
                                                                                  },
@@ -87,23 +90,6 @@
                  "Workspace":  {
                                    "$ignoreUnknownInstances":  true
                                },
-                 "StarterGui":  {
-                                    "$ignoreUnknownInstances":  true,
-                                    "FishingGui":  {
-                                                       "$className":  "ScreenGui",
-                                                       "$ignoreUnknownInstances":  true,
-                                                       "FishingClient":  {
-                                                                               "$path":  "src/startergui/FishingClient.rbxmx",
-                                                                               "$ignoreUnknownInstances":  true,
-                                                                               "RarityCatchController":  {
-                                                                                                                 "$path":  "src/gui/FishingClientModules/RarityCatchController.luau"
-                                                                                                             }
-                                                                           }
-                                                   },
-                                    "AquariumFreePlacementEditor":  {
-                                                                                  "$path":  "src/startergui/AquariumFreePlacementEditor.client.luau"
-                                                                              }
-                                },
                  "StarterPlayer":  {
                                        "$ignoreUnknownInstances":  true,
                                        "StarterPlayerScripts":  {
@@ -116,6 +102,9 @@
                                                                                               },
                                                                      "BaitIconController":  {
                                                                                                  "$path":  "src/starterplayer/BaitIconController.client.luau"
+                                                                                                       },
+                                                                     "Phase3EconomyUI":  {
+                                                                                              "$path":  "src/starterplayer/Phase3EconomyUI.client.luau"
                                                                                                        }
                                                                  }
                                    },

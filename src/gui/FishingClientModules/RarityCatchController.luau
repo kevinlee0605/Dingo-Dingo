@@ -80,7 +80,26 @@ end
 function RarityCatchController.start(options)
 	local prompt = options.prompt or {}
 	local gameConfig = options.GameConfig
-	local ui = options.ui
+	local legacyUi = options.ui
+	local modernUi = options.modernUi
+	local ui = legacyUi
+	if modernUi then
+		ui = setmetatable({
+			catchButton = legacyUi.catchButton,
+			timingBar = legacyUi.timingBar,
+			zone = legacyUi.zone,
+			marker = legacyUi.marker,
+			fishingGameContent = modernUi.panel,
+			catchBar = modernUi.catchBar,
+			fishMarker = modernUi.fishMarker,
+			progressTrack = modernUi.progressTrack,
+			progressFill = modernUi.progressFill,
+			minigameText = modernUi.headerText,
+			minigameFishInfo = modernUi.statusText,
+			minigameProgressText = modernUi.progressText,
+			minigameInstruction = modernUi.instructionText,
+		}, { __index = legacyUi })
+	end
 	local runService = options.RunService
 	local inputService = options.UserInputService
 	local tapButton = options.tapButton
@@ -118,6 +137,16 @@ function RarityCatchController.start(options)
 	local castText = prompt.cast and prompt.cast.displayName
 		and ("\nCast: " .. prompt.cast.displayName)
 		or ""
+	if modernUi then
+		modernUi.baitText.Text = string.format(
+			'<font color="#38D9FF">Bait:</font> %s (%s)',
+			promptBaitName,
+			options.getBaitCountText(promptBaitId, promptBait.remaining)
+		)
+		modernUi.castText.Text = prompt.cast and prompt.cast.displayName
+			and string.format('<font color="#38D9FF">Cast:</font> %s', prompt.cast.displayName)
+			or '<font color="#38D9FF">Cast:</font> --'
+	end
 
 	local random = Random.new(math.floor((os.clock() * 100000) % 2147483647))
 	local tapFill = ensureTapProgressFill(ui)
@@ -153,9 +182,15 @@ function RarityCatchController.start(options)
 	end
 
 	local function useStandardGauge()
-		ui.progressFill.AnchorPoint = Vector2.new(0, 1)
-		ui.progressFill.Position = UDim2.new(0, 0, 1, 0)
-		ui.progressFill.Size = UDim2.new(1, 0, session.progress, 0)
+		if modernUi then
+			ui.progressFill.AnchorPoint = Vector2.new(0.5, 1)
+			ui.progressFill.Position = UDim2.fromScale(0.5, 0.890)
+			ui.progressFill.Size = UDim2.fromScale(0.58, session.progress)
+		else
+			ui.progressFill.AnchorPoint = Vector2.new(0, 1)
+			ui.progressFill.Position = UDim2.new(0, 0, 1, 0)
+			ui.progressFill.Size = UDim2.new(1, 0, session.progress, 0)
+		end
 		ui.progressFill.BackgroundColor3 = standardProgressBackground
 
 		local gradient = ui.progressFill:FindFirstChildOfClass("UIGradient")
@@ -171,21 +206,46 @@ function RarityCatchController.start(options)
 		end
 
 		tapFill.Visible = false
-		tapFill.Size = UDim2.new(0.44, -1, 0, 0)
+		if modernUi then
+			tapFill.AnchorPoint = Vector2.new(0.5, 1)
+			tapFill.Position = UDim2.fromScale(0.68, 0.890)
+			tapFill.Size = UDim2.fromScale(0.30, 0)
+		else
+			tapFill.AnchorPoint = Vector2.new(1, 1)
+			tapFill.Position = UDim2.new(1, -2, 1, 0)
+			tapFill.Size = UDim2.new(0.44, -1, 0, 0)
+		end
 	end
 
 	local function usePhaseGauge()
 		local phaseTop = rarity == "Epic" and PURPLE_TOP or ORANGE_TOP
 		local phaseBottom = rarity == "Epic" and PURPLE_BOTTOM or ORANGE_BOTTOM
 
-		ui.progressFill.AnchorPoint = Vector2.new(0, 1)
-		ui.progressFill.Position = UDim2.new(0, 2, 1, 0)
-		ui.progressFill.Size = UDim2.new(0.44, -1, session.phaseProgress, 0)
+		if modernUi then
+			ui.progressFill.AnchorPoint = Vector2.new(0.5, 1)
+			ui.progressFill.Position = UDim2.fromScale(0.32, 0.890)
+			ui.progressFill.Size = UDim2.fromScale(0.30, session.phaseProgress)
+		else
+			ui.progressFill.AnchorPoint = Vector2.new(0, 1)
+			ui.progressFill.Position = UDim2.new(0, 2, 1, 0)
+			ui.progressFill.Size = UDim2.new(0.44, -1, session.phaseProgress, 0)
+		end
 		ui.progressFill.BackgroundColor3 = phaseBottom
 		setGradient(ui.progressFill, phaseTop, phaseBottom)
 
 		tapFill.Visible = true
-		tapFill.Size = UDim2.new(0.44, -1, session.tapGoal > 0 and (session.tapCount / session.tapGoal) or 0, 0)
+		if modernUi then
+			tapFill.AnchorPoint = Vector2.new(0.5, 1)
+			tapFill.Position = UDim2.fromScale(0.68, 0.890)
+			tapFill.Size = UDim2.fromScale(
+				0.30,
+				session.tapGoal > 0 and (session.tapCount / session.tapGoal) or 0
+			)
+		else
+			tapFill.AnchorPoint = Vector2.new(1, 1)
+			tapFill.Position = UDim2.new(1, -2, 1, 0)
+			tapFill.Size = UDim2.new(0.44, -1, session.tapGoal > 0 and (session.tapCount / session.tapGoal) or 0, 0)
+		end
 		if tapButtonParent:IsA("GuiObject") then
 			-- The existing fishing-area visibility controller also runs every frame.
 			-- Keep the current persistent Tap button on-screen throughout special phases.
@@ -199,6 +259,10 @@ function RarityCatchController.start(options)
 			connection:Disconnect()
 		end
 		table.clear(connections)
+	end
+
+	local function setInstruction(instruction, legacyInstruction)
+		ui.minigameInstruction.Text = modernUi and instruction or legacyInstruction
 	end
 
 	local function resetFishingOnlyVisuals()
@@ -252,9 +316,10 @@ function RarityCatchController.start(options)
 
 		ui.minigameText.Text = string.format("Phase %d - Tap!", phaseNumber)
 		ui.minigameProgressText.Text = string.format("Phase %d | Power 0%% | Taps 0 / %d", phaseNumber, session.tapGoal)
-		ui.minigameInstruction.Text = promptBaitText
-			.. castText
-			.. "\nUse the current Tap button to fill the red gauge."
+		setInstruction(
+			"Use the current Tap button to fill the red gauge.",
+			promptBaitText .. castText .. "\nUse the current Tap button to fill the red gauge."
+		)
 	end
 
 	local function beginDrain(nextPhaseNumber)
@@ -262,7 +327,10 @@ function RarityCatchController.start(options)
 		session.phaseNumber = nextPhaseNumber
 		setCurrentTapEnabled(false)
 		ui.minigameText.Text = string.format("Phase %d incoming...", nextPhaseNumber)
-		ui.minigameInstruction.Text = promptBaitText .. castText .. "\nGet ready for the next phase."
+		setInstruction(
+			"Get ready for the next phase.",
+			promptBaitText .. castText .. "\nGet ready for the next phase."
+		)
 	end
 
 	local function registerTap()
@@ -294,7 +362,10 @@ function RarityCatchController.start(options)
 	ui.minigameText.Text = isAutoFish and "AutoFish is waiting for a bite..." or "Waiting for a bite..."
 	ui.minigameFishInfo.Text = "Something is biting..."
 	ui.minigameProgressText.Text = "Progress --"
-	ui.minigameInstruction.Text = promptBaitText .. castText
+	setInstruction(
+		isAutoFish and "AutoFish is handling this catch." or "The fish is biting...",
+		promptBaitText .. castText
+	)
 	options.forcePureWhiteText(ui.minigameText)
 
 	table.insert(connections, tapButton.Activated:Connect(registerTap))
@@ -388,7 +459,7 @@ function RarityCatchController.start(options)
 
 		session.phase = "REEL"
 		session.holding = false
-		ui.catchBar.Size = UDim2.new(1, -32, barSize, 0)
+		ui.catchBar.Size = modernUi and UDim2.fromScale(0.82, barSize) or UDim2.new(1, -32, barSize, 0)
 		ui.catchBar.Position = UDim2.new(0.5, 0, barTop, 0)
 		ui.fishMarker.Position = UDim2.new(0.5, 0, fishY, 0)
 		useStandardGauge()
@@ -401,10 +472,10 @@ function RarityCatchController.start(options)
 			fish.xp or 0
 		)
 		ui.minigameProgressText.Text = string.format("Progress %d%%", math.floor(session.progress * 100 + 0.5))
-		ui.minigameInstruction.Text = promptBaitText
-			.. castText
-			.. "\n"
-			.. (isAutoFish and "AutoFish is handling this catch." or "Hold mouse, tap, or Space to lift the green bar. Release to let it fall.")
+		local reelInstruction = isAutoFish
+			and "AutoFish is handling this catch."
+			or "Hold mouse, tap, or Space to lift the green bar. Release to let it fall."
+		setInstruction(reelInstruction, promptBaitText .. castText .. "\n" .. reelInstruction)
 		options.forcePureWhiteText(ui.minigameText)
 
 		table.insert(connections, runService.RenderStepped:Connect(function(deltaTime)

@@ -1,5 +1,6 @@
 local GameConfig = {}
 local IslandConfig = require(script.Parent:WaitForChild("IslandConfig"))
+local EconomyConfig = require(script.Parent:WaitForChild("EconomyConfig"))
 
 GameConfig.MAX_LEVEL = 30
 GameConfig.BASE_BACKPACK_SIZE = 30
@@ -295,9 +296,9 @@ GameConfig.AquariumCapacities = {
 }
 
 GameConfig.AquariumUpgradeCosts = {
-	[2] = 3000,
-	[3] = 15000,
-	[4] = 60000,
+	[2] = 1500,
+	[3] = 10000,
+	[4] = 40000,
 }
 
 GameConfig.FishAquariumSpace = {
@@ -356,8 +357,10 @@ GameConfig.Rods = {
 	},
 	IronRod = {
 		displayName = "Iron Rod",
-		cost = 2500,
+		cost = 1500,
 		unlockLevel = 5,
+		previousRod = "WoodenRod",
+		resourceCosts = { IronScrap = 12 },
 		luck = 0.10,
 		speed = 0.92,
 		zoneBonus = 0.04,
@@ -365,8 +368,10 @@ GameConfig.Rods = {
 	},
 	GoldenRod = {
 		displayName = "Golden Rod",
-		cost = 10000,
+		cost = 5000,
 		unlockLevel = 12,
+		previousRod = "IronRod",
+		resourceCosts = { GoldNugget = 18 },
 		luck = 0.20,
 		speed = 0.84,
 		zoneBonus = 0.07,
@@ -374,8 +379,10 @@ GameConfig.Rods = {
 	},
 	EmeraldRod = {
 		displayName = "Emerald Rod",
-		cost = 30000,
+		cost = 15000,
 		unlockLevel = 20,
+		previousRod = "GoldenRod",
+		resourceCosts = { EmeraldShard = 24 },
 		luck = 0.35,
 		speed = 0.76,
 		zoneBonus = 0.10,
@@ -383,8 +390,10 @@ GameConfig.Rods = {
 	},
 	OceanRod = {
 		displayName = "Ocean Rod",
-		cost = 75000,
+		cost = 35000,
 		unlockLevel = 25,
+		previousRod = "EmeraldRod",
+		resourceCosts = { OceanShard = 20 },
 		luck = 0.50,
 		speed = 0.68,
 		zoneBonus = 0.14,
@@ -506,6 +515,7 @@ GameConfig.Lobby = {
 GameConfig.Biomes = {
 	LilyshoreIsland = {
 		displayName = "Lilyshore Island",
+		economyTier = EconomyConfig.IslandTiers.LilyshoreIsland,
 		legacyId = "BeginnerPond",
 		icon = "Pond",
 		unlockLevel = 1,
@@ -513,54 +523,57 @@ GameConfig.Biomes = {
 		position = Vector3.new(0, 8, 0),
 		color = Color3.fromRGB(74, 163, 104),
 		fish = {
-			{ id = "SmallFish", name = "Small Fish", rarity = "Common", chance = 35, value = 5, imageKey = "SmallFish" },
-			{ id = "Carp", name = "Carp", rarity = "Common", chance = 25, value = 8, imageKey = "Carp" },
-			{ id = "Bluegill", name = "Bluegill", rarity = "Common", chance = 18, value = 12, imageKey = "Bluegill" },
-			{ id = "Bass", name = "Bass", rarity = "Uncommon", chance = 10, value = 20, imageKey = "Bass" },
-			{ id = "Catfish", name = "Catfish", rarity = "Uncommon", chance = 7, value = 35, imageKey = "Catfish" },
-			{ id = "GoldenCarp", name = "Golden Carp", rarity = "Rare", chance = 4, value = 80, imageKey = "GoldenCarp" },
-			{ id = "Koi", name = "Koi", rarity = "Epic", chance = 0.9, value = 250, imageKey = "Koi" },
-			{ id = "PondGuardian", name = "Pond Guardian", rarity = "Legendary", chance = 0.1, value = 2000, imageKey = "PondGuardian" },
+			{ id = "SmallFish", name = "Small Fish", rarity = "Common", chance = 35, value = 8, imageKey = "SmallFish" },
+			{ id = "Carp", name = "Carp", rarity = "Common", chance = 25, value = 12, imageKey = "Carp" },
+			{ id = "Bluegill", name = "Bluegill", rarity = "Common", chance = 18, value = 16, imageKey = "Bluegill" },
+			{ id = "Bass", name = "Bass", rarity = "Uncommon", chance = 10, value = 30, imageKey = "Bass" },
+			{ id = "Catfish", name = "Catfish", rarity = "Uncommon", chance = 7, value = 50, imageKey = "Catfish" },
+			{ id = "GoldenCarp", name = "Golden Carp", rarity = "Rare", chance = 4, value = 120, imageKey = "GoldenCarp" },
+			{ id = "Koi", name = "Koi", rarity = "Epic", chance = 0.9, value = 350, imageKey = "Koi" },
+			{ id = "PondGuardian", name = "Pond Guardian", rarity = "Legendary", chance = 0.1, value = 2500, imageKey = "PondGuardian" },
 		},
 	},
 	RiverbendIsland = {
 		displayName = "Riverbend Island",
+		economyTier = EconomyConfig.IslandTiers.RiverbendIsland,
 		legacyId = "River",
 		icon = "River",
 		unlockLevel = 10,
-		cost = 5000,
+		cost = 4000,
+		requiredRod = "IronRod",
 		position = Vector3.new(180, 8, 0),
 		color = Color3.fromRGB(70, 135, 190),
 		fish = {
 			{ id = "Trout", name = "Trout", rarity = "Common", chance = 28, value = 18 },
-			{ id = "Perch", name = "Perch", rarity = "Common", chance = 22, value = 22 },
+			{ id = "Perch", name = "Perch", rarity = "Common", chance = 22, value = 24 },
 			{ id = "Salmon", name = "Salmon", rarity = "Uncommon", chance = 18, value = 40 },
-			{ id = "Pike", name = "Pike", rarity = "Uncommon", chance = 12, value = 70 },
-			{ id = "Sturgeon", name = "Sturgeon", rarity = "Rare", chance = 8, value = 180 },
-			{ id = "Eel", name = "Eel", rarity = "Rare", chance = 6, value = 250 },
-			{ id = "RainbowSalmon", name = "Rainbow Salmon", rarity = "Epic", chance = 5, value = 600 },
-			{ id = "RiverDragon", name = "River Dragon", rarity = "Legendary", chance = 1, value = 5000 },
+			{ id = "Pike", name = "Pike", rarity = "Uncommon", chance = 12, value = 60 },
+			{ id = "Sturgeon", name = "Sturgeon", rarity = "Rare", chance = 8, value = 120 },
+			{ id = "Eel", name = "Eel", rarity = "Rare", chance = 6, value = 180 },
+			{ id = "RainbowSalmon", name = "Rainbow Salmon", rarity = "Epic", chance = 5, value = 450 },
+			{ id = "RiverDragon", name = "River Dragon", rarity = "Legendary", chance = 1, value = 3000 },
 		},
 	},
 	CoralCoastIsland = {
 		displayName = "Coral Coast Island",
+		economyTier = EconomyConfig.IslandTiers.CoralCoastIsland,
 		legacyId = "Ocean",
 		icon = "Ocean",
 		unlockLevel = 25,
-		cost = 50000,
+		cost = 25000,
 		requiredRod = "OceanRod",
 		position = Vector3.new(360, 8, 0),
 		color = Color3.fromRGB(45, 105, 210),
 		fish = {
 			{ id = "Sardine", name = "Sardine", rarity = "Common", chance = 25, value = 30 },
-			{ id = "Mackerel", name = "Mackerel", rarity = "Common", chance = 20, value = 45 },
-			{ id = "Tuna", name = "Tuna", rarity = "Uncommon", chance = 18, value = 80 },
-			{ id = "Octopus", name = "Octopus", rarity = "Uncommon", chance = 12, value = 150 },
-			{ id = "Swordfish", name = "Swordfish", rarity = "Rare", chance = 10, value = 350 },
-			{ id = "Stingray", name = "Stingray", rarity = "Rare", chance = 7, value = 500 },
-			{ id = "Dolphin", name = "Dolphin", rarity = "Epic", chance = 5, value = 1500 },
-			{ id = "Shark", name = "Shark", rarity = "Legendary", chance = 2.5, value = 4000 },
-			{ id = "Whale", name = "Whale", rarity = "Mythic", chance = 0.5, value = 20000 },
+			{ id = "Mackerel", name = "Mackerel", rarity = "Common", chance = 20, value = 42 },
+			{ id = "Tuna", name = "Tuna", rarity = "Uncommon", chance = 18, value = 75 },
+			{ id = "Octopus", name = "Octopus", rarity = "Uncommon", chance = 12, value = 125 },
+			{ id = "Swordfish", name = "Swordfish", rarity = "Rare", chance = 10, value = 230 },
+			{ id = "Stingray", name = "Stingray", rarity = "Rare", chance = 7, value = 340 },
+			{ id = "Dolphin", name = "Dolphin", rarity = "Epic", chance = 5, value = 800 },
+			{ id = "Shark", name = "Shark", rarity = "Legendary", chance = 2.5, value = 2200 },
+			{ id = "Whale", name = "Whale", rarity = "Mythic", chance = 0.5, value = 9000 },
 		},
 	},
 }
@@ -586,7 +599,7 @@ end
 
 function GameConfig.getLevelFromXP(xp)
 	local level = 1
-	local remaining = math.max(0, xp)
+	local remaining = GameConfig.clampXP(xp)
 
 	while level < GameConfig.MAX_LEVEL do
 		local needed = GameConfig.getXPForNextLevel(level)
@@ -648,6 +661,23 @@ function GameConfig.getRodImage(rodId)
 	end
 
 	return nil
+end
+
+function GameConfig.getTotalXPForLevel(level)
+	local total = 0
+	local targetLevel = math.clamp(math.floor(tonumber(level) or 1), 1, GameConfig.MAX_LEVEL)
+	for currentLevel = 1, targetLevel - 1 do
+		total += GameConfig.getXPForNextLevel(currentLevel)
+	end
+	return total
+end
+
+function GameConfig.getMaxXP()
+	return GameConfig.getTotalXPForLevel(GameConfig.MAX_LEVEL)
+end
+
+function GameConfig.clampXP(xp)
+	return math.clamp(math.floor(tonumber(xp) or 0), 0, GameConfig.getMaxXP())
 end
 
 function GameConfig.getBaitImage(baitId)

@@ -1,3 +1,9 @@
+-- Phase 3 makes every non-theme aquarium editor control free and visible.
+-- Keep this legacy cleanup script inert so it cannot remove background or lighting controls.
+if true then
+	return
+end
+
 local Players = game:GetService("Players")
 
 local player = Players.LocalPlayer

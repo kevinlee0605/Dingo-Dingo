@@ -232,10 +232,76 @@ workspace.ChildAdded:Connect(function(child)
 end)
 
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
+EconomyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("EconomyConfig"))
+ResourceConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ResourceConfig"))
 IslandConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("IslandConfig"))
+LoginRewardConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("LoginRewardConfig"))
 local DailyQuestConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("DailyQuestConfig"))
 local WeeklyQuestConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("WeeklyQuestConfig"))
 local MonthlyQuestConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("MonthlyQuestConfig"))
+
+ResourceConfig.Validate(GameConfig)
+LoginRewardConfig.Validate()
+
+function fishyFishValidateEconomyInStudio()
+	local success, report = pcall(EconomyConfig.ValidateFishEconomy, GameConfig)
+	if success then
+		for _, islandId in ipairs(GameConfig.IslandOrder) do
+			local result = report[islandId]
+			print(string.format("[FishyFish Economy] %s tier %d: chances %.2f, weighted value %.2f", islandId, result.tier, result.chanceTotal, result.weightedAverage))
+		end
+	else
+		warn("[FishyFish Economy] Validation failed:", report)
+	end
+end
+
+if RunService:IsStudio() then
+	fishyFishValidateEconomyInStudio()
+end
+
+FishingResources = {}
+
+function FishingResources.getRating(castResult)
+	local rating = type(castResult) == "table" and castResult.rating or nil
+	if ResourceConfig.DropChances[rating] then
+		return rating
+	end
+	return "Weak"
+end
+
+function FishingResources.rollForCatch(data, isAutoFish, castResult, dropRoll, resourceRoll)
+	if type(data) ~= "table" or not ResourceConfig.GetIslandDropTable(data.CurrentBiome) then
+		return nil
+	end
+
+	data.ResourceInventory = ResourceConfig.NormalizeInventory(data.ResourceInventory)
+	data.ResourcePity = ResourceConfig.NormalizePity(data.ResourcePity)
+
+	local chance = ResourceConfig.GetDropChance(FishingResources.getRating(castResult), isAutoFish)
+	local guaranteed = data.ResourcePity >= ResourceConfig.PityMissesBeforeGuarantee
+	local resolvedDropRoll = tonumber(dropRoll)
+	if resolvedDropRoll == nil then
+		resolvedDropRoll = Random.new():NextNumber()
+	end
+
+	if not guaranteed and resolvedDropRoll >= chance then
+		data.ResourcePity += 1
+		return nil
+	end
+
+	local resolvedResourceRoll = tonumber(resourceRoll)
+	if resolvedResourceRoll == nil then
+		resolvedResourceRoll = Random.new():NextNumber()
+	end
+	local resourceId = ResourceConfig.SelectResource(data.CurrentBiome, resolvedResourceRoll)
+	if not resourceId then
+		return nil
+	end
+
+	data.ResourceInventory[resourceId] += 1
+	data.ResourcePity = 0
+	return resourceId
+end
 
 local Remotes = ReplicatedStorage:WaitForChild("FishingRemotes")
 local function getOrCreateRemoteEvent(name)
@@ -256,6 +322,7 @@ local SellFish = Remotes:WaitForChild("SellFish")
 local BuyRod = Remotes:WaitForChild("BuyRod")
 local BaitAction = getOrCreateRemoteEvent("BaitAction")
 local QuestAction = getOrCreateRemoteEvent("QuestAction")
+LoginRewardAction = getOrCreateRemoteEvent("LoginRewardAction")
 local UnlockBiome = Remotes:WaitForChild("UnlockBiome")
 local TeleportTo = Remotes:WaitForChild("TeleportTo")
 local OpenBiomeWarp = getOrCreateRemoteEvent("OpenBiomeWarp")
@@ -296,9 +363,10 @@ local AquariumLayout = {
 local RuntimeConfig = {
 	autoFishMinWait = 11,
 	autoFishMaxWait = 18,
-	testingStartCoins = 0,
-	testingStartLevel = GameConfig.MAX_LEVEL,
-	studioGiveBeginnerFishInBag = true,
+	studioTestOverridesEnabled = false,
+	studioTestingStartCoins = 0,
+	studioTestingStartLevel = GameConfig.MAX_LEVEL,
+	studioGiveBeginnerFishInBag = false,
 	ownerUsername = "Wingdisk00",
 	ownerCoinGrant = 100000,
 }
@@ -532,6 +600,85 @@ local Monetization = {
 	MarketplaceService = game:GetService("MarketplaceService"),
 }
 
+SeaStars = {
+	TransactionLocks = {},
+}
+
+function SeaStars.normalizeBalance(value)
+	local number = tonumber(value)
+	if not number or number ~= number or number == math.huge or number == -math.huge then
+		return 0
+	end
+	return math.max(0, math.floor(number))
+end
+
+function SeaStars.normalizeUnlocks(unlocks)
+	local result = {}
+	if type(unlocks) ~= "table" then
+		return result
+	end
+	for themeId, theme in pairs(Monetization.Config.AquariumDesigner.themes or {}) do
+		if theme.free ~= true and unlocks[themeId] == true then
+			result[themeId] = true
+		end
+	end
+	return result
+end
+
+function SeaStars.ensureState(data)
+	data.SeaStars = SeaStars.normalizeBalance(data.SeaStars)
+	data.SeaStarUnlocks = SeaStars.normalizeUnlocks(data.SeaStarUnlocks)
+end
+
+function SeaStars.ownsTheme(data, themeId)
+	SeaStars.ensureState(data)
+	local theme = Monetization.Config.AquariumDesigner.themes[themeId]
+	return theme ~= nil and (theme.free == true or data.SeaStarUnlocks[themeId] == true)
+end
+
+function SeaStars.tryAcquire(player)
+	if SeaStars.TransactionLocks[player] then
+		return false
+	end
+	SeaStars.TransactionLocks[player] = true
+	return true
+end
+
+function SeaStars.release(player)
+	SeaStars.TransactionLocks[player] = nil
+end
+
+function SeaStars.normalizeDecorations(decorations)
+	local result = {}
+	local source = type(decorations) == "table" and decorations or {}
+	for decorationId in pairs(Monetization.Config.AquariumDesigner.decorations or {}) do
+		if decorationId ~= "None" then
+			result[decorationId] = math.max(0, math.floor(tonumber(source[decorationId]) or 0))
+		end
+	end
+	return result
+end
+
+function SeaStars.ownsDecoration(data, decorationId)
+	data.AquariumDecorations = SeaStars.normalizeDecorations(data.AquariumDecorations)
+	return (data.AquariumDecorations[decorationId] or 0) > 0
+end
+
+function SeaStars.getDecorationOwnershipError(data, design)
+	local normalized = Monetization.normalizeAquariumDesign(design)
+	for _, decorationId in pairs(normalized.decorations or {}) do
+		if not SeaStars.ownsDecoration(data, decorationId) then
+			return "You do not own the " .. tostring(decorationId) .. " decoration."
+		end
+	end
+	for _, item in ipairs(normalized.freeDecorations or {}) do
+		if not SeaStars.ownsDecoration(data, item.decorationId) then
+			return "You do not own the " .. tostring(item.decorationId) .. " decoration."
+		end
+	end
+	return nil
+end
+
 function Monetization.normalizeOwnedPasses(ownedPasses)
 	local result = {}
 	if type(ownedPasses) == "table" then
@@ -547,21 +694,18 @@ function Monetization.ownsPass(data, passKey)
 	return data.OwnedGamePasses[passKey] == true
 end
 
-function Monetization.getBagBonus(data)
-	local bonus = 0
-	for _, passKey in ipairs({ "SmallBag", "MediumBag", "LargeBag" }) do
+function Monetization.getBagCapacity(data)
+	for _, passKey in ipairs({ "LargeBag", "MediumBag", "SmallBag" }) do
 		local pass = Monetization.Config.GamePasses[passKey]
 		if pass and Monetization.ownsPass(data, passKey) then
-			bonus += tonumber(pass.ExtraSlots) or tonumber(pass.bonusSlots) or 0
+			return math.max(GameConfig.BASE_BACKPACK_SIZE, math.floor(tonumber(pass.TotalSlots) or tonumber(pass.totalSlots) or GameConfig.BASE_BACKPACK_SIZE))
 		end
 	end
-	return bonus
+	return GameConfig.BASE_BACKPACK_SIZE
 end
 
 function Monetization.updateBackpackSize(data)
-	local passCapacity = GameConfig.BASE_BACKPACK_SIZE + Monetization.getBagBonus(data)
-	local savedCapacity = math.floor(tonumber(data.BackpackSize) or GameConfig.BASE_BACKPACK_SIZE)
-	data.BackpackSize = math.max(passCapacity, savedCapacity, #(data.Inventory or {}))
+	data.BackpackSize = Monetization.getBagCapacity(data)
 end
 
 function Monetization.getTodayKey()
@@ -768,10 +912,26 @@ end
 
 function Monetization.ensureState(data)
 	data.OwnedGamePasses = Monetization.normalizeOwnedPasses(data.OwnedGamePasses)
+	data.ProcessedReceipts = type(data.ProcessedReceipts) == "table" and data.ProcessedReceipts or {}
 	data.LastVipRewardDate = type(data.LastVipRewardDate) == "string" and data.LastVipRewardDate or ""
+	SeaStars.ensureState(data)
+	data.AquariumDecorations = SeaStars.normalizeDecorations(data.AquariumDecorations)
 	data.AquariumDesign = Monetization.normalizeAquariumDesign(data.AquariumDesign)
+	if not SeaStars.ownsTheme(data, data.AquariumDesign.theme) then
+		data.AquariumDesign.theme = "Classic"
+	end
 	data.AquariumPreviewDesign = type(data.AquariumPreviewDesign) == "table" and Monetization.normalizeAquariumDesign(data.AquariumPreviewDesign) or nil
 	Monetization.updateBackpackSize(data)
+end
+
+function Monetization.tryMarkReceipt(data, purchaseId)
+	Monetization.ensureState(data)
+	purchaseId = tostring(purchaseId or "")
+	if purchaseId == "" or data.ProcessedReceipts[purchaseId] then
+		return false
+	end
+	data.ProcessedReceipts[purchaseId] = true
+	return true
 end
 
 function Monetization.getActiveAquariumDesign(data)
@@ -785,6 +945,7 @@ function Monetization.getClientState(data)
 		OwnedGamePasses = table.clone(data.OwnedGamePasses),
 		VipRewardAvailable = Monetization.canClaimVipReward(data),
 		LastVipRewardDate = data.LastVipRewardDate,
+		AquariumEditorFree = true,
 		AquariumDesign = Monetization.normalizeAquariumDesign(data.AquariumDesign),
 		AquariumPreviewActive = data.AquariumPreviewDesign ~= nil,
 		AquariumPreviewDesign = data.AquariumPreviewDesign and Monetization.normalizeAquariumDesign(data.AquariumPreviewDesign) or nil,
@@ -814,6 +975,177 @@ function Monetization.syncGamePassOwnership(player, data)
 	player:SetAttribute("FishyFishVip", Monetization.ownsPass(data, "VipAngler"))
 	player:SetAttribute("FishyFishChatTag", Monetization.ownsPass(data, "VipAngler") and "VIP" or "")
 	player:SetAttribute("FishyFishTitle", Monetization.ownsPass(data, "VipAngler") and Monetization.Config.Vip.title or "")
+end
+
+LoginRewards = {
+	ClaimLocks = {},
+}
+
+function LoginRewards.ensureState(data, now)
+	now = now or LoginRewardConfig.UtcNow()
+	data.LoginRewards = LoginRewardConfig.Normalize(data.LoginRewards, now)
+	SeaStars.ensureState(data)
+	data.ResourceInventory = ResourceConfig.NormalizeInventory(data.ResourceInventory)
+	data.AquariumDecorations = SeaStars.normalizeDecorations(data.AquariumDecorations)
+	return data.LoginRewards
+end
+
+function LoginRewards.getHighestResourceIsland(data)
+	local highest = nil
+	for _, islandId in ipairs(GameConfig.IslandOrder or GameConfig.BiomeOrder or {}) do
+		if data.UnlockedBiomes and data.UnlockedBiomes[islandId] == true and ResourceConfig.GetIslandDropTable(islandId) then
+			highest = islandId
+		end
+	end
+	return highest
+end
+
+function LoginRewards.selectResources(data, count, guaranteeUncommon, randomObject)
+	local islandId = LoginRewards.getHighestResourceIsland(data)
+	if not islandId or count <= 0 then
+		return {}, islandId
+	end
+
+	randomObject = randomObject or Random.new()
+	local selected = {}
+	if guaranteeUncommon then
+		local guaranteedId = islandId == "RiverbendIsland" and "OceanShard" or "EmeraldShard"
+		selected[guaranteedId] = 1
+		count -= 1
+	end
+
+	for _ = 1, count do
+		local resourceId = ResourceConfig.SelectResource(islandId, randomObject:NextNumber())
+		if resourceId then
+			selected[resourceId] = (selected[resourceId] or 0) + 1
+		end
+	end
+	return selected, islandId
+end
+
+function LoginRewards.selectFinalDecoration(data, randomObject)
+	data.AquariumDecorations = SeaStars.normalizeDecorations(data.AquariumDecorations)
+	local unowned = {}
+	for _, decorationId in ipairs(LoginRewardConfig.FinalDecorationPool) do
+		if Monetization.Config.AquariumDesigner.decorations[decorationId]
+			and (data.AquariumDecorations[decorationId] or 0) <= 0
+		then
+			table.insert(unowned, decorationId)
+		end
+	end
+	if #unowned == 0 then
+		return nil
+	end
+	randomObject = randomObject or Random.new()
+	return unowned[randomObject:NextInteger(1, #unowned)]
+end
+
+function LoginRewards.makeReward(data, day, daysInCycle, randomObject)
+	local tier = EconomyConfig.GetHighestUnlockedTier(data.UnlockedBiomes, GameConfig)
+	local economyValue = EconomyConfig.EconomyValueForTier(tier)
+	local reward = LoginRewardConfig.GetReward(day, daysInCycle, economyValue)
+	reward.rewardTier = tier
+	reward.resources, reward.resourceIslandId = LoginRewards.selectResources(
+		data,
+		reward.resourceCount or 0,
+		reward.guaranteeUncommon == true,
+		randomObject
+	)
+	if reward.decorationReward then
+		reward.decorationId = LoginRewards.selectFinalDecoration(data, randomObject)
+		if not reward.decorationId then
+			reward.decorationFallbackSeaStars = 10
+		end
+	end
+	reward.summary = LoginRewardConfig.FormatReward(reward)
+	return reward
+end
+
+function LoginRewards.applyReward(data, reward)
+	data.Coins = math.max(0, math.floor(tonumber(data.Coins) or 0)) + math.max(0, math.floor(tonumber(reward.coins) or 0))
+	for baitId, amount in pairs(reward.bait or {}) do
+		Monetization.addBait(data, baitId, amount)
+	end
+
+	SeaStars.ensureState(data)
+	local seaStarGrant = math.max(0, math.floor(tonumber(reward.seaStars) or 0))
+		+ math.max(0, math.floor(tonumber(reward.cycleSeaStars) or 0))
+		+ math.max(0, math.floor(tonumber(reward.decorationFallbackSeaStars) or 0))
+	data.SeaStars = SeaStars.normalizeBalance(data.SeaStars + seaStarGrant)
+
+	data.ResourceInventory = ResourceConfig.NormalizeInventory(data.ResourceInventory)
+	for resourceId, amount in pairs(reward.resources or {}) do
+		if ResourceConfig.Resources[resourceId] then
+			data.ResourceInventory[resourceId] += math.max(0, math.floor(tonumber(amount) or 0))
+		end
+	end
+
+	if reward.decorationId then
+		data.AquariumDecorations = SeaStars.normalizeDecorations(data.AquariumDecorations)
+		if (data.AquariumDecorations[reward.decorationId] or 0) > 0 then
+			return false, "Decoration reward was already owned."
+		end
+		data.AquariumDecorations[reward.decorationId] = 1
+	end
+	return true
+end
+
+function LoginRewards.claim(data, now, randomObject)
+	now = now or LoginRewardConfig.UtcNow()
+	local login = LoginRewards.ensureState(data, now)
+	local today = LoginRewardConfig.DateKey(now)
+	if login.LastClaimDate == today then
+		return false, "Today's login reward was already claimed."
+	end
+
+	local claimedDay = login.CurrentDay
+	local reward = LoginRewards.makeReward(data, claimedDay, login.DaysInCycle, randomObject)
+	local granted, grantError = LoginRewards.applyReward(data, reward)
+	if not granted then
+		return false, grantError or "The login reward could not be granted."
+	end
+
+	login.LastClaimDate = today
+	if claimedDay >= login.DaysInCycle then
+		login.CompletedCycles += 1
+		login.CurrentDay = 1
+		login.DaysInCycle = LoginRewardConfig.DaysInMonth(now.year, now.month)
+		login.CycleMonthKey = LoginRewardConfig.MonthKey(now)
+	else
+		login.CurrentDay = claimedDay + 1
+	end
+	data.LoginRewards = login
+	return true, "Claimed Day " .. tostring(claimedDay) .. ": " .. reward.summary, reward
+end
+
+function LoginRewards.getClientState(data)
+	local now = LoginRewardConfig.UtcNow()
+	local login = LoginRewards.ensureState(data, now)
+	local today = LoginRewardConfig.DateKey(now)
+	local tier = EconomyConfig.GetHighestUnlockedTier(data.UnlockedBiomes, GameConfig)
+	local economyValue = EconomyConfig.EconomyValueForTier(tier)
+	local track = {}
+	for day = 1, login.DaysInCycle do
+		local reward = LoginRewardConfig.GetReward(day, login.DaysInCycle, economyValue)
+		table.insert(track, {
+			Day = day,
+			IsMilestone = reward.isMilestone == true,
+			IsFinal = reward.isFinal == true,
+			Summary = LoginRewardConfig.FormatReward(reward),
+		})
+	end
+	local secondsIntoDay = now.hour * 3600 + now.min * 60 + now.sec
+	return {
+		CurrentDay = login.CurrentDay,
+		DaysInCycle = login.DaysInCycle,
+		CycleMonthKey = login.CycleMonthKey,
+		LastClaimDate = login.LastClaimDate,
+		CompletedCycles = login.CompletedCycles,
+		ClaimAvailable = login.LastClaimDate ~= today,
+		TodayUtc = today,
+		SecondsUntilNextUtcClaim = login.LastClaimDate == today and math.max(1, 86400 - secondsIntoDay) or 0,
+		RewardTrack = track,
+	}
 end
 
 local Quest = {
@@ -895,6 +1227,10 @@ function Quest.getUnlockedBiomeIds(data)
 	return result
 end
 
+function Quest.getRewardTier(data)
+	return EconomyConfig.GetHighestUnlockedTier(data.UnlockedBiomes, GameConfig)
+end
+
 function Quest.findFishById(fishId)
 	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
 		for _, fish in ipairs(GameConfig.Biomes[biomeId].fish) do
@@ -953,6 +1289,9 @@ function Quest.pickSpecificFish(data, template)
 end
 
 function Quest.makeQuest(data, template)
+	local rewardTier = Quest.getRewardTier(data)
+	local economyValue = EconomyConfig.EconomyValueForTier(rewardTier)
+	local coinMultiplier = math.max(0, tonumber(template.coinMultiplier) or 0)
 	local quest = {
 		id = template.id,
 		title = template.title,
@@ -963,7 +1302,9 @@ function Quest.makeQuest(data, template)
 		completed = false,
 		claimed = false,
 		reward = Quest.copyReward(template.reward),
+		rewardTier = rewardTier,
 	}
+	quest.reward.coins = math.round(economyValue * coinMultiplier)
 
 	if template.objectiveType == "catch_specific_fish" then
 		local fish, biomeId = Quest.pickSpecificFish(data, template)
@@ -1036,6 +1377,7 @@ function Quest.normalizePeriod(data, periodName)
 		quest.completed = quest.completed == true or quest.progress >= quest.target
 		quest.claimed = quest.claimed == true
 		quest.reward = Quest.copyReward(quest.reward)
+		quest.rewardTier = math.max(1, math.floor(tonumber(quest.rewardTier) or 1))
 	end
 end
 
@@ -1070,6 +1412,7 @@ function Quest.getClientState(data)
 				completed = quest.completed == true,
 				claimed = quest.claimed == true,
 				reward = Quest.copyReward(quest.reward),
+				rewardTier = quest.rewardTier,
 				fishId = quest.fishId,
 				fishName = quest.fishName,
 				biomeId = quest.biomeId,
@@ -1162,7 +1505,7 @@ end
 function Quest.applyReward(data, reward)
 	reward = Quest.copyReward(reward)
 	data.Coins += reward.coins or 0
-	data.XP += reward.xp or 0
+	data.XP = GameConfig.clampXP(data.XP + (reward.xp or 0))
 
 	if type(reward.bait) == "table" then
 		data.BaitInventory = Bait.normalizeInventory(data.BaitInventory)
@@ -1211,6 +1554,7 @@ local function normalizeOwnedRods(ownedRods)
 end
 
 local function recalcLevel(data)
+	data.XP = GameConfig.clampXP(data.XP)
 	local level, progressXP, nextXP = GameConfig.getLevelFromXP(data.XP)
 	data.Level = level
 	data.LevelProgressXP = progressXP
@@ -1218,14 +1562,21 @@ local function recalcLevel(data)
 end
 
 local function getTotalXPForLevel(level)
-	local total = 0
-	local targetLevel = math.clamp(level, 1, GameConfig.MAX_LEVEL)
+	return GameConfig.getTotalXPForLevel(level)
+end
 
-	for currentLevel = 1, targetLevel - 1 do
-		total += GameConfig.getXPForNextLevel(currentLevel)
+function fishyFishGetDefaultCoins()
+	if RunService:IsStudio() and RuntimeConfig.studioTestOverridesEnabled then
+		return math.max(0, math.floor(tonumber(RuntimeConfig.studioTestingStartCoins) or 0))
 	end
+	return 0
+end
 
-	return total
+function fishyFishGetDefaultXP()
+	if RunService:IsStudio() and RuntimeConfig.studioTestOverridesEnabled then
+		return GameConfig.clampXP(getTotalXPForLevel(RuntimeConfig.studioTestingStartLevel))
+	end
+	return 0
 end
 
 local function getInventoryValue(data)
@@ -1355,6 +1706,9 @@ local function makeClientState(player, data)
 	Bait.ensureState(data)
 	Monetization.ensureState(data)
 	Quest.ensureState(data)
+	LoginRewards.ensureState(data)
+	data.ResourceInventory = ResourceConfig.NormalizeInventory(data.ResourceInventory)
+	data.ResourcePity = ResourceConfig.NormalizePity(data.ResourcePity)
 
 	local aquarium = type(data.Aquarium) == "table" and data.Aquarium or {}
 	local aquariumLevel = math.clamp(tonumber(aquarium.Level) or 1, 1, 4)
@@ -1380,6 +1734,10 @@ local function makeClientState(player, data)
 		Inventory = copyArray(data.Inventory),
 		BackpackSize = data.BackpackSize,
 		InventoryValue = getInventoryValue(data),
+		ResourceInventory = shallowCopyMap(data.ResourceInventory),
+		ResourcePity = data.ResourcePity,
+		SeaStars = data.SeaStars,
+		SeaStarUnlocks = shallowCopyMap(data.SeaStarUnlocks),
 		OwnedRods = shallowCopyMap(data.OwnedRods),
 		EquippedRod = data.EquippedRod,
 		BaitInventory = shallowCopyMap(data.BaitInventory),
@@ -1397,6 +1755,7 @@ local function makeClientState(player, data)
 		TotalFishCaught = data.TotalFishCaught or 0,
 		Quests = Quest.getClientState(data),
 		QuestUnclaimedCount = Quest.getUnclaimedCount(data),
+		LoginRewards = LoginRewards.getClientState(data),
 		Monetization = Monetization.getClientState(data),
 		Aquarium = {
 			Level = aquariumLevel,
@@ -1438,13 +1797,17 @@ end
 
 local function makeDefaultData()
 	local data = {
-		Coins = RuntimeConfig.testingStartCoins,
-		XP = getTotalXPForLevel(RuntimeConfig.testingStartLevel),
+		Coins = fishyFishGetDefaultCoins(),
+		XP = fishyFishGetDefaultXP(),
 		Level = 1,
 		LevelProgressXP = 0,
 		NextLevelXP = GameConfig.getXPForNextLevel(1),
 		Inventory = {},
 		BackpackSize = GameConfig.BASE_BACKPACK_SIZE,
+		ResourceInventory = ResourceConfig.NormalizeInventory(nil),
+		ResourcePity = 0,
+		SeaStars = 0,
+		SeaStarUnlocks = {},
 		OwnedRods = {
 			WoodenRod = true,
 		},
@@ -1452,7 +1815,9 @@ local function makeDefaultData()
 		BaitInventory = Bait.normalizeInventory(nil),
 		EquippedBait = Bait.BasicId,
 		OwnedGamePasses = Monetization.normalizeOwnedPasses(nil),
+		ProcessedReceipts = {},
 		LastVipRewardDate = "",
+		LoginRewards = LoginRewardConfig.MakeDefault(),
 		UnlockedBiomes = {
 			[DEFAULT_FISHING_ISLAND_ID] = true,
 		},
@@ -1473,6 +1838,7 @@ local function makeDefaultData()
 
 	Monetization.ensureState(data)
 	Quest.ensureState(data)
+	LoginRewards.ensureState(data)
 	recalcLevel(data)
 	return data
 end
@@ -1484,16 +1850,21 @@ local function sanitizeLoadedData(loaded)
 		return data
 	end
 
-	data.Coins = math.max(tonumber(loaded.Coins) or data.Coins, RuntimeConfig.testingStartCoins)
-	data.XP = math.max(tonumber(loaded.XP) or data.XP, getTotalXPForLevel(RuntimeConfig.testingStartLevel))
+	data.Coins = math.max(0, math.floor(tonumber(loaded.Coins) or data.Coins))
+	data.XP = GameConfig.clampXP(loaded.XP ~= nil and loaded.XP or data.XP)
 	data.Inventory = type(loaded.Inventory) == "table" and loaded.Inventory or data.Inventory
 	syncFishSerials(data)
-	data.BackpackSize = tonumber(loaded.BackpackSize) or data.BackpackSize
+	data.ResourceInventory = ResourceConfig.NormalizeInventory(loaded.ResourceInventory)
+	data.ResourcePity = ResourceConfig.NormalizePity(loaded.ResourcePity)
+	data.SeaStars = SeaStars.normalizeBalance(loaded.SeaStars)
+	data.SeaStarUnlocks = SeaStars.normalizeUnlocks(loaded.SeaStarUnlocks)
 	data.OwnedRods = normalizeOwnedRods(type(loaded.OwnedRods) == "table" and loaded.OwnedRods or data.OwnedRods)
 	data.BaitInventory = Bait.normalizeInventory(loaded.BaitInventory)
 	data.EquippedBait = Bait.normalizeId(loaded.EquippedBait)
 	data.OwnedGamePasses = Monetization.normalizeOwnedPasses(loaded.OwnedGamePasses)
+	data.ProcessedReceipts = type(loaded.ProcessedReceipts) == "table" and loaded.ProcessedReceipts or data.ProcessedReceipts
 	data.LastVipRewardDate = type(loaded.LastVipRewardDate) == "string" and loaded.LastVipRewardDate or data.LastVipRewardDate
+	data.LoginRewards = LoginRewardConfig.Normalize(loaded.LoginRewards)
 
 	local equippedRod = normalizeRodId(loaded.EquippedRod)
 	data.EquippedRod = GameConfig.Rods[equippedRod] and equippedRod or data.EquippedRod
@@ -1526,6 +1897,7 @@ local function sanitizeLoadedData(loaded)
 	Bait.ensureState(data)
 	Monetization.ensureState(data)
 	Quest.ensureState(data)
+	LoginRewards.ensureState(data)
 
 	if not isBiomeUnlocked(data, data.CurrentBiome) then
 		data.CurrentBiome = DEFAULT_FISHING_ISLAND_ID
@@ -1549,7 +1921,7 @@ local function loadData(player)
 end
 
 local function applyOwnerGrants(player, data)
-	if player.Name ~= RuntimeConfig.ownerUsername then
+	if not RunService:IsStudio() or player.Name ~= RuntimeConfig.ownerUsername then
 		return false
 	end
 
@@ -1562,30 +1934,199 @@ local function applyOwnerGrants(player, data)
 	return true
 end
 
+function fishyFishRunEconomyPhaseStudioTests()
+	local freshData = makeDefaultData()
+	assert(freshData.Coins == 0, "Fresh Coins must be 0")
+	assert(freshData.XP == 0 and freshData.Level == 1, "Fresh progression must be Level 1 with 0 XP")
+	assert(freshData.EquippedRod == "WoodenRod", "WoodenRod must be equipped by default")
+	assert(freshData.OwnedRods.WoodenRod == true and next(freshData.OwnedRods, "WoodenRod") == nil, "WoodenRod must be the only default rod")
+	assert(freshData.UnlockedBiomes.LilyshoreIsland == true, "LilyshoreIsland must be unlocked by default")
+	assert(freshData.UnlockedBiomes.RiverbendIsland ~= true and freshData.UnlockedBiomes.CoralCoastIsland ~= true, "Only LilyshoreIsland may be unlocked by default")
+	assert(RuntimeConfig.studioTestOverridesEnabled == false and RuntimeConfig.studioGiveBeginnerFishInBag == false, "Studio overrides must be disabled by default")
+	assert(GameConfig.clampXP(GameConfig.getMaxXP() + 100000) == GameConfig.getMaxXP(), "XP must clamp at the Level 30 threshold")
+	assert(GameConfig.AquariumUpgradeCosts[2] == 1500 and GameConfig.AquariumUpgradeCosts[3] == 10000 and GameConfig.AquariumUpgradeCosts[4] == 40000, "Aquarium upgrade costs are incorrect")
+
+	local function setOwnedBagPasses(smallOwned, mediumOwned, largeOwned)
+		freshData.OwnedGamePasses = Monetization.normalizeOwnedPasses({
+			SmallBag = smallOwned,
+			MediumBag = mediumOwned,
+			LargeBag = largeOwned,
+		})
+		Monetization.updateBackpackSize(freshData)
+		return freshData.BackpackSize
+	end
+
+	assert(setOwnedBagPasses(false, false, false) == 30, "No bag pass must give 30 slots")
+	assert(setOwnedBagPasses(true, false, false) == 60, "SmallBag must give 60 total slots")
+	assert(setOwnedBagPasses(true, true, false) == 90, "MediumBag must override SmallBag at 90 total slots")
+	assert(setOwnedBagPasses(true, true, true) == 150, "LargeBag must override all lower tiers at 150 total slots")
+
+	local expectedCoinGrants = {
+		StarterCoinPack = 1500,
+		SmallCoinPack = 5000,
+		MediumCoinPack = 15000,
+		LargeCoinPack = 35000,
+		HugeCoinPack = 80000,
+	}
+	for productKey, expectedAmount in pairs(expectedCoinGrants) do
+		local product = Monetization.Config.DeveloperProducts[productKey]
+		assert(product and product.coinAmount == expectedAmount, productKey .. " Coin grant is incorrect")
+		assert(Monetization.Config.DeveloperProductById[product.id] == productKey, productKey .. " receipt mapping is missing")
+	end
+	assert(#Monetization.Config.DeveloperProductOrder == 0, "Lucky Bait products must be hidden from the normal shop")
+	for _, productKey in ipairs({ "SmallLuckyBaitPack", "MediumLuckyBaitPack", "LargeLuckyBaitPack" }) do
+		local product = Monetization.Config.DeveloperProducts[productKey]
+		assert(product and product.shopVisible == false, productKey .. " must be hidden")
+		assert(Monetization.Config.DeveloperProductById[product.id] == productKey, productKey .. " outstanding receipts must remain compatible")
+	end
+	local receiptTestData = { ProcessedReceipts = {} }
+	assert(Monetization.tryMarkReceipt(receiptTestData, "economy-phase-test") == true, "First receipt attempt must be accepted")
+	assert(Monetization.tryMarkReceipt(receiptTestData, "economy-phase-test") == false, "Duplicate receipt attempt must be rejected")
+
+	local function verifyGeneratedQuestRewards(expectedTier)
+		for _, periodName in ipairs(Quest.PeriodOrder) do
+			local period = Quest.generatePeriod(freshData, periodName)
+			local config = Quest.Configs[periodName]
+			for index, quest in ipairs(period.quests) do
+				local template = config.quests[index]
+				local expectedCoins = math.round(EconomyConfig.EconomyValueForTier(expectedTier) * template.coinMultiplier)
+				assert(quest.rewardTier == expectedTier and quest.reward.coins == expectedCoins, quest.id .. " generated the wrong tier reward")
+			end
+		end
+	end
+
+	freshData.UnlockedBiomes = { LilyshoreIsland = true }
+	verifyGeneratedQuestRewards(1)
+	local fixedDaily = Quest.generatePeriod(freshData, "Daily")
+	local fixedReward = fixedDaily.quests[1].reward.coins
+	freshData.QuestState.Daily = fixedDaily
+	freshData.UnlockedBiomes.RiverbendIsland = true
+	Quest.ensureState(freshData)
+	assert(freshData.QuestState.Daily.quests[1].reward.coins == fixedReward, "Generated quest rewards must remain fixed")
+	verifyGeneratedQuestRewards(2)
+	freshData.UnlockedBiomes.CoralCoastIsland = true
+	verifyGeneratedQuestRewards(3)
+
+	freshData.OwnedGamePasses = Monetization.normalizeOwnedPasses({ VipAngler = true })
+	freshData.Inventory = { { value = 40 }, { value = 60 } }
+	assert(getInventoryValue(freshData) == 110, "VIP must apply one 10% bonus to the displayed and granted NPC fish-sale total")
+
+	print("[FishyFish Economy Test] PASS: clean defaults, XP cap, fish values, quest snapshots, products, bag tiers, and VIP sale bonus")
+end
+
+if RunService:IsStudio() then
+	fishyFishRunEconomyPhaseStudioTests()
+end
+
+function fishyFishRunEconomyPhase3StudioTests()
+	local freshData = makeDefaultData()
+	assert(freshData.SeaStars == 0 and next(freshData.SeaStarUnlocks) == nil, "Sea Star defaults are incorrect")
+	assert(SeaStars.normalizeBalance(-100) == 0, "Sea Stars must never sanitize below zero")
+	assert(Monetization.Config.GamePasses.AquariumDesigner == nil, "Aquarium Designer Pass must be removed")
+	for _, passKey in ipairs(Monetization.Config.GamePassOrder) do
+		assert(passKey ~= "AquariumDesigner", "Aquarium Designer Pass order entry must be removed")
+	end
+
+	local expectedSeaStarProducts = {
+		StarterSeaStars = { amount = 60, price = 49 },
+		SmallSeaStars = { amount = 130, price = 99 },
+		MediumSeaStars = { amount = 300, price = 199 },
+		LargeSeaStars = { amount = 700, price = 399 },
+		HugeSeaStars = { amount = 1500, price = 799 },
+	}
+	for productKey, expected in pairs(expectedSeaStarProducts) do
+		local product = Monetization.Config.DeveloperProducts[productKey]
+		assert(product and product.seaStarAmount == expected.amount and product.priceRobux == expected.price, productKey .. " configuration is incorrect")
+		assert((tonumber(product.id) or 0) <= 0, productKey .. " must remain unpromptable until a real ID is configured")
+	end
+
+	local expectedThemePrices = {
+		Classic = 0,
+		CoralReef = 60,
+		ModernGlass = 60,
+		DeepOcean = 100,
+		JapaneseKoiPond = 140,
+		PirateShip = 180,
+		AncientRuins = 180,
+	}
+	for themeId, price in pairs(expectedThemePrices) do
+		local theme = Monetization.Config.AquariumDesigner.themes[themeId]
+		assert(theme and theme.id == themeId and theme.seaStarPrice == price, themeId .. " theme price is incorrect")
+	end
+	assert(SeaStars.ownsTheme(freshData, "Classic"), "Classic must be free")
+
+	local themePlayer = { Name = "Phase3ThemeTest" }
+	freshData.SeaStars = 60
+	assert(SeaStars.tryAcquire(themePlayer), "Theme transaction lock must acquire")
+	assert(not SeaStars.tryAcquire(themePlayer), "Theme transaction lock must reject concurrent work")
+	local coralPrice = Monetization.Config.AquariumDesigner.themes.CoralReef.seaStarPrice
+	freshData.SeaStars -= coralPrice
+	freshData.SeaStarUnlocks.CoralReef = true
+	SeaStars.release(themePlayer)
+	assert(freshData.SeaStars == 0 and SeaStars.ownsTheme(freshData, "CoralReef"), "Theme purchase must deduct exactly once and unlock permanently")
+
+	local marchState = LoginRewardConfig.Normalize({ CurrentDay = 11, DaysInCycle = 31, CycleMonthKey = "2026-03", LastClaimDate = "2026-03-10" }, { year = 2026, month = 4, day = 2, hour = 0, min = 0, sec = 0 })
+	assert(marchState.CurrentDay == 11 and marchState.DaysInCycle == 31, "A March cycle must remain locked at 31 days")
+
+	local loginData = makeDefaultData()
+	loginData.LoginRewards = marchState
+	local claimed, _, dayElevenReward = LoginRewards.claim(loginData, { year = 2026, month = 4, day = 2, hour = 12, min = 0, sec = 0 }, Random.new(3))
+	assert(claimed and dayElevenReward.day == 11 and loginData.LoginRewards.CurrentDay == 12, "Missing dates must not reset, skip, or advance sequential progress")
+	assert(not LoginRewards.claim(loginData, { year = 2026, month = 4, day = 2, hour = 20, min = 0, sec = 0 }, Random.new(4)), "Only one login claim is allowed per UTC date")
+
+	local dayTwentyOneData = makeDefaultData()
+	dayTwentyOneData.UnlockedBiomes.RiverbendIsland = true
+	dayTwentyOneData.LoginRewards.CurrentDay = 21
+	local dayTwentyOneClaimed, _, dayTwentyOneReward = LoginRewards.claim(dayTwentyOneData, { year = 2026, month = 7, day = 21, hour = 1, min = 0, sec = 0 }, Random.new(5))
+	assert(dayTwentyOneClaimed and (dayTwentyOneReward.resources.OceanShard or 0) >= 1, "Riverbend Day 21 must guarantee an Ocean Shard")
+
+	local finalData = makeDefaultData()
+	finalData.LoginRewards.CurrentDay = finalData.LoginRewards.DaysInCycle
+	local seaStarsBeforeFinal = finalData.SeaStars
+	local finalClaimed, _, finalReward = LoginRewards.claim(finalData, { year = 2026, month = 7, day = 31, hour = 1, min = 0, sec = 0 }, Random.new(6))
+	assert(finalClaimed and finalReward.isFinal and finalData.SeaStars == seaStarsBeforeFinal + 105, "Final claim must grant 30 Sea Stars plus the 75 Sea Star cycle reward")
+	assert(finalReward.decorationId and finalData.AquariumDecorations[finalReward.decorationId] == 1, "Final reward must grant one nonduplicate decoration")
+	assert(finalData.LoginRewards.CurrentDay == 1 and finalData.LoginRewards.LastClaimDate == "2026-07-31", "Completed cycle must reset sequential day but block a same-date claim")
+
+	print("[FishyFish Economy Phase 3 Test] PASS: Sea Stars, products, free editor, theme ownership, UTC cycles, milestones, resource guarantees, and final decorations")
+end
+
+if RunService:IsStudio() then
+	fishyFishRunEconomyPhase3StudioTests()
+end
+
 local function saveData(player)
 	if RunService:IsStudio() then
-		return
+		return true
 	end
 
 	local data = playerData[player]
 	if not data then
-		return
+		return false
 	end
+	recalcLevel(data)
 	Bait.ensureState(data)
 	Monetization.ensureState(data)
 	Quest.ensureState(data)
+	LoginRewards.ensureState(data)
 
 	local savePayload = {
 		Coins = data.Coins,
 		XP = data.XP,
 		Inventory = data.Inventory,
 		BackpackSize = data.BackpackSize,
+		ResourceInventory = ResourceConfig.NormalizeInventory(data.ResourceInventory),
+		ResourcePity = ResourceConfig.NormalizePity(data.ResourcePity),
+		SeaStars = SeaStars.normalizeBalance(data.SeaStars),
+		SeaStarUnlocks = SeaStars.normalizeUnlocks(data.SeaStarUnlocks),
 		OwnedRods = data.OwnedRods,
 		EquippedRod = data.EquippedRod,
 		BaitInventory = data.BaitInventory,
 		EquippedBait = data.EquippedBait,
 		OwnedGamePasses = data.OwnedGamePasses,
+		ProcessedReceipts = data.ProcessedReceipts,
 		LastVipRewardDate = data.LastVipRewardDate,
+		LoginRewards = LoginRewardConfig.Normalize(data.LoginRewards),
 		UnlockedBiomes = data.UnlockedBiomes,
 		UnlockedIslands = data.UnlockedBiomes,
 		CurrentBiome = data.CurrentBiome,
@@ -1607,6 +2148,7 @@ local function saveData(player)
 	if not success then
 		warn("Fishy Fish save failed for", player.UserId, err)
 	end
+	return success
 end
 
 local function updateLeaderstats(player)
@@ -4252,7 +4794,7 @@ local function buildAquariumSlotModel(slot, ownerPlayer, ownerData)
 	}) do
 		local panel = makePart(model, glassPanel.name, glassPanel.size, origin + glassPanel.offset, Color3.fromRGB(75, 165, 220), Enum.Material.Glass)
 		panel.Transparency = 0.72
-		panel.CanCollide = false
+		panel.CanCollide = true
 	end
 
 	local background = makePart(model, "AquariumDesignerBackground", Vector3.new(dimensions.tankWidth - 1.2, dimensions.tankHeight - 1, 0.16), origin + Vector3.new(0, dimensions.glassY, halfDepth - 0.18), backgroundColor, Enum.Material.SmoothPlastic)
@@ -4460,7 +5002,7 @@ local function buildAquariumSlotModel(slot, ownerPlayer, ownerData)
 		return sizeScale * math.clamp(tonumber(item.scale) or 1, 0.55, 1.35)
 	end
 
-	local canShowSavedDecorations = ownerData and Monetization.ownsPass(ownerData, "AquariumDesigner")
+	local canShowSavedDecorations = ownerData ~= nil
 	local canShowPreviewDecorations = ownerData and ownerData.AquariumPreviewDesign ~= nil
 	if canShowSavedDecorations or canShowPreviewDecorations then
 		for slotId, decorationId in pairs(aquariumDesign.decorations or {}) do
@@ -6357,7 +6899,7 @@ local function ensureSeasideShopDisplayAquarium()
 		{ name = "DisplayGlassLeft", size = Vector3.new(0.22, dimensions.tankHeight, dimensions.tankDepth), offset = Vector3.new(-halfWidth - 0.14, dimensions.glassY, 0) },
 		{ name = "DisplayGlassRight", size = Vector3.new(0.22, dimensions.tankHeight, dimensions.tankDepth), offset = Vector3.new(halfWidth + 0.14, dimensions.glassY, 0) },
 	}) do
-		tankPart(tankFolder, glassPanel.name, glassPanel.size, glassPanel.offset, Color3.fromRGB(75, 165, 220), Enum.Material.Glass, 0.68)
+		tankPart(tankFolder, glassPanel.name, glassPanel.size, glassPanel.offset, Color3.fromRGB(75, 165, 220), Enum.Material.Glass, 0.68, true)
 	end
 
 	tankPart(
@@ -6610,7 +7152,7 @@ function FishingRuntime.chooseFish(data, isAutoFish, baitId, extraRareChanceBonu
 	return biome.fish[1]
 end
 
-function FishingRuntime.awardCatch(player, fish, isAutoFish, baitId)
+function FishingRuntime.awardCatch(player, fish, isAutoFish, baitId, castResult)
 	local data = playerData[player]
 	if not data then
 		return
@@ -6648,8 +7190,11 @@ function FishingRuntime.awardCatch(player, fish, isAutoFish, baitId)
 	table.insert(data.Inventory, entry)
 	data.Fishdex[fish.id] = (data.Fishdex[fish.id] or 0) + 1
 	data.TotalFishCaught = (data.TotalFishCaught or 0) + 1
-	data.XP += xp
+	local xpBefore = GameConfig.clampXP(data.XP)
+	data.XP = GameConfig.clampXP(xpBefore + xp)
+	local awardedXP = data.XP - xpBefore
 	Quest.recordCatch(data, fish)
+	local resourceId = FishingResources.rollForCatch(data, isAutoFish, castResult)
 
 	if not data.BestCatch or value > data.BestCatch.value then
 		data.BestCatch = entry
@@ -6661,7 +7206,11 @@ function FishingRuntime.awardCatch(player, fish, isAutoFish, baitId)
 
 	local prefix = isAutoFish and "Auto caught" or "Caught"
 	local baitText = bait and bait.displayName and bait.displayName ~= "Basic Bait" and (" using " .. bait.displayName) or ""
-	local message = string.format("%s %s [%s]%s Value: %d +%d XP", prefix, fish.name, fish.rarity, baitText, value, xp)
+	local message = string.format("%s %s [%s]%s Value: %d +%d XP", prefix, fish.name, fish.rarity, baitText, value, awardedXP)
+	if resourceId then
+		local resource = ResourceConfig.Resources[resourceId]
+		message ..= "\nBonus: " .. resource.displayName .. " x1"
+	end
 	notify(player, message)
 end
 
@@ -7050,7 +7599,7 @@ function startAutoFish(player)
 				end
 
 				pendingFishing[player] = nil
-				FishingRuntime.awardCatch(player, fish, true, baitId)
+				FishingRuntime.awardCatch(player, fish, true, baitId, nil)
 			end
 		end
 
@@ -7061,30 +7610,93 @@ function startAutoFish(player)
 	end)
 end
 
-local function canUnlockBiome(data, biomeId)
+RodPurchase = {
+	Locks = {},
+}
+
+function RodPurchase.validate(data, rodId)
+	local rod = GameConfig.Rods[rodId]
+	if not rod then
+		return false, "Unknown rod."
+	end
+	if ownsRod(data, rodId) then
+		return false, "Already owned."
+	end
+	if rod.previousRod and not ownsRod(data, rod.previousRod) then
+		return false, "Need " .. GameConfig.Rods[rod.previousRod].displayName .. "."
+	end
+	if data.Level < rod.unlockLevel then
+		return false, "Need level " .. rod.unlockLevel .. "."
+	end
+
+	local inventory = ResourceConfig.NormalizeInventory(data.ResourceInventory)
+	for _, resourceId in ipairs(ResourceConfig.ResourceOrder) do
+		local required = tonumber(rod.resourceCosts and rod.resourceCosts[resourceId]) or 0
+		if required > 0 and inventory[resourceId] < required then
+			local resource = ResourceConfig.Resources[resourceId]
+			return false, string.format("Need %d %s (%d/%d).", required, resource.displayName, inventory[resourceId], required)
+		end
+	end
+	if data.Coins < rod.cost then
+		return false, "Need " .. rod.cost .. " coins."
+	end
+	return true, nil, rod
+end
+
+function RodPurchase.revalidateBudget(data, rod)
+	local inventory = ResourceConfig.NormalizeInventory(data.ResourceInventory)
+	for _, resourceId in ipairs(ResourceConfig.ResourceOrder) do
+		local required = tonumber(rod.resourceCosts and rod.resourceCosts[resourceId]) or 0
+		if required > 0 and inventory[resourceId] < required then
+			return false, "Resources changed. Purchase canceled."
+		end
+	end
+	if data.Coins < rod.cost then
+		return false, "Coins changed. Purchase canceled."
+	end
+	return true
+end
+
+function RodPurchase.deductAndGrant(data, rodId, rod)
+	data.ResourceInventory = ResourceConfig.NormalizeInventory(data.ResourceInventory)
+	data.Coins -= rod.cost
+	for _, resourceId in ipairs(ResourceConfig.ResourceOrder) do
+		local required = tonumber(rod.resourceCosts and rod.resourceCosts[resourceId]) or 0
+		if required > 0 then
+			data.ResourceInventory[resourceId] -= required
+		end
+	end
+	data.OwnedRods[rodId] = true
+	data.EquippedRod = rodId
+end
+
+IslandPurchase = {
+	Locks = {},
+}
+
+function IslandPurchase.validate(data, biomeId)
 	biomeId = normalizeBiomeId(biomeId)
 	local biome = GameConfig.Biomes[biomeId]
 	if not biome then
 		return false, "Unknown island."
 	end
-
 	if isBiomeUnlocked(data, biomeId) then
 		return false, "Already unlocked."
 	end
-
 	if data.Level < biome.unlockLevel then
 		return false, "Need level " .. biome.unlockLevel .. "."
 	end
-
-	if data.Coins < biome.cost then
-		return false, "Need " .. biome.cost .. " coins."
-	end
-
 	if biome.requiredRod and not ownsRod(data, biome.requiredRod) then
 		return false, "Need " .. GameConfig.Rods[biome.requiredRod].displayName .. "."
 	end
+	if data.Coins < biome.cost then
+		return false, "Need " .. biome.cost .. " coins."
+	end
+	return true, nil, biomeId, biome
+end
 
-	return true, nil
+local function canUnlockBiome(data, biomeId)
+	return IslandPurchase.validate(data, biomeId)
 end
 
 function teleportPlayer(player, target)
@@ -7503,7 +8115,7 @@ FinishMinigame.OnServerEvent:Connect(function(player, result)
 	end
 
 	data.CurrentBiome = pending.biomeId
-	FishingRuntime.awardCatch(player, pending.fish, false, pending.baitId)
+	FishingRuntime.awardCatch(player, pending.fish, false, pending.baitId, pending.castResult)
 end)
 
 SellFish.OnServerEvent:Connect(function(player, action, fishSerialToSell, fishIndexToSell)
@@ -7534,14 +8146,22 @@ SellFish.OnServerEvent:Connect(function(player, action, fishSerialToSell, fishIn
 	sellAllFishForPlayer(player)
 end)
 
-BuyRod.OnServerEvent:Connect(function(player, rodId)
+BuyRod.OnServerEvent:Connect(function(player, rodId, action)
 	local data = playerData[player]
 	local rod = GameConfig.Rods[rodId]
-	if not data or not rod then
+	if not data then
+		return
+	end
+	if not rod then
+		notify(player, "Unknown rod.")
 		return
 	end
 
-	if ownsRod(data, rodId) then
+	if action == "Equip" then
+		if not ownsRod(data, rodId) then
+			notify(player, "You do not own " .. rod.displayName .. ".")
+			return
+		end
 		data.EquippedRod = rodId
 		refreshFishingRodForPlayer(player, data)
 		sendState(player)
@@ -7549,24 +8169,51 @@ BuyRod.OnServerEvent:Connect(function(player, rodId)
 		return
 	end
 
-	if data.Level < rod.unlockLevel then
-		notify(player, "Need level " .. rod.unlockLevel .. ".")
+	if RodPurchase.Locks[player] then
+		notify(player, "Rod purchase already processing.")
 		return
 	end
 
-	if rod.requiredBiome and not isBiomeUnlocked(data, rod.requiredBiome) then
-		notify(player, "Unlock " .. GameConfig.Biomes[rod.requiredBiome].displayName .. " first.")
+	local valid, reason = RodPurchase.validate(data, rodId)
+	if not valid then
+		notify(player, reason)
 		return
 	end
 
-	if data.Coins < rod.cost then
-		notify(player, "Need " .. rod.cost .. " coins.")
+	RodPurchase.Locks[player] = true
+	local coinsBefore = data.Coins
+	local resourcesBefore = ResourceConfig.NormalizeInventory(data.ResourceInventory)
+	local equippedBefore = data.EquippedRod
+	local purchased = false
+	local canceledReason = nil
+	local success, purchaseError = xpcall(function()
+		local budgetValid, budgetReason = RodPurchase.revalidateBudget(data, rod)
+		if not budgetValid then
+			canceledReason = budgetReason
+			return
+		end
+		if ownsRod(data, rodId) then
+			canceledReason = "Already owned."
+			return
+		end
+		RodPurchase.deductAndGrant(data, rodId, rod)
+		purchased = true
+	end, debug.traceback)
+	RodPurchase.Locks[player] = nil
+
+	if not success then
+		data.Coins = coinsBefore
+		data.ResourceInventory = resourcesBefore
+		data.OwnedRods[rodId] = nil
+		data.EquippedRod = equippedBefore
+		warn("Rod purchase failed for", player.Name, rodId, purchaseError)
+		notify(player, "Rod purchase failed. Nothing was deducted.")
 		return
 	end
-
-	data.Coins -= rod.cost
-	data.OwnedRods[rodId] = true
-	data.EquippedRod = rodId
+	if not purchased then
+		notify(player, canceledReason or "Rod purchase canceled.")
+		return
+	end
 
 	updateLeaderstats(player)
 	refreshFishingRodForPlayer(player, data)
@@ -7705,8 +8352,6 @@ getOrCreateRemoteEvent("ShopAction").OnServerEvent:Connect(function(player, acti
 			print("Prompting purchase:", pass.name or itemKey, pass.id)
 			if itemKey == "VipAngler" then
 				print("Prompting VIP Angler Pass purchase:", pass.id)
-			elseif itemKey == "AquariumDesigner" then
-				print("Prompting Aquarium Designer Pass purchase:", pass.id)
 			elseif itemKey == "SmallBag" then
 				print("Prompting Small Bag Upgrade purchase:", pass.id)
 			elseif itemKey == "MediumBag" then
@@ -7723,6 +8368,10 @@ getOrCreateRemoteEvent("ShopAction").OnServerEvent:Connect(function(player, acti
 	elseif action == "PromptProduct" then
 		local product = Monetization.Config.DeveloperProducts[itemKey]
 		if not product then
+			return
+		end
+		if product.shopVisible == false then
+			notify(player, (product.name or "That product") .. " is not currently sold in the shop.")
 			return
 		end
 		local productId = tonumber(product.id) or tonumber(product.Id)
@@ -7747,6 +8396,56 @@ getOrCreateRemoteEvent("ShopAction").OnServerEvent:Connect(function(player, acti
 		else
 			notify(player, Monetization.ownsPass(data, "VipAngler") and "VIP reward already claimed today." or "VIP Angler Pass required.")
 		end
+	elseif action == "PurchaseAquariumTheme" then
+		local theme = type(itemKey) == "string" and Monetization.Config.AquariumDesigner.themes[itemKey] or nil
+		if not theme then
+			notify(player, "Aquarium theme not found.")
+			return
+		end
+		if theme.free == true or theme.purchasable ~= true then
+			notify(player, theme.free == true and "That aquarium theme is already free." or "That aquarium theme is not purchasable.")
+			return
+		end
+		if SeaStars.ownsTheme(data, itemKey) then
+			notify(player, "You already own " .. theme.name .. ".")
+			sendState(player)
+			return
+		end
+		local price = SeaStars.normalizeBalance(theme.seaStarPrice)
+		if data.SeaStars < price then
+			notify(player, "Need " .. tostring(price) .. " Sea Stars to unlock " .. theme.name .. ".")
+			return
+		end
+		if not SeaStars.tryAcquire(player) then
+			notify(player, "A Sea Star transaction is already in progress.")
+			return
+		end
+
+		local balanceBefore = data.SeaStars
+		local unlocksBefore = SeaStars.normalizeUnlocks(data.SeaStarUnlocks)
+		local purchaseOk, purchaseError = pcall(function()
+			SeaStars.ensureState(data)
+			assert(not SeaStars.ownsTheme(data, itemKey), "Theme is already owned")
+			assert(data.SeaStars >= price, "Sea Star balance changed")
+			data.SeaStars = SeaStars.normalizeBalance(data.SeaStars - price)
+			data.SeaStarUnlocks[itemKey] = true
+		end)
+		SeaStars.release(player)
+		if not purchaseOk then
+			data.SeaStars = balanceBefore
+			data.SeaStarUnlocks = unlocksBefore
+			notify(player, "Theme purchase failed: " .. tostring(purchaseError))
+			return
+		end
+		if not saveData(player) then
+			data.SeaStars = balanceBefore
+			data.SeaStarUnlocks = unlocksBefore
+			sendState(player)
+			notify(player, "Theme purchase could not be saved. No Sea Stars were spent.")
+			return
+		end
+		sendState(player)
+		notify(player, "Unlocked " .. theme.name .. " for " .. tostring(price) .. " Sea Stars.")
 	elseif action == "PreviewAquariumDesign" then
 		if rejectAquariumEditIfViewOnly(player) then
 			return
@@ -7760,6 +8459,11 @@ getOrCreateRemoteEvent("ShopAction").OnServerEvent:Connect(function(player, acti
 		if Monetization.getAquariumFreeDecorationValidationError(payload) then
 			warn("Aquarium preview failed for", player.Name, "invalid decoration data:", Monetization.getAquariumFreeDecorationValidationError(payload))
 			notify(player, "Preview failed: invalid decoration data.")
+			return
+		end
+		local ownershipError = SeaStars.getDecorationOwnershipError(data, payload)
+		if ownershipError then
+			notify(player, "Preview failed: " .. ownershipError)
 			return
 		end
 
@@ -7795,27 +8499,14 @@ getOrCreateRemoteEvent("ShopAction").OnServerEvent:Connect(function(player, acti
 		end
 
 		local design = Monetization.limitAquariumDesignForLevel(payload, data.Aquarium and data.Aquarium.Level or 1)
-		if Monetization.aquariumDesignUsesFixedDecorations(design) and not Monetization.ownsPass(data, "AquariumDesigner") then
-			local pass = Monetization.Config.GamePasses.AquariumDesigner
-			if pass and pass.purchasable ~= false then
-				pcall(function()
-					print("Prompting Aquarium Designer Pass purchase:", pass.id)
-					Monetization.MarketplaceService:PromptGamePassPurchase(player, pass.id)
-				end)
-			end
-			notify(player, pass and pass.purchasable == false and "Aquarium Designer Pass is coming soon." or "Aquarium Designer Pass is required to save aquarium decorations.")
+		local ownershipError = SeaStars.getDecorationOwnershipError(data, design)
+		if ownershipError then
+			notify(player, "Apply failed: " .. ownershipError)
 			return
 		end
-
-		if Monetization.aquariumDesignUsesPremium(design) and not Monetization.ownsPass(data, "AquariumDesigner") then
-			local pass = Monetization.Config.GamePasses.AquariumDesigner
-			if pass and pass.purchasable ~= false then
-				pcall(function()
-					print("Prompting Aquarium Designer Pass purchase:", pass.id)
-					Monetization.MarketplaceService:PromptGamePassPurchase(player, pass.id)
-				end)
-			end
-			notify(player, pass and pass.purchasable == false and "Aquarium Designer Pass is coming soon." or "Aquarium Designer Pass is required to apply that design.")
+		if not SeaStars.ownsTheme(data, design.theme) then
+			local theme = Monetization.Config.AquariumDesigner.themes[design.theme]
+			notify(player, "Unlock " .. (theme and theme.name or tostring(design.theme)) .. " with Sea Stars before applying it.")
 			return
 		end
 
@@ -7828,28 +8519,250 @@ getOrCreateRemoteEvent("ShopAction").OnServerEvent:Connect(function(player, acti
 	end
 end)
 
+LoginRewardAction.OnServerEvent:Connect(function(player, action)
+	local data = playerData[player]
+	if not data or action ~= "Claim" then
+		return
+	end
+	if LoginRewards.ClaimLocks[player] then
+		LoginRewardAction:FireClient(player, { Success = false, Message = "A login reward claim is already in progress." })
+		return
+	end
+	if not SeaStars.tryAcquire(player) then
+		LoginRewardAction:FireClient(player, { Success = false, Message = "A Sea Star transaction is already in progress." })
+		return
+	end
+	LoginRewards.ClaimLocks[player] = true
+
+	local snapshot = {
+		Coins = data.Coins,
+		BaitInventory = shallowCopyMap(data.BaitInventory),
+		ResourceInventory = shallowCopyMap(data.ResourceInventory),
+		SeaStars = data.SeaStars,
+		AquariumDecorations = shallowCopyMap(data.AquariumDecorations),
+		LoginRewards = shallowCopyMap(data.LoginRewards),
+	}
+	local function restoreSnapshot()
+		data.Coins = snapshot.Coins
+		data.BaitInventory = snapshot.BaitInventory
+		data.ResourceInventory = snapshot.ResourceInventory
+		data.SeaStars = snapshot.SeaStars
+		data.AquariumDecorations = snapshot.AquariumDecorations
+		data.LoginRewards = snapshot.LoginRewards
+	end
+
+	local callOk, claimed, message, reward = pcall(LoginRewards.claim, data)
+	if not callOk then
+		local claimError = claimed
+		restoreSnapshot()
+		claimed = false
+		message = "Login reward grant failed. Progress was not advanced."
+		warn("Login reward claim failed for", player.Name, claimError)
+	elseif claimed and not saveData(player) then
+		restoreSnapshot()
+		claimed = false
+		message = "Login reward could not be saved. Progress was not advanced."
+	end
+
+	LoginRewards.ClaimLocks[player] = nil
+	SeaStars.release(player)
+	if claimed then
+		updateLeaderstats(player)
+	end
+	sendState(player)
+	LoginRewardAction:FireClient(player, {
+		Success = claimed == true,
+		Message = message,
+		Reward = claimed and reward or nil,
+	})
+	notify(player, message or (claimed and "Login reward claimed." or "Login reward unavailable."))
+end)
+
 UnlockBiome.OnServerEvent:Connect(function(player, biomeId)
 	local data = playerData[player]
 	if not data then
 		return
 	end
 
-	biomeId = normalizeBiomeId(biomeId)
-	local canUnlock, reason = canUnlockBiome(data, biomeId)
+	if IslandPurchase.Locks[player] then
+		notify(player, "Island unlock already processing.")
+		return
+	end
+
+	local canUnlock, reason, normalizedBiomeId, biome = IslandPurchase.validate(data, biomeId)
 	if not canUnlock then
 		notify(player, reason)
 		return
 	end
 
-	local biome = GameConfig.Biomes[biomeId]
-	data.Coins -= biome.cost
-	data.UnlockedBiomes[biomeId] = true
-	data.CurrentBiome = biomeId
+	IslandPurchase.Locks[player] = true
+	local coinsBefore = data.Coins
+	local currentBiomeBefore = data.CurrentBiome
+	local unlocked = false
+	local canceledReason = nil
+	local success, unlockError = xpcall(function()
+		local stillValid, stillReason = IslandPurchase.validate(data, normalizedBiomeId)
+		if not stillValid then
+			canceledReason = stillReason
+			return
+		end
+		data.Coins -= biome.cost
+		data.UnlockedBiomes[normalizedBiomeId] = true
+		data.CurrentBiome = normalizedBiomeId
+		unlocked = true
+	end, debug.traceback)
+	IslandPurchase.Locks[player] = nil
+
+	if not success then
+		data.Coins = coinsBefore
+		data.UnlockedBiomes[normalizedBiomeId] = nil
+		data.CurrentBiome = currentBiomeBefore
+		warn("Island unlock failed for", player.Name, normalizedBiomeId, unlockError)
+		notify(player, "Island unlock failed. Nothing was deducted.")
+		return
+	end
+	if not unlocked then
+		notify(player, canceledReason or "Island unlock canceled.")
+		return
+	end
 
 	updateLeaderstats(player)
 	sendState(player)
 	notify(player, "Unlocked " .. biome.displayName .. ".")
 end)
+
+function fishyFishRunResourcePhaseStudioTests()
+	ResourceConfig.Validate(GameConfig)
+
+	local expectedResources = {
+		IronScrap = { "Iron Scrap", "Metals", 1, "IronRod" },
+		GoldNugget = { "Gold Nugget", "Metals", 2, "GoldenRod" },
+		EmeraldShard = { "Emerald Shard", "Gems", 3, "EmeraldRod" },
+		OceanShard = { "Ocean Shard", "Gems", 4, "OceanRod" },
+	}
+	local resourceCount = 0
+	for resourceId, expected in pairs(expectedResources) do
+		local resource = ResourceConfig.Resources[resourceId]
+		assert(resource.id == resourceId and resource.displayName == expected[1], resourceId .. " identity is incorrect")
+		assert(resource.category == expected[2] and resource.displayOrder == expected[3], resourceId .. " category/order is incorrect")
+		assert(resource.bazaarEligible == true and resource.loginEligible == true and resource.usedFor == expected[4], resourceId .. " future-use fields are incorrect")
+		resourceCount += 1
+	end
+	assert(resourceCount == 4, "Exactly four resources are required")
+	assert(ResourceConfig.DropChances.Weak == 0.22 and ResourceConfig.DropChances.Good == 0.22, "Weak/Good resource odds are incorrect")
+	assert(ResourceConfig.DropChances.Great == 0.26 and ResourceConfig.DropChances.Perfect == 0.30, "Great/Perfect resource odds are incorrect")
+	assert(ResourceConfig.DropChances.AutoFish == 0.11, "AutoFish resource odds are incorrect")
+	local lilyDrops = ResourceConfig.IslandDropTables.LilyshoreIsland
+	local riverDrops = ResourceConfig.IslandDropTables.RiverbendIsland
+	assert(#lilyDrops == 3 and lilyDrops[1].resourceId == "IronScrap" and lilyDrops[1].weight == 60, "Lilyshore Iron weight is incorrect")
+	assert(lilyDrops[2].resourceId == "GoldNugget" and lilyDrops[2].weight == 30, "Lilyshore Gold weight is incorrect")
+	assert(lilyDrops[3].resourceId == "EmeraldShard" and lilyDrops[3].weight == 10, "Lilyshore Emerald weight is incorrect")
+	assert(#riverDrops == 2 and riverDrops[1].resourceId == "EmeraldShard" and riverDrops[1].weight == 70, "Riverbend Emerald weight is incorrect")
+	assert(riverDrops[2].resourceId == "OceanShard" and riverDrops[2].weight == 30, "Riverbend Ocean weight is incorrect")
+	assert(ResourceConfig.SelectResource("LilyshoreIsland", 0) == "IronScrap", "Lilyshore Iron weight is incorrect")
+	assert(ResourceConfig.SelectResource("LilyshoreIsland", 0.60) == "GoldNugget", "Lilyshore Gold weight is incorrect")
+	assert(ResourceConfig.SelectResource("LilyshoreIsland", 0.90) == "EmeraldShard", "Lilyshore Emerald weight is incorrect")
+	assert(ResourceConfig.SelectResource("LilyshoreIsland", 0.999) ~= "OceanShard", "Lilyshore must not drop Ocean Shard")
+	assert(ResourceConfig.SelectResource("RiverbendIsland", 0.69) == "EmeraldShard", "Riverbend Emerald weight is incorrect")
+	assert(ResourceConfig.SelectResource("RiverbendIsland", 0.70) == "OceanShard", "Riverbend Ocean weight is incorrect")
+	assert(ResourceConfig.SelectResource("CoralCoastIsland", 0) == nil, "Coral Coast must not roll resources")
+
+	local sanitizedInventory = ResourceConfig.NormalizeInventory({
+		IronScrap = 4.9,
+		GoldNugget = -10,
+		EmeraldShard = "7",
+		OceanShard = math.huge,
+		SeaStar = 999,
+	})
+	local sanitizedCount = 0
+	for resourceId, count in pairs(sanitizedInventory) do
+		assert(expectedResources[resourceId] ~= nil, "Unexpected resource survived sanitization")
+		assert(count >= 0 and count < math.huge and count == math.floor(count), resourceId .. " must sanitize to a finite nonnegative integer")
+		sanitizedCount += 1
+	end
+	assert(sanitizedCount == 4 and sanitizedInventory.IronScrap == 4 and sanitizedInventory.GoldNugget == 0 and sanitizedInventory.EmeraldShard == 7, "Resource inventory sanitization is incorrect")
+	assert(ResourceConfig.NormalizePity(-4) == 0 and ResourceConfig.NormalizePity(3.8) == 3, "Resource pity sanitization is incorrect")
+
+	local pityData = makeDefaultData()
+	pityData.CurrentBiome = "LilyshoreIsland"
+	local backpackBefore = pityData.BackpackSize
+	for expectedPity = 1, 5 do
+		assert(FishingResources.rollForCatch(pityData, false, { rating = "Perfect" }, 0.99, 0) == nil, "Eligible miss should not award a resource")
+		assert(pityData.ResourcePity == expectedPity, "Eligible miss did not increment pity")
+	end
+	assert(FishingResources.rollForCatch(pityData, false, { rating = "Weak" }, 0.99, 0) == "IronScrap", "Sixth eligible catch must be guaranteed")
+	assert(pityData.ResourcePity == 0 and pityData.ResourceInventory.IronScrap == 1, "Resource award must reset pity and add one stack")
+	assert(pityData.BackpackSize == backpackBefore, "Resources must not consume fish backpack capacity")
+
+	local autoData = makeDefaultData()
+	autoData.CurrentBiome = "RiverbendIsland"
+	assert(FishingResources.rollForCatch(autoData, true, nil, 0.109, 0.71) == "OceanShard", "AutoFish must use the 11% server roll")
+	assert(FishingResources.rollForCatch(autoData, true, { rating = "Perfect" }, 0.11, 0) == nil and autoData.ResourcePity == 1, "AutoFish must ignore cast rating and miss at 11% or above")
+
+	local coralData = makeDefaultData()
+	coralData.CurrentBiome = "CoralCoastIsland"
+	coralData.ResourcePity = 4
+	coralData.ResourceInventory.IronScrap = 3
+	assert(FishingResources.rollForCatch(coralData, false, { rating = "Perfect" }, 0, 0) == nil, "Coral Coast must not award a resource")
+	assert(coralData.ResourcePity == 4 and coralData.ResourceInventory.IronScrap == 3, "Coral Coast must not change pity or inventory")
+
+	local recipes = {
+		IronRod = { "WoodenRod", 5, 1500, "IronScrap", 12 },
+		GoldenRod = { "IronRod", 12, 5000, "GoldNugget", 18 },
+		EmeraldRod = { "GoldenRod", 20, 15000, "EmeraldShard", 24 },
+		OceanRod = { "EmeraldRod", 25, 35000, "OceanShard", 20 },
+	}
+	for rodId, expected in pairs(recipes) do
+		local rod = GameConfig.Rods[rodId]
+		assert(rod.previousRod == expected[1] and rod.unlockLevel == expected[2] and rod.cost == expected[3], rodId .. " purchase requirements are incorrect")
+		assert(rod.resourceCosts[expected[4]] == expected[5], rodId .. " recipe is incorrect")
+		local recipeResourceCount = 0
+		for resourceId in pairs(rod.resourceCosts) do
+			assert(resourceId == expected[4], rodId .. " contains an extra resource requirement")
+			recipeResourceCount += 1
+		end
+		assert(recipeResourceCount == 1, rodId .. " must require exactly one resource type")
+		assert(rod.requiredBiome == nil and rod.requiredCatches == nil and rod.catchRequirement == nil, rodId .. " has an unrelated purchase requirement")
+	end
+
+	local failedPurchaseData = makeDefaultData()
+	failedPurchaseData.Level = 30
+	failedPurchaseData.Coins = 99999
+	local coinsBeforeFailedPurchase = failedPurchaseData.Coins
+	local valid, reason = RodPurchase.validate(failedPurchaseData, "IronRod")
+	assert(valid == false and string.find(reason, "Iron Scrap", 1, true), "Missing resource must block the rod purchase")
+	assert(failedPurchaseData.Coins == coinsBeforeFailedPurchase and failedPurchaseData.ResourceInventory.IronScrap == 0, "Failed rod validation must not deduct anything")
+
+	local orderData = makeDefaultData()
+	orderData.Level = 1
+	orderData.Coins = 0
+	local orderValid, orderReason = RodPurchase.validate(orderData, "GoldenRod")
+	assert(orderValid == false and string.find(orderReason, "Iron Rod", 1, true), "Previous rod must validate before level/resources/coins")
+
+	local successPurchaseData = makeDefaultData()
+	successPurchaseData.Level = 5
+	successPurchaseData.Coins = 1500
+	successPurchaseData.ResourceInventory.IronScrap = 12
+	assert(RodPurchase.validate(successPurchaseData, "IronRod") == true, "Exact Iron Rod requirements should pass")
+	RodPurchase.deductAndGrant(successPurchaseData, "IronRod", GameConfig.Rods.IronRod)
+	assert(successPurchaseData.Coins == 0 and successPurchaseData.ResourceInventory.IronScrap == 0, "Successful rod purchase must deduct exact costs")
+	assert(successPurchaseData.OwnedRods.IronRod == true and successPurchaseData.EquippedRod == "IronRod", "Successful rod purchase must own and equip the rod")
+
+	assert(GameConfig.Biomes.LilyshoreIsland.unlockLevel == 1 and GameConfig.Biomes.LilyshoreIsland.cost == 0 and GameConfig.Biomes.LilyshoreIsland.requiredRod == nil, "Lilyshore unlock config is incorrect")
+	assert(GameConfig.Biomes.RiverbendIsland.unlockLevel == 10 and GameConfig.Biomes.RiverbendIsland.cost == 4000 and GameConfig.Biomes.RiverbendIsland.requiredRod == "IronRod", "Riverbend unlock config is incorrect")
+	assert(GameConfig.Biomes.CoralCoastIsland.unlockLevel == 25 and GameConfig.Biomes.CoralCoastIsland.cost == 25000 and GameConfig.Biomes.CoralCoastIsland.requiredRod == "OceanRod", "Coral Coast unlock config is incorrect")
+	for _, islandId in ipairs(GameConfig.IslandOrder) do
+		local biome = GameConfig.Biomes[islandId]
+		assert(biome.requiredCatches == nil and biome.catchRequirement == nil and biome.catchCountRequirement == nil, islandId .. " has a catch-count requirement")
+	end
+	assert(makeDefaultData().IslandCatchCounts == nil, "Island catch counts must not be added")
+
+	print("[FishyFish Resource Test] PASS: config, weights, odds, pity, Coral exclusion, persistence sanitizers, recipes, atomic deductions, and island gates")
+end
+
+if RunService:IsStudio() then
+	fishyFishRunResourcePhaseStudioTests()
+end
 
 TeleportTo.OnServerEvent:Connect(function(player, target)
 	local data = playerData[player]
@@ -8070,6 +8983,17 @@ Monetization.MarketplaceService.ProcessReceipt = function(receiptInfo)
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
+	local purchaseId = tostring(receiptInfo.PurchaseId or "")
+	if purchaseId == "" then
+		warn("[DeveloperProductReceipt] Missing PurchaseId for product", receiptInfo.ProductId)
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	Monetization.ensureState(data)
+	if data.ProcessedReceipts[purchaseId] then
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+
 	local amount = math.max(0, math.floor(tonumber(product.amount) or tonumber(product.Amount) or 0))
 	print("[DeveloperProductReceipt] Product ID purchased:", receiptInfo.ProductId)
 	print("[DeveloperProductReceipt] Player name:", player.Name)
@@ -8078,13 +9002,48 @@ Monetization.MarketplaceService.ProcessReceipt = function(receiptInfo)
 	if coinAmount > 0 then
 		local coinsBefore = data.Coins
 		data.Coins += coinAmount
+		assert(Monetization.tryMarkReceipt(data, purchaseId), "Receipt was marked concurrently")
+		if not saveData(player) then
+			data.Coins = coinsBefore
+			data.ProcessedReceipts[purchaseId] = nil
+			updateLeaderstats(player)
+			sendState(player)
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
 		print("[DeveloperProductReceipt] Coins granted:", coinAmount)
 		print("[DeveloperProductReceipt] Coin count before purchase:", coinsBefore)
 		print("[DeveloperProductReceipt] Coin count after purchase:", data.Coins)
 		updateLeaderstats(player)
 		sendState(player)
-		saveData(player)
 		notify(player, "Added " .. tostring(coinAmount) .. " Coins.")
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+
+	local seaStarAmount = SeaStars.normalizeBalance(product.seaStarAmount)
+	if seaStarAmount > 0 then
+		if not SeaStars.tryAcquire(player) then
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
+		Monetization.ensureState(data)
+		if data.ProcessedReceipts[purchaseId] then
+			SeaStars.release(player)
+			return Enum.ProductPurchaseDecision.PurchaseGranted
+		end
+
+		local seaStarsBefore = data.SeaStars
+		data.SeaStars = SeaStars.normalizeBalance(data.SeaStars + seaStarAmount)
+		assert(Monetization.tryMarkReceipt(data, purchaseId), "Receipt was marked concurrently")
+		if not saveData(player) then
+			data.SeaStars = seaStarsBefore
+			data.ProcessedReceipts[purchaseId] = nil
+			SeaStars.release(player)
+			sendState(player)
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
+		SeaStars.release(player)
+		print("[DeveloperProductReceipt] Sea Stars granted:", seaStarAmount)
+		sendState(player)
+		notify(player, "Added " .. tostring(seaStarAmount) .. " Sea Stars.")
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end
 
@@ -8097,9 +9056,16 @@ Monetization.MarketplaceService.ProcessReceipt = function(receiptInfo)
 	print("[DeveloperProductReceipt] Lucky Bait amount granted:", amount)
 	print("[DeveloperProductReceipt] Lucky Bait count before purchase:", countBefore)
 	Monetization.addBait(data, baitId, amount)
+	assert(Monetization.tryMarkReceipt(data, purchaseId), "Receipt was marked concurrently")
+	if not saveData(player) then
+		data.BaitInventory[baitId] = countBefore
+		data.ProcessedReceipts[purchaseId] = nil
+		Bait.ensureState(data)
+		sendState(player)
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
 	print("[DeveloperProductReceipt] Lucky Bait count after purchase:", Bait.getCount(data, baitId))
 	sendState(player)
-	saveData(player)
 	notify(player, "Added " .. tostring(amount) .. " " .. GameConfig.Baits[baitId].displayName .. ".")
 	return Enum.ProductPurchaseDecision.PurchaseGranted
 end
@@ -8153,6 +9119,10 @@ Players.PlayerRemoving:Connect(function(player)
 
 	playerData[player] = nil
 	pendingFishing[player] = nil
+	RodPurchase.Locks[player] = nil
+	IslandPurchase.Locks[player] = nil
+	SeaStars.TransactionLocks[player] = nil
+	LoginRewards.ClaimLocks[player] = nil
 	CastConfigService.clearPlayer(player)
 	biomeWarpTouchCooldowns[player] = nil
 	areaPortalTouchCooldowns[player] = nil

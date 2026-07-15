@@ -16,6 +16,13 @@ Then open Roblox Studio, open the Rojo plugin, and connect to:
 localhost:34872
 ```
 
+### Studio UI safety
+
+`StarterGui` is intentionally not mapped in `default.project.json`. The Roblox
+Studio version of the UI is authoritative, so connecting Rojo will not replace
+or delete UI work. Export the current Studio UI before adding `StarterGui` back
+to the Rojo project.
+
 To build a place file from scratch:
 
 ```bash

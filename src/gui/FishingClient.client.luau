@@ -1,8 +1,10 @@
 print("FishingClient started")
 
 local Players = game:GetService("Players")
+MarketplaceService = game:GetService("MarketplaceService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local TextChatService = game:GetService("TextChatService")
@@ -10,6 +12,7 @@ local StarterGui = game:GetService("StarterGui")
 
 local player = Players.LocalPlayer
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
+ResourceConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ResourceConfig"))
 local MonetizationConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("MonetizationConfig"))
 
 if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
@@ -132,11 +135,21 @@ local state = nil
 local activeTab = "Fishdex"
 local activeQuestPeriod = "Daily"
 local activeShopTab = "Passes"
+local shopModernUI = nil
+local shopModernContext = nil
+local activeBagTab = "Rods"
 local fishingBusy = false
 local minigameRunning = false
 local activeMinigameCleanup = nil
 local biomeWarpActualBiome = nil
 local panelCollapsed = true
+
+-- One physical hotbar click currently reaches setTab through two routes:
+-- PanelEvent and ToolHotbarBinder. Ignore the immediate duplicate call.
+local lastPanelTabRequestName = nil
+local lastPanelTabRequestAt = 0
+local PANEL_TAB_DUPLICATE_WINDOW = 0.25
+
 local lastFishingBiomeId = nil
 local DEFAULT_FISHING_ISLAND_ID = (GameConfig.IslandOrder and GameConfig.IslandOrder[1])
 	or (GameConfig.BiomeOrder and GameConfig.BiomeOrder[1])
@@ -723,13 +736,28 @@ local function renderSupplyShopTabs()
 end
 
 local function getRodRequirementText(rod)
-	local text = string.format("Cost: %d | Unlock: Level %d | Luck: +%d%%", rod.cost, rod.unlockLevel, math.floor(rod.luck * 100))
-	if rod.requiredBiome then
-		local requiredIsland = normalizeIslandId(rod.requiredBiome)
-		text ..= " | Requires " .. GameConfig.Biomes[requiredIsland].displayName
-	end
+	local levelMet = state.Level >= rod.unlockLevel
+	local coinsMet = state.Coins >= rod.cost
+	return string.format(
+		"Level %d (%s)  |  %d Coins (%s)",
+		rod.unlockLevel,
+		levelMet and "Met" or "Unmet",
+		rod.cost,
+		coinsMet and "Met" or "Unmet"
+	)
+end
 
-	return text
+function fishyFishGetRodResourceRequirement(rod)
+	local inventory = state.ResourceInventory or {}
+	for _, resourceId in ipairs(ResourceConfig.ResourceOrder) do
+		local required = tonumber(rod.resourceCosts and rod.resourceCosts[resourceId]) or 0
+		if required > 0 then
+			local current = math.max(0, math.floor(tonumber(inventory[resourceId]) or 0))
+			local met = current >= required
+			return string.format("%s: %d/%d (%s)", ResourceConfig.Resources[resourceId].displayName, current, required, met and "Met" or "Unmet"), met
+		end
+	end
+	return "Resources: None (Met)", true
 end
 
 function renderRodShopOptions()
@@ -742,66 +770,80 @@ function renderRodShopOptions()
 
 	if activeSupplyShopTab == "Rods" then
 		for _, rodId in ipairs(GameConfig.RodOrder) do
-		local rod = GameConfig.Rods[rodId]
-		local owned = state.OwnedRods[rodId] == true
-		local equipped = state.EquippedRod == rodId
-		local canAfford = state.Coins >= rod.cost
-		local levelOK = state.Level >= rod.unlockLevel
-		local requiredIsland = normalizeIslandId(rod.requiredBiome)
-		local biomeOK = not requiredIsland or getUnlockedIslands()[requiredIsland] == true
-		local canUseButton = (owned and not equipped) or (not owned and canAfford and levelOK and biomeOK)
+			local rod = GameConfig.Rods[rodId]
+			local owned = state.OwnedRods[rodId] == true
+			local equipped = state.EquippedRod == rodId
+			local canAfford = state.Coins >= rod.cost
+			local levelOK = state.Level >= rod.unlockLevel
+			local previousOK = not rod.previousRod or state.OwnedRods[rod.previousRod] == true
+			local resourceText, resourcesOK = fishyFishGetRodResourceRequirement(rod)
+			local canUseButton = (owned and not equipped) or (not owned and previousOK and levelOK and resourcesOK and canAfford)
 
-		local card = makePopupListCard(rodShopUI.list, rodId .. "ShopOption", 92, owned and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(83, 104, 134), 0.25)
+			local card = makePopupListCard(rodShopUI.list, rodId .. "ShopOption", 136, owned and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(83, 104, 134), 0.25)
 
-		local icon = makeRodIcon(card, rodId)
-		icon.Position = UDim2.new(0, 8, 0, 14)
-		icon.Size = UDim2.new(0, 64, 0, 64)
-		icon.ZIndex = 98
+			local icon = makeRodIcon(card, rodId)
+			icon.Position = UDim2.new(0, 8, 0, 28)
+			icon.Size = UDim2.new(0, 72, 0, 72)
+			icon.ZIndex = 98
 
-		local name = makeText(card, rod.displayName, 16, Color3.fromRGB(255, 255, 255), true)
-		name.Position = UDim2.new(0, 84, 0, 10)
-		name.Size = UDim2.new(1, -208, 0, 22)
-		name.ZIndex = 98
+			local name = makeText(card, rod.displayName, 16, Color3.fromRGB(255, 255, 255), true)
+			name.Position = UDim2.new(0, 84, 0, 10)
+			name.Size = UDim2.new(1, -208, 0, 22)
+			name.ZIndex = 98
 
-		local info = makeText(card, getRodRequirementText(rod), 13, Color3.fromRGB(190, 204, 220), false)
-		info.Position = UDim2.new(0, 84, 0, 36)
-		info.Size = UDim2.new(1, -208, 0, 20)
-		info.ZIndex = 98
+			local info = makeText(card, getRodRequirementText(rod), 13, Color3.fromRGB(190, 204, 220), false)
+			info.Position = UDim2.new(0, 84, 0, 34)
+			info.Size = UDim2.new(1, -208, 0, 20)
+			info.TextColor3 = levelOK and canAfford and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(255, 145, 145)
+			info.ZIndex = 98
 
-		local statusText = "Improves speed and timing zone."
-		if equipped then
-			statusText = "Currently equipped."
-		elseif owned then
-			statusText = "Owned."
-		elseif not levelOK then
-			statusText = "Reach level " .. tostring(rod.unlockLevel) .. " to buy."
-		elseif not canAfford then
-			statusText = "Need " .. tostring(rod.cost - state.Coins) .. " more coins."
-		elseif not biomeOK then
-			statusText = "Unlock " .. GameConfig.Biomes[requiredIsland].displayName .. " first."
-		end
+			local previousName = rod.previousRod and GameConfig.Rods[rod.previousRod].displayName or "None"
+			local previous = makeText(card, "Previous: " .. previousName .. " (" .. (previousOK and "Met" or "Unmet") .. ")", 12, previousOK and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(255, 145, 145), false)
+			previous.Position = UDim2.new(0, 84, 0, 57)
+			previous.Size = UDim2.new(1, -208, 0, 18)
+			previous.ZIndex = 98
 
-		local status = makeText(card, statusText, 12, Color3.fromRGB(143, 160, 180), false)
-		status.Position = UDim2.new(0, 84, 0, 62)
-		status.Size = UDim2.new(1, -208, 0, 18)
-		status.ZIndex = 98
+			local resource = makeText(card, resourceText, 12, resourcesOK and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(255, 145, 145), false)
+			resource.Position = UDim2.new(0, 84, 0, 78)
+			resource.Size = UDim2.new(1, -208, 0, 18)
+			resource.ZIndex = 98
 
-		local label = equipped and "Equipped" or (owned and "Equip" or "Buy")
-		local buttonColor = canUseButton and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(86, 98, 115)
-		if not owned and canUseButton then
-			buttonColor = Color3.fromRGB(28, 160, 92)
-		end
-
-		local button = makeButton(card, label, buttonColor)
-		button.Position = UDim2.new(1, -110, 0, 28)
-		button.Size = UDim2.new(0, 94, 0, 36)
-		button.ZIndex = 98
-		button.AutoButtonColor = canUseButton
-		button.MouseButton1Click:Connect(function()
-			if canUseButton then
-				BuyRod:FireServer(rodId)
+			local statusText = "Improves speed and timing zone."
+			if equipped then
+				statusText = "Currently equipped."
+			elseif owned then
+				statusText = "Owned."
+			elseif not previousOK then
+				statusText = "Previous rod required."
+			elseif not levelOK then
+				statusText = "Reach level " .. tostring(rod.unlockLevel) .. " to buy."
+			elseif not resourcesOK then
+				statusText = "More crafting resources required."
+			elseif not canAfford then
+				statusText = "Need " .. tostring(rod.cost - state.Coins) .. " more coins."
 			end
-		end)
+
+			local status = makeText(card, statusText, 12, Color3.fromRGB(143, 160, 180), false)
+			status.Position = UDim2.new(0, 84, 0, 104)
+			status.Size = UDim2.new(1, -208, 0, 18)
+			status.ZIndex = 98
+
+			local label = equipped and "Equipped" or (owned and "Equip" or "Buy")
+			local buttonColor = canUseButton and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(86, 98, 115)
+			if not owned and canUseButton then
+				buttonColor = Color3.fromRGB(28, 160, 92)
+			end
+
+			local button = makeButton(card, label, buttonColor)
+			button.Position = UDim2.new(1, -110, 0, 50)
+			button.Size = UDim2.new(0, 94, 0, 36)
+			button.ZIndex = 98
+			button.AutoButtonColor = canUseButton
+			button.MouseButton1Click:Connect(function()
+				if canUseButton then
+					BuyRod:FireServer(rodId, owned and "Equip" or "Buy")
+				end
+			end)
 		end
 
 		return
@@ -867,6 +909,41 @@ rodShopUI.close.MouseButton1Click:Connect(function()
 	setRodShopVisible(false)
 end)
 
+
+local FISHDEX_ASSETS = {
+	Backbone = "rbxassetid://103454732696314",
+	AllTab = "rbxassetid://118189169708215",
+	LilyshoreIslandTab = "rbxassetid://114808409268766",
+	RiverbendIslandTab = "rbxassetid://108890245611164",
+	CoralCoastIslandTab = "rbxassetid://99827097832276",
+	FishBackground = "rbxassetid://80769049450525",
+	CollectionTab = "rbxassetid://109496036302333",
+	Common = "rbxassetid://108586755444398",
+	Uncommon = "rbxassetid://85531077583088",
+	Rare = "rbxassetid://90678177285266",
+	Epic = "rbxassetid://85211034408359",
+	Legendary = "rbxassetid://86612679843061",
+	Mythic = "rbxassetid://98199432465143",
+	CloseButton = "rbxassetid://112132624750898",
+}
+
+local FISHDEX_FALLBACK_IMAGES = {
+	Bass = "rbxassetid://124462000894673",
+	Bluegill = "rbxassetid://139664436647833",
+	Carp = "rbxassetid://85530716090863",
+	Catfish = "rbxassetid://84885381823789",
+	GoldenCarp = "rbxassetid://138971721449676",
+	Koi = "rbxassetid://135595232171014",
+	PondGuardian = "rbxassetid://86635246735309",
+	SmallFish = "rbxassetid://92425635797325",
+}
+
+local fishdexModernUI = {
+	selectedIsland = "All",
+	tabButtons = {},
+	root = nil,
+}
+
 local mainPanelUI = {}
 mainPanelUI.panel = Instance.new("Frame")
 mainPanelUI.panel.Name = "MainPanel"
@@ -902,8 +979,30 @@ mainPanelUI.panelToggle.Visible = false
 mainPanelUI.panelToggle.ZIndex = 30
 
 local function updatePanelCollapsed()
+	if panelCollapsed and shopModernUI and shopModernUI.hide then
+		shopModernUI.hide()
+	end
+
+	local showingFishdex = activeTab == "Fishdex" and not panelCollapsed
 	mainPanelUI.panel.Visible = not panelCollapsed
+		and activeTab ~= "Fishdex"
+		and activeTab ~= "Bag"
+		and activeTab ~= "Quests"
 	mainPanelUI.panelToggle.Visible = false
+
+	if fishdexModernUI.root then
+		fishdexModernUI.root.Visible = showingFishdex
+	end
+
+	if panelCollapsed then
+		local bagModuleScript = script:FindFirstChild("BagModernUI")
+		if bagModuleScript then
+			local ok, bagModule = pcall(require, bagModuleScript)
+			if ok and bagModule and bagModule.hide then
+				bagModule.hide()
+			end
+		end
+	end
 end
 
 mainPanelUI.panelClose.MouseButton1Click:Connect(function()
@@ -1153,6 +1252,30 @@ minigameUI.minigameInstruction.Size = UDim2.new(1, -306, 0, 70)
 minigameUI.minigameInstruction.TextWrapped = true
 minigameUI.minigameInstruction.ZIndex = 45
 
+minigameUI.root = root
+do
+	local moduleScript = script:FindFirstChild("FishingMinigameModernUI")
+	if moduleScript then
+		local ok, moduleOrError = pcall(require, moduleScript)
+		if ok and type(moduleOrError) == "table" then
+			local buildOk, resultOrError = pcall(moduleOrError.build, {
+				ui = minigameUI,
+				GameConfig = GameConfig,
+			})
+			if buildOk then
+				minigameUI.modern = resultOrError
+			else
+				warn("[FishingClient] Modern fishing minigame UI failed to build:", resultOrError)
+			end
+		else
+			warn("[FishingClient] Modern fishing minigame UI failed to load:", moduleOrError)
+		end
+	end
+end
+
+local CAST_PRESENTATION_DURATION = 1.25
+local castPresentationUntil = 0
+
 local CastPower = {
 	running = false,
 }
@@ -1239,6 +1362,25 @@ CastPower.hint.Position = UDim2.new(0, 0, 1, -64)
 CastPower.hint.Size = UDim2.new(1, 0, 0, 28)
 CastPower.hint.TextXAlignment = Enum.TextXAlignment.Center
 CastPower.hint.ZIndex = 45
+
+local castPowerModernUI = nil
+do
+	local moduleScript = script:FindFirstChild("CastPowerModernUI")
+	if moduleScript then
+		local ok, moduleOrError = pcall(require, moduleScript)
+		if ok and type(moduleOrError) == "table" then
+			local buildOk, buildError = pcall(moduleOrError.build, root)
+			if buildOk then
+				castPowerModernUI = moduleOrError
+			else
+				warn("[FishingClient] Modern cast UI failed to build:", buildError)
+			end
+		else
+			warn("[FishingClient] Modern cast UI failed to load:", moduleOrError)
+		end
+	end
+end
+
 local showToast
 CastPower.activeConfig = nil
 
@@ -1314,6 +1456,9 @@ function CastPower.updateVisual(power)
 	CastPower.perfectZone.Visible = true
 	CastPower.perfectZone.Position = UDim2.new(left, 0, 0, 0)
 	CastPower.perfectZone.Size = UDim2.new(math.max(0.04, right - left), 0, 1, 0)
+	if castPowerModernUI then
+		castPowerModernUI.updateVisual(clampedPower, targetPower)
+	end
 
 	local rating = CastPower.getLocalRating(clampedPower)
 	if rating == "Perfect" then
@@ -1353,17 +1498,60 @@ local function setMinigameFishIcon(fish)
 		minigameUI.fishMarkerImage.Image = imageId
 		minigameUI.fishMarkerImage.Visible = true
 		minigameUI.fishMarkerLabel.Visible = false
+		if minigameUI.modern then
+			minigameUI.modern.fishImage.Image = imageId
+		end
 	else
 		minigameUI.fishMarkerImage.Image = ""
 		minigameUI.fishMarkerImage.Visible = false
 		minigameUI.fishMarkerLabel.Visible = true
+		if minigameUI.modern then
+			minigameUI.modern.fishImage.Image = ""
+		end
 	end
 end
 
 local function setMinigameVisible(visible)
+	if castPowerModernUI then
+		castPowerModernUI.setVisible(false)
+	end
+	if minigameUI.modern then
+		minigameUI.modern.panel.Visible = false
+	end
 	minigameUI.minigame.Visible = visible
 	fishingBlur.Enabled = visible
 	fishingBlur.Size = visible and 10 or 0
+end
+
+function minigameUI.setFishingVisible(visible)
+	if castPowerModernUI then
+		castPowerModernUI.setVisible(false)
+	end
+	CastPower.content.Visible = false
+	if minigameUI.modern then
+		minigameUI.minigame.Visible = false
+		minigameUI.modern.panel.Visible = visible
+		fishingBlur.Enabled = visible
+		fishingBlur.Size = visible and 10 or 0
+	else
+		setMinigameVisible(visible)
+	end
+end
+
+local function setCastPowerVisible(visible)
+	if minigameUI.modern then
+		minigameUI.modern.panel.Visible = false
+	end
+	if castPowerModernUI then
+		minigameUI.minigame.Visible = false
+		fishingBlur.Enabled = false
+		fishingBlur.Size = 0
+		CastPower.content.Visible = false
+		castPowerModernUI.setVisible(visible)
+	else
+		setMinigameVisible(visible)
+		CastPower.content.Visible = visible
+	end
 end
 
 local toast = Instance.new("TextLabel")
@@ -1462,12 +1650,7 @@ local renderContent
 
 local function isLilyshoreIslandInstance(instance)
 	while instance do
-		if instance.Name == "LilyshoreIsland"
-			or instance.Name == "LilyshoreFishingZone"
-			or instance.Name == "BeginnerPondArea"
-			or instance.Name == "BeginnerPond_ExtraLarge"
-			or instance.Name == "Beginner Pond"
-		then
+		if instance.Name == "LilyshoreIsland" or instance.Name == "LilyshoreFishingZone" or instance.Name == "BeginnerPondArea" or instance.Name == "BeginnerPond_ExtraLarge" or instance.Name == "Beginner Pond" then
 			return true
 		end
 		instance = instance.Parent
@@ -1600,11 +1783,13 @@ function CastPower.run(biomeId)
 	local inputEndedConnection
 
 	CastPower.running = true
-	setMinigameVisible(true)
-	CastPower.content.Visible = true
+	setCastPowerVisible(true)
 	CastPower.title.Text = "Hold to charge. Release to cast."
 	CastPower.status.Text = "Release in the green zone for a Perfect cast."
 	CastPower.hint.Text = string.format("Left start - %s speed", castConfig.speedName or "Random")
+	if castPowerModernUI then
+		castPowerModernUI.setInstruction("Hold to charge. Release to cast.")
+	end
 	minigameUI.fishingGameContent.Visible = false
 	minigameUI.catchButton.Visible = false
 	minigameUI.timingBar.Visible = false
@@ -1637,7 +1822,7 @@ function CastPower.run(biomeId)
 		activeMinigameCleanup = nil
 		CastPower.running = false
 		CastPower.activeConfig = nil
-		CastPower.content.Visible = false
+		setCastPowerVisible(false)
 	end
 
 	local function finishCast()
@@ -1650,7 +1835,7 @@ function CastPower.run(biomeId)
 				activeMinigameCleanup()
 			end
 			fishingBusy = false
-			setMinigameVisible(false)
+			setCastPowerVisible(false)
 			showToast("Hold your fishing rod before fishing.")
 			renderContent()
 			return
@@ -1661,6 +1846,7 @@ function CastPower.run(biomeId)
 		activeMinigameCleanup = nil
 		CastPower.running = false
 		minigameUI.fishingGameContent.Visible = false
+		castPresentationUntil = os.clock() + CAST_PRESENTATION_DURATION
 		local rating, displayName = CastPower.getLocalRating(power)
 		CastPower.title.Text = displayName .. " Cast!"
 		CastPower.status.Text = "Bobber landed. Waiting for a bite..."
@@ -1669,11 +1855,8 @@ function CastPower.run(biomeId)
 		if rating == "Perfect" then
 			CastPower.showSparkle()
 		end
-		task.delay(0.45, function()
-			if not CastPower.running and not minigameRunning then
-				CastPower.content.Visible = false
-			end
-		end)
+		CastPower.content.Visible = false
+		setCastPowerVisible(false)
 
 		StartFishing:FireServer({
 			biomeId = biomeId,
@@ -1809,6 +1992,8 @@ centerAutoButton.MouseButton1Click:Connect(function()
 	ToggleAutoFish:FireServer()
 end)
 
+local suppressLegacyBagFishdexPanels
+
 local function setTab(tabName)
 	local isUtilityPanel = tabName == "Bag" or tabName == "Fishdex"
 	if isUtilityPanel
@@ -1820,15 +2005,35 @@ local function setTab(tabName)
 		return
 	end
 
-	if tabName == "Bag" then
-		mainPanelUI.activeBagTab = "Fish"
-		mainPanelUI.bagFishSort = mainPanelUI.bagFishSort or "Recently caught"
+	local now = os.clock()
+
+	-- PanelEvent and ToolHotbarBinder can both report the same physical click.
+	-- Process only the first report so slot 3 truly works as a one-click toggle.
+	if lastPanelTabRequestName == tabName
+		and now - lastPanelTabRequestAt < PANEL_TAB_DUPLICATE_WINDOW then
+		return
+	end
+
+	lastPanelTabRequestName = tabName
+	lastPanelTabRequestAt = now
+	setSettingsVisible(false)
+
+	if tabName == "Fishdex"
+		and activeTab == "Fishdex"
+		and panelCollapsed == false then
+		panelCollapsed = true
+		updatePanelCollapsed()
+		return
 	end
 
 	activeTab = tabName
 	panelCollapsed = false
 	updatePanelCollapsed()
 	renderContent()
+
+	if tabName == "Bag" or tabName == "Fishdex" then
+		suppressLegacyBagFishdexPanels()
+	end
 end
 
 local function hasHudPanel(tabName)
@@ -1875,11 +2080,18 @@ table.clear(pendingPanelRequests)
 
 hudControls.settings.MouseButton1Click:Connect(function()
 	print("Settings clicked")
+	panelCollapsed = true
+	updatePanelCollapsed()
 	setSettingsVisible(true)
 end)
 
--- QuestModernUI owns the quest button. Registering the legacy Quests tab here
--- gives one click two competing handlers and can reopen the retired panel.
+-- QuestModernUI owns opening the quest panel. This handler only closes the
+-- other controller-owned panels so the modern quest panel does not overlap.
+hudControls.quests.MouseButton1Click:Connect(function()
+	setSettingsVisible(false)
+	panelCollapsed = true
+	updatePanelCollapsed()
+end)
 
 hudControls.shop.MouseButton1Click:Connect(function()
 	print("Shop clicked")
@@ -2003,312 +2215,573 @@ local function renderBiomesTab()
 	end
 end
 
-mainPanelUI.activeBagTab = "Fish"
-mainPanelUI.bagFishSort = "Recently caught"
+local function renderBagTab()
+	-- Bag must never use the old MainPanel.
+	mainPanelUI.panel.Visible = false
 
-function mainPanelUI.renderBagTabBar()
-	local tabBar = Instance.new("Frame")
-	tabBar.Name = "BagCategoryTabs"
-	tabBar.Size = UDim2.new(1, -8, 0, 38)
-	tabBar.BackgroundTransparency = 1
-	tabBar.Parent = mainPanelUI.content
+	local bagModuleScript = script:FindFirstChild("BagModernUI")
+		or script.Parent:FindFirstChild("BagModernUI")
 
-	local tabs = {
-		{ id = "Fishing Rods", text = "Fishing Rods" },
-		{ id = "Bait", text = "Bait" },
-		{ id = "Fish", text = "Fish" },
-	}
-	for index, tab in ipairs(tabs) do
-		local selected = mainPanelUI.activeBagTab == tab.id
-		local button = makeButton(tabBar, tab.text, selected and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(38, 45, 57))
-		button.Name = tab.id:gsub("%s", "") .. "Tab"
-		button.Position = UDim2.new((index - 1) / 3, index == 1 and 0 or 4, 0, 0)
-		button.Size = UDim2.new(1 / 3, -6, 1, 0)
-		button.TextSize = 12
-		button.MouseButton1Click:Connect(function()
-			mainPanelUI.activeBagTab = tab.id
-			renderContent()
-		end)
-	end
-end
-
-function mainPanelUI.renderBagRods()
-	local ownedCount = 0
-	for _, rodId in ipairs(GameConfig.RodOrder) do
-		if state.OwnedRods[rodId] then
-			ownedCount += 1
-			local rod = GameConfig.Rods[rodId]
-			local equipped = state.EquippedRod == rodId
-			local card = makeCard(mainPanelUI.content, 96)
-			addStroke(card, equipped and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(60, 72, 90), 1).Transparency = equipped and 0.15 or 0.45
-
-			local icon = makeRodIcon(card, rodId)
-			icon.Position = UDim2.new(0, 8, 0, 16)
-			icon.Size = UDim2.new(0, 64, 0, 64)
-
-			local name = makeText(card, rod.displayName, 15, Color3.fromRGB(255, 255, 255), true)
-			name.Position = UDim2.new(0, 84, 0, 8)
-			name.Size = UDim2.new(1, -202, 0, 22)
-
-			local barBonus = (((GameConfig.FishingMinigame or {}).RodBonuses or {})[rodId] or {}).barSizeMultiplier or 1
-			local stats = string.format("Catch bar +%d%% | Luck +%d%% | Speed +%d%%", math.floor((barBonus - 1) * 100 + 0.5), math.floor((rod.luck or 0) * 100 + 0.5), math.floor((1 - (rod.speed or 1)) * 100 + 0.5))
-			local info = makeText(card, stats, 11, Color3.fromRGB(190, 204, 220), false)
-			info.Position = UDim2.new(0, 84, 0, 32)
-			info.Size = UDim2.new(1, -202, 0, 30)
-			info.TextWrapped = true
-
-			local requirementText = equipped and "Equipped" or "Owned"
-			if rod.requiredBiome then
-				local requiredId = normalizeIslandId(rod.requiredBiome)
-				local requiredIsland = GameConfig.Biomes[requiredId]
-				requirementText ..= " | " .. ((requiredIsland and requiredIsland.displayName) or tostring(requiredId))
-			end
-			local status = makeText(card, requirementText, 11, equipped and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(143, 160, 180), true)
-			status.Position = UDim2.new(0, 84, 0, 67)
-			status.Size = UDim2.new(1, -202, 0, 18)
-
-			local button = makeButton(card, equipped and "Equipped" or "Equip", equipped and Color3.fromRGB(91, 104, 124) or Color3.fromRGB(53, 130, 246))
-			button.Position = UDim2.new(1, -106, 0, 30)
-			button.Size = UDim2.new(0, 90, 0, 36)
-			button.TextSize = 12
-			button.AutoButtonColor = not equipped
-			button.MouseButton1Click:Connect(function()
-				if not equipped then
-					BuyRod:FireServer(rodId)
-				end
-			end)
-		end
-	end
-
-	if ownedCount == 0 then
-		local empty = makeText(mainPanelUI.content, "You do not own any fishing rods yet.", 14, Color3.fromRGB(190, 204, 220), false)
-		empty.Size = UDim2.new(1, -8, 0, 48)
-		empty.TextXAlignment = Enum.TextXAlignment.Center
-	end
-end
-
-function mainPanelUI.renderBagBait()
-	for _, baitId in ipairs(GameConfig.BaitOrder) do
-		local bait = GameConfig.Baits[baitId]
-		local count = getBaitCount(baitId)
-		local equipped = state.EquippedBait == baitId
-		local isBasic = baitId == GameConfig.BasicBaitId
-		local canEquip = isBasic or count > 0
-		local card = makeCard(mainPanelUI.content, 92)
-		addStroke(card, equipped and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(60, 72, 90), 1).Transparency = equipped and 0.15 or 0.45
-
-		local badge = Instance.new("Frame")
-		badge.Position = UDim2.new(0, 10, 0, 18)
-		badge.Size = UDim2.new(0, 56, 0, 56)
-		badge.BackgroundColor3 = isBasic and Color3.fromRGB(58, 174, 205) or Color3.fromRGB(53, 130, 246)
-		badge.Parent = card
-		addCorner(badge, 7)
-		local badgeText = makeText(badge, bait.displayName:sub(1, 1), 22, Color3.fromRGB(255, 255, 255), true)
-		badgeText.Size = UDim2.fromScale(1, 1)
-		badgeText.TextXAlignment = Enum.TextXAlignment.Center
-
-		local name = makeText(card, bait.displayName, 15, Color3.fromRGB(255, 255, 255), true)
-		name.Position = UDim2.new(0, 78, 0, 8)
-		name.Size = UDim2.new(1, -194, 0, 22)
-
-		local effect = makeText(card, bait.description or getBaitEffectText(bait), 11, Color3.fromRGB(190, 204, 220), false)
-		effect.Position = UDim2.new(0, 78, 0, 31)
-		effect.Size = UDim2.new(1, -194, 0, 30)
-		effect.TextWrapped = true
-
-		local countText = isBasic and "Unlimited" or ("Quantity: " .. tostring(count))
-		local detail = makeText(card, equipped and (countText .. " | Equipped") or countText, 11, equipped and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(143, 160, 180), equipped)
-		detail.Position = UDim2.new(0, 78, 0, 65)
-		detail.Size = UDim2.new(1, -194, 0, 18)
-
-		local equip = makeButton(card, equipped and "Equipped" or "Equip", equipped and Color3.fromRGB(91, 104, 124) or (canEquip and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(86, 98, 115)))
-		equip.Position = UDim2.new(1, -106, 0, 28)
-		equip.Size = UDim2.new(0, 90, 0, 36)
-		equip.TextSize = 12
-		equip.AutoButtonColor = canEquip and not equipped
-		equip.MouseButton1Click:Connect(function()
-			if canEquip and not equipped then
-				fireBaitAction("Equip", baitId)
-			end
-		end)
-	end
-end
-
-function mainPanelUI.renderBagFish()
-	local storage = makeCard(mainPanelUI.content, 58)
-	local storageTitle = makeText(storage, string.format("Fish Storage: %d / %d", #state.Inventory, state.BackpackSize), 16, Color3.fromRGB(255, 255, 255), true)
-	storageTitle.Position = UDim2.new(0, 12, 0, 6)
-	storageTitle.Size = UDim2.new(1, -24, 0, 22)
-	local storageValue = makeText(storage, string.format("Bag value: %d coins", state.InventoryValue or 0), 12, Color3.fromRGB(190, 204, 220), false)
-	storageValue.Position = UDim2.new(0, 12, 0, 30)
-	storageValue.Size = UDim2.new(1, -24, 0, 18)
-
-	local sortBar = Instance.new("Frame")
-	sortBar.Name = "FishSortBar"
-	sortBar.Size = UDim2.new(1, -8, 0, 62)
-	sortBar.BackgroundTransparency = 1
-	sortBar.Parent = mainPanelUI.content
-	local sortLabel = makeText(sortBar, "Sort", 12, Color3.fromRGB(190, 204, 220), true)
-	sortLabel.Size = UDim2.new(1, 0, 0, 18)
-
-	local sortOptions = {
-		{ id = "Rarity", text = "Rarity" },
-		{ id = "Value", text = "Value" },
-		{ id = "Name", text = "Name" },
-		{ id = "Recently caught", text = "Recent" },
-	}
-	for index, option in ipairs(sortOptions) do
-		local selected = mainPanelUI.bagFishSort == option.id
-		local button = makeButton(sortBar, option.text, selected and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(38, 45, 57))
-		button.Position = UDim2.new((index - 1) / 4, index == 1 and 0 or 4, 0, 22)
-		button.Size = UDim2.new(0.25, -6, 0, 34)
-		button.TextSize = 11
-		button.MouseButton1Click:Connect(function()
-			mainPanelUI.bagFishSort = option.id
-			renderContent()
-		end)
-	end
-
-	local fishRows = {}
-	for index, fish in ipairs(state.Inventory) do
-		table.insert(fishRows, { fish = fish, originalIndex = index })
-	end
-	table.sort(fishRows, function(left, right)
-		local leftFish = left.fish
-		local rightFish = right.fish
-		if mainPanelUI.bagFishSort == "Name" then
-			return string.lower(leftFish.name or leftFish.id or "") < string.lower(rightFish.name or rightFish.id or "")
-		elseif mainPanelUI.bagFishSort == "Value" then
-			if (leftFish.value or 0) ~= (rightFish.value or 0) then
-				return (leftFish.value or 0) > (rightFish.value or 0)
-			end
-		elseif mainPanelUI.bagFishSort == "Rarity" then
-			local rarityRank = { Common = 1, Uncommon = 2, Rare = 3, Epic = 4, Legendary = 5, Mythic = 6 }
-			if (rarityRank[leftFish.rarity] or 0) ~= (rarityRank[rightFish.rarity] or 0) then
-				return (rarityRank[leftFish.rarity] or 0) > (rarityRank[rightFish.rarity] or 0)
-			end
-		end
-		return left.originalIndex > right.originalIndex
-	end)
-
-	if #fishRows == 0 then
-		local empty = makeText(mainPanelUI.content, "Your fish bag is empty.", 14, Color3.fromRGB(190, 204, 220), false)
-		empty.Size = UDim2.new(1, -8, 0, 48)
-		empty.TextXAlignment = Enum.TextXAlignment.Center
+	if not bagModuleScript then
+		warn(
+			"[FishingClient] BagModernUI is missing. "
+				.. "The old Bag panel will remain hidden."
+		)
 		return
 	end
 
-	local canEditAquarium = state.AquariumView and state.AquariumView.CanEdit == true
-	for _, row in ipairs(fishRows) do
-		local fish = row.fish
-		local card = makeCard(mainPanelUI.content, 92)
-		local color = GameConfig.RarityColors[fish.rarity] or Color3.fromRGB(255, 255, 255)
-		local icon = makeFishIcon(card, fish.id, fish.rarity, true)
-		icon.Position = UDim2.new(0, 8, 0, 17)
-		icon.Size = UDim2.new(0, 58, 0, 58)
+	local ok, bagModule = pcall(require, bagModuleScript)
+	if not ok or not bagModule or not bagModule.show then
+		warn(
+			"[FishingClient] BagModernUI failed to load. "
+				.. "The old Bag panel will remain hidden. Error: "
+				.. tostring(bagModule)
+		)
+		return
+	end
 
-		local name = makeText(card, (fish.name or fish.id or "Fish") .. " [" .. (fish.rarity or "Common") .. "]", 14, color, true)
-		name.Position = UDim2.new(0, 76, 0, 8)
-		name.Size = UDim2.new(1, -190, 0, 22)
-		name.TextTruncate = Enum.TextTruncate.AtEnd
+	local showOk, showError = xpcall(function()
+		bagModule.show({
+			parent = root,
+			state = state,
+			GameConfig = GameConfig,
+			ResourceConfig = ResourceConfig,
+			getBaitCount = getBaitCount,
+			equipRod = function(rodId)
+				BuyRod:FireServer(rodId, "Equip")
+			end,
+			equipBait = function(baitId)
+				fireBaitAction("Equip", baitId)
+			end,
+			displayFish = function(fish, index)
+				AquariumAction:FireServer(
+					"DisplayFish",
+					fish.serial,
+					index
+				)
+			end,
+			onClose = function()
+				panelCollapsed = true
+				updatePanelCollapsed()
+			end,
+		})
+	end, debug.traceback)
 
-		local scoreText = fish.score and (" | Score: " .. tostring(fish.score)) or ""
-		local info = makeText(card, string.format("Value: %d%s", fish.value or 0, scoreText), 11, Color3.fromRGB(190, 204, 220), false)
-		info.Position = UDim2.new(0, 76, 0, 33)
-		info.Size = UDim2.new(1, -190, 0, 18)
+	if not showOk then
+		warn(
+			"[FishingClient] Modern Bag show failed. "
+				.. "The old Bag panel will remain hidden.\n"
+				.. tostring(showError)
+		)
+	end
 
-		local islandId = normalizeIslandId(fish.biome)
-		local island = islandId and GameConfig.Biomes[islandId]
-		local islandText = (island and island.displayName) or fish.biome or "Unknown Island"
-		local location = makeText(card, "Caught at: " .. tostring(islandText), 11, Color3.fromRGB(143, 160, 180), false)
-		location.Position = UDim2.new(0, 76, 0, 55)
-		location.Size = UDim2.new(1, -190, 0, 18)
-		location.TextTruncate = Enum.TextTruncate.AtEnd
+	mainPanelUI.panel.Visible = false
+end
 
-		local display = makeButton(card, canEditAquarium and "Display" or "View Only", canEditAquarium and Color3.fromRGB(53, 130, 246) or Color3.fromRGB(86, 98, 115))
-		display.Position = UDim2.new(1, -106, 0, 28)
-		display.Size = UDim2.new(0, 90, 0, 36)
-		display.TextSize = 11
-		display.AutoButtonColor = canEditAquarium
-		display.MouseButton1Click:Connect(function()
-			if canEditAquarium then
-				AquariumAction:FireServer("DisplayFish", fish.serial, row.originalIndex)
+function fishdexModernUI.normalizeAssetId(assetId)
+	if assetId == nil then
+		return ""
+	end
+
+	local textId = tostring(assetId)
+	if textId == "" then
+		return ""
+	end
+
+	if string.find(textId, "rbxassetid://", 1, true) then
+		return textId
+	end
+
+	local numericId = tonumber(textId)
+	if numericId then
+		return "rbxassetid://" .. tostring(math.floor(numericId))
+	end
+
+	return textId
+end
+
+function fishdexModernUI.getFishdexFishImage(fish)
+	local key = fish.imageKey or fish.id
+	local configured = ""
+
+	if GameConfig.getFishImage then
+		configured = GameConfig.getFishImage(key) or GameConfig.getFishImage(fish.id) or ""
+	end
+
+	if configured == "" then
+		configured = FISHDEX_FALLBACK_IMAGES[fish.id]
+			or FISHDEX_FALLBACK_IMAGES[key]
+			or FISHDEX_FALLBACK_IMAGES.SmallFish
+	end
+
+	return fishdexModernUI.normalizeAssetId(configured)
+end
+
+function fishdexModernUI.getFishdexRarityImage(rarity)
+	if rarity == "Mythical" then
+		rarity = "Mythic"
+	end
+
+	return FISHDEX_ASSETS[rarity] or FISHDEX_ASSETS.Common
+end
+
+function fishdexModernUI.isFishdexEntryDiscovered(fish)
+	if not state or type(state.Fishdex) ~= "table" then
+		return false
+	end
+
+	for _, key in ipairs({ fish.id, fish.name, fish.imageKey }) do
+		if key ~= nil then
+			local amount = state.Fishdex[key]
+			if amount == true or (tonumber(amount) or 0) > 0 then
+				return true
 			end
-		end)
+		end
+	end
+
+	return false
+end
+
+function fishdexModernUI.getFishdexCollectionCounts()
+	local discovered = 0
+	local total = 0
+
+	for _, biomeId in ipairs(GameConfig.BiomeOrder or GameConfig.IslandOrder or {}) do
+		local biome = GameConfig.Biomes[biomeId]
+		if biome and type(biome.fish) == "table" then
+			for _, fish in ipairs(biome.fish) do
+				total += 1
+				if fishdexModernUI.isFishdexEntryDiscovered(fish) then
+					discovered += 1
+				end
+			end
+		end
+	end
+
+	return discovered, total
+end
+
+local FISHDEX_UI_SIZE_MULTIPLIER = 0.78
+
+function fishdexModernUI.updateFishdexResponsiveScale()
+	if not fishdexModernUI.root or not fishdexModernUI.scale then
+		return
+	end
+
+	local camera = workspace.CurrentCamera
+	local viewport = camera and camera.ViewportSize or Vector2.new(1536, 1024)
+	local scale = math.min(
+		(viewport.X * 0.97) / 1536,
+		(viewport.Y * 0.94) / 1024
+	)
+
+	fishdexModernUI.scale.Scale = math.clamp(
+		scale * FISHDEX_UI_SIZE_MULTIPLIER,
+		0.28,
+		1
+	)
+end
+
+function fishdexModernUI.setFishdexTabSelected(tabId)
+	fishdexModernUI.selectedIsland = tabId
+
+	for id, button in pairs(fishdexModernUI.tabButtons) do
+		local stroke = button:FindFirstChild("SelectedStroke")
+		if stroke then
+			stroke.Transparency = id == tabId and 0 or 1
+		end
 	end
 end
 
-local function renderBagTab()
-	mainPanelUI.renderBagTabBar()
-	if mainPanelUI.activeBagTab == "Fishing Rods" then
-		mainPanelUI.renderBagRods()
-	elseif mainPanelUI.activeBagTab == "Bait" then
-		mainPanelUI.renderBagBait()
-	else
-		mainPanelUI.renderBagFish()
+function fishdexModernUI.clearFishdexCards()
+	if not fishdexModernUI.cardsHolder then
+		return
 	end
+
+	for _, child in ipairs(fishdexModernUI.cardsHolder:GetChildren()) do
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
+	end
+end
+
+function fishdexModernUI.makeFishdexCard(fish, layoutOrder)
+	local discovered = fishdexModernUI.isFishdexEntryDiscovered(fish)
+
+	local card = Instance.new("ImageLabel")
+	card.Name = tostring(fish.id) .. "Card"
+	card.BackgroundTransparency = 1
+	card.Image = FISHDEX_ASSETS.FishBackground
+	card.ScaleType = Enum.ScaleType.Stretch
+	card.LayoutOrder = layoutOrder
+	card.ZIndex = 203
+	card.Parent = fishdexModernUI.cardsHolder
+
+	local image = Instance.new("ImageLabel")
+	image.Name = "FishImage"
+	image.BackgroundTransparency = 1
+	image.AnchorPoint = Vector2.new(0.5, 0)
+	image.Position = UDim2.new(0.5, 0, 0.055, 0)
+	image.Size = UDim2.new(0.69, 0, 0.48, 0)
+	image.Image = fishdexModernUI.getFishdexFishImage(fish)
+	image.ScaleType = Enum.ScaleType.Fit
+	image.ImageColor3 = discovered and Color3.new(1, 1, 1) or Color3.fromRGB(2, 8, 18)
+	image.ImageTransparency = discovered and 0 or 0.04
+	image.ZIndex = 204
+	image.Parent = card
+
+	local name = Instance.new("TextLabel")
+	name.Name = "FishName"
+	name.BackgroundTransparency = 1
+	name.AnchorPoint = Vector2.new(0.5, 0)
+	name.Position = UDim2.new(0.5, 0, 0.61, 0)
+	name.Size = UDim2.new(0.88, 0, 0.14, 0)
+	name.Font = Enum.Font.FredokaOne
+	name.Text = discovered and (fish.name or tostring(fish.id)) or "???"
+	name.TextColor3 = Color3.new(1, 1, 1)
+	name.TextStrokeColor3 = Color3.new(0, 0, 0)
+	name.TextStrokeTransparency = 0
+	name.TextScaled = true
+	name.ZIndex = 205
+	name.Parent = card
+
+	local nameLimit = Instance.new("UITextSizeConstraint")
+	nameLimit.MinTextSize = 15
+	nameLimit.MaxTextSize = 38
+	nameLimit.Parent = name
+
+	local badge = Instance.new("ImageLabel")
+	badge.Name = "RarityBadge"
+	badge.BackgroundTransparency = 1
+	badge.AnchorPoint = Vector2.new(0.5, 0)
+	badge.Position = UDim2.new(0.5, 0, 0.70, 0)
+	badge.Size = UDim2.new(0.94, 0, 0.34, 0)
+	badge.Image = fishdexModernUI.getFishdexRarityImage(fish.rarity)
+	badge.ScaleType = Enum.ScaleType.Stretch
+	badge.ZIndex = 204
+	badge.Parent = card
+
+	local rarityName = fish.rarity == "Mythical" and "Mythic" or fish.rarity
+	local rarityTextWidth = 0.43
+	if rarityName == "Uncommon" or rarityName == "Mythic" then
+		rarityTextWidth = 0.47
+	elseif rarityName == "Legendary" then
+		rarityTextWidth = 0.54
+	end
+
+	local rarity = Instance.new("TextLabel")
+	rarity.Name = "RarityText"
+	rarity.BackgroundTransparency = 1
+	rarity.AnchorPoint = Vector2.new(0.5, 0.5)
+	rarity.Position = UDim2.fromScale(0.5, 0.50)
+	rarity.Size = UDim2.new(rarityTextWidth, 0, 0.42, 0)
+	rarity.Font = Enum.Font.FredokaOne
+	rarity.Text = string.upper(rarityName)
+	rarity.TextColor3 = Color3.new(1, 1, 1)
+	rarity.TextStrokeColor3 = Color3.new(0, 0, 0)
+	rarity.TextStrokeTransparency = 0
+	rarity.TextScaled = true
+	rarity.ZIndex = 205
+	rarity.Parent = badge
+
+	local rarityLimit = Instance.new("UITextSizeConstraint")
+	rarityLimit.MinTextSize = 10
+	rarityLimit.MaxTextSize = 24
+	rarityLimit.Parent = rarity
+end
+
+function fishdexModernUI.renderModernFishdexCards()
+	if not fishdexModernUI.root then
+		return
+	end
+
+	fishdexModernUI.clearFishdexCards()
+
+	local layoutOrder = 0
+	for _, biomeId in ipairs(GameConfig.BiomeOrder or GameConfig.IslandOrder or {}) do
+		local biome = GameConfig.Biomes[biomeId]
+		if biome and (fishdexModernUI.selectedIsland == "All" or fishdexModernUI.selectedIsland == biomeId) then
+			for _, fish in ipairs(biome.fish or {}) do
+				layoutOrder += 1
+				fishdexModernUI.makeFishdexCard(fish, layoutOrder)
+			end
+		end
+	end
+
+	local discovered, total = fishdexModernUI.getFishdexCollectionCounts()
+	if state and tonumber(state.FishdexTotal) and tonumber(state.FishdexTotal) > 0 then
+		total = tonumber(state.FishdexTotal)
+	end
+
+	if fishdexModernUI.collectionCount then
+		fishdexModernUI.collectionCount.Text = string.format("%d / %d", discovered, total)
+	end
+end
+
+function fishdexModernUI.addFishdexButtonPressFeedback(button)
+	local originalPosition = button.Position
+	local pressedPosition = UDim2.new(
+		originalPosition.X.Scale,
+		originalPosition.X.Offset,
+		originalPosition.Y.Scale,
+		originalPosition.Y.Offset + 5
+	)
+
+	local activeTween = nil
+	local isPressed = false
+
+	local function setPressed(pressed)
+		isPressed = pressed
+
+		if activeTween then
+			activeTween:Cancel()
+		end
+
+		activeTween = TweenService:Create(
+			button,
+			TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{
+				Position = pressed and pressedPosition or originalPosition,
+				ImageColor3 = pressed and Color3.fromRGB(205, 205, 205) or Color3.new(1, 1, 1),
+			}
+		)
+		activeTween:Play()
+	end
+
+	button.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+			setPressed(true)
+		end
+	end)
+
+	button.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+			setPressed(false)
+		end
+	end)
+
+	button.MouseLeave:Connect(function()
+		if isPressed then
+			setPressed(false)
+		end
+	end)
+
+	button.Activated:Connect(function()
+		setPressed(false)
+	end)
+end
+
+function fishdexModernUI.buildModernFishdex()
+	if fishdexModernUI.root then
+		return
+	end
+
+	local modernRoot = Instance.new("ImageLabel")
+	modernRoot.Name = "ModernFishdex"
+	modernRoot.AnchorPoint = Vector2.new(0.5, 0.5)
+	modernRoot.Position = UDim2.fromScale(0.5, 0.46)
+	modernRoot.Size = UDim2.fromOffset(1536, 1024)
+	modernRoot.BackgroundTransparency = 1
+	modernRoot.Image = FISHDEX_ASSETS.Backbone
+	modernRoot.ScaleType = Enum.ScaleType.Stretch
+	modernRoot.Visible = false
+	modernRoot.ZIndex = 200
+	modernRoot.Parent = root
+	fishdexModernUI.root = modernRoot
+
+	local uiScale = Instance.new("UIScale")
+	uiScale.Name = "ResponsiveScale"
+	uiScale.Parent = modernRoot
+	fishdexModernUI.scale = uiScale
+	fishdexModernUI.updateFishdexResponsiveScale()
+
+	local title = Instance.new("TextLabel")
+	title.Name = "FishdexTitle"
+	title.BackgroundTransparency = 1
+	title.Position = UDim2.fromOffset(598, 20)
+	title.Size = UDim2.fromOffset(410, 100)
+	title.Font = Enum.Font.FredokaOne
+	title.Text = "FISHDEX"
+	title.TextColor3 = Color3.new(1, 1, 1)
+	title.TextStrokeColor3 = Color3.new(0, 0, 0)
+	title.TextStrokeTransparency = 0
+	title.TextScaled = true
+	title.ZIndex = 204
+	title.Parent = modernRoot
+
+	local titleLimit = Instance.new("UITextSizeConstraint")
+	titleLimit.MinTextSize = 38
+	titleLimit.MaxTextSize = 88
+	titleLimit.Parent = title
+
+	local closeButton = Instance.new("ImageButton")
+	closeButton.Name = "CloseButton"
+	closeButton.BackgroundTransparency = 1
+	closeButton.Position = UDim2.fromOffset(1402, 35)
+	closeButton.Size = UDim2.fromOffset(93, 93)
+	closeButton.Image = FISHDEX_ASSETS.CloseButton
+	closeButton.ScaleType = Enum.ScaleType.Fit
+	closeButton.ZIndex = 210
+	closeButton.Parent = modernRoot
+	fishdexModernUI.addFishdexButtonPressFeedback(closeButton)
+	closeButton.MouseButton1Click:Connect(function()
+		panelCollapsed = true
+		updatePanelCollapsed()
+	end)
+
+	local tabDefinitions = {
+		{ id = "All", label = "All", image = FISHDEX_ASSETS.AllTab, position = UDim2.fromOffset(136, 153), size = UDim2.fromOffset(194, 82) },
+		{ id = "LilyshoreIsland", label = "Lilyshore Island", image = FISHDEX_ASSETS.LilyshoreIslandTab, position = UDim2.fromOffset(356, 153), size = UDim2.fromOffset(345, 82) },
+		{ id = "RiverbendIsland", label = "Riverbend Island", image = FISHDEX_ASSETS.RiverbendIslandTab, position = UDim2.fromOffset(725, 153), size = UDim2.fromOffset(342, 82) },
+		{ id = "CoralCoastIsland", label = "Coral Coast Island", image = FISHDEX_ASSETS.CoralCoastIslandTab, position = UDim2.fromOffset(1090, 153), size = UDim2.fromOffset(335, 82) },
+	}
+
+	for _, definition in ipairs(tabDefinitions) do
+		local button = Instance.new("ImageButton")
+		button.Name = definition.id .. "Tab"
+		button.BackgroundTransparency = 1
+		button.Position = definition.position
+		button.Size = definition.size
+		button.Image = definition.image
+		button.ScaleType = Enum.ScaleType.Stretch
+		button.ZIndex = 205
+		button.Parent = modernRoot
+		fishdexModernUI.addFishdexButtonPressFeedback(button)
+
+		-- Draw tab text separately instead of relying on text baked into the PNG.
+		-- This keeps All and every island name visible at all responsive scales.
+		local tabTitle = Instance.new("TextLabel")
+		tabTitle.Name = "TabTitle"
+		tabTitle.BackgroundTransparency = 1
+		tabTitle.AnchorPoint = Vector2.new(0.5, 0.5)
+
+		if definition.id == "All" then
+			tabTitle.Position = UDim2.fromScale(0.64, 0.51)
+			tabTitle.Size = UDim2.fromScale(0.42, 0.54)
+		else
+			tabTitle.Position = UDim2.fromScale(0.64, 0.51)
+			tabTitle.Size = UDim2.fromScale(0.68, 0.54)
+		end
+
+		tabTitle.Font = Enum.Font.FredokaOne
+		tabTitle.Text = definition.label
+		tabTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+		tabTitle.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+		tabTitle.TextStrokeTransparency = 0
+		tabTitle.TextScaled = true
+		tabTitle.ZIndex = 207
+		tabTitle.Parent = button
+
+		local tabTitleSize = Instance.new("UITextSizeConstraint")
+		tabTitleSize.MinTextSize = 11
+		tabTitleSize.MaxTextSize = definition.id == "All" and 31 or 28
+		tabTitleSize.Parent = tabTitle
+
+		local selectedStroke = Instance.new("UIStroke")
+		selectedStroke.Name = "SelectedStroke"
+		selectedStroke.Color = Color3.fromRGB(160, 235, 255)
+		selectedStroke.Thickness = 3
+		selectedStroke.Transparency = 1
+		selectedStroke.Parent = button
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 18)
+		corner.Parent = button
+
+		button.MouseButton1Click:Connect(function()
+			fishdexModernUI.setFishdexTabSelected(definition.id)
+			fishdexModernUI.renderModernFishdexCards()
+		end)
+
+		fishdexModernUI.tabButtons[definition.id] = button
+	end
+
+	local cardsScroll = Instance.new("ScrollingFrame")
+	cardsScroll.Name = "FishCardsScroll"
+	cardsScroll.Position = UDim2.fromOffset(137, 302)
+	cardsScroll.Size = UDim2.fromOffset(1260, 578)
+	cardsScroll.BackgroundTransparency = 1
+	cardsScroll.BorderSizePixel = 0
+	cardsScroll.ScrollBarThickness = 7
+	cardsScroll.ScrollBarImageColor3 = Color3.fromRGB(41, 154, 255)
+	cardsScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	cardsScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	cardsScroll.ZIndex = 202
+	cardsScroll.Parent = modernRoot
+	fishdexModernUI.cardsScroll = cardsScroll
+
+	local cardsHolder = Instance.new("Frame")
+	cardsHolder.Name = "CardsHolder"
+	cardsHolder.BackgroundTransparency = 1
+	cardsHolder.Size = UDim2.new(1, -8, 0, 0)
+	cardsHolder.AutomaticSize = Enum.AutomaticSize.Y
+	cardsHolder.ZIndex = 202
+	cardsHolder.Parent = cardsScroll
+	fishdexModernUI.cardsHolder = cardsHolder
+
+	local grid = Instance.new("UIGridLayout")
+	grid.CellSize = UDim2.fromOffset(390, 270)
+	grid.CellPadding = UDim2.fromOffset(30, 24)
+	grid.FillDirection = Enum.FillDirection.Horizontal
+	grid.FillDirectionMaxCells = 3
+	grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.Parent = cardsHolder
+
+	local collection = Instance.new("ImageLabel")
+	collection.Name = "CollectionPanel"
+	collection.BackgroundTransparency = 1
+	collection.Position = UDim2.fromOffset(1132, 885)
+	collection.Size = UDim2.fromOffset(327, 103)
+	collection.Image = FISHDEX_ASSETS.CollectionTab
+	collection.ScaleType = Enum.ScaleType.Stretch
+	collection.ZIndex = 206
+	collection.Parent = modernRoot
+
+	local collectionTitle = Instance.new("TextLabel")
+	collectionTitle.Name = "CollectionTitle"
+	collectionTitle.BackgroundTransparency = 1
+	collectionTitle.Position = UDim2.new(0.35, 0, 0.14, 0)
+	collectionTitle.Size = UDim2.new(0.56, 0, 0.30, 0)
+	collectionTitle.Font = Enum.Font.FredokaOne
+	collectionTitle.Text = "Collection"
+	collectionTitle.TextColor3 = Color3.fromRGB(46, 231, 255)
+	collectionTitle.TextStrokeColor3 = Color3.new(0, 0, 0)
+	collectionTitle.TextStrokeTransparency = 0
+	collectionTitle.TextScaled = true
+	collectionTitle.ZIndex = 207
+	collectionTitle.Parent = collection
+
+	local collectionCount = Instance.new("TextLabel")
+	collectionCount.Name = "CollectionCount"
+	collectionCount.BackgroundTransparency = 1
+	collectionCount.Position = UDim2.new(0.35, 0, 0.44, 0)
+	collectionCount.Size = UDim2.new(0.55, 0, 0.40, 0)
+	collectionCount.Font = Enum.Font.FredokaOne
+	collectionCount.Text = "0 / 0"
+	collectionCount.TextColor3 = Color3.new(1, 1, 1)
+	collectionCount.TextStrokeColor3 = Color3.new(0, 0, 0)
+	collectionCount.TextStrokeTransparency = 0
+	collectionCount.TextScaled = true
+	collectionCount.ZIndex = 207
+	collectionCount.Parent = collection
+	fishdexModernUI.collectionCount = collectionCount
+
+	local camera = workspace.CurrentCamera
+	if camera then
+		camera:GetPropertyChangedSignal("ViewportSize"):Connect(fishdexModernUI.updateFishdexResponsiveScale)
+	end
+
+	fishdexModernUI.setFishdexTabSelected("All")
 end
 
 local function renderFishdexTab()
-	local biomeId = getActiveFishingBiomeId()
-	local biome = biomeId and GameConfig.Biomes[biomeId]
-	local summary = makeCard(mainPanelUI.content, biome and 112 or 82)
-
-	local titleLabel = makeText(summary, "Fishdex Collection: " .. getDiscoveredCount() .. "/" .. GameConfig.getFishCount(), 17, Color3.fromRGB(255, 255, 255), true)
-	titleLabel.Position = UDim2.new(0, 12, 0, 8)
-	titleLabel.Size = UDim2.new(1, -24, 0, 24)
-
-	if biome then
-		local rod = state and GameConfig.Rods[state.EquippedRod] or GameConfig.Rods.WoodenRod
-		local autoStatus = state.AutoFishEnabled and "ON" or "OFF"
-
-		local location = makeText(summary, "Current Island: " .. biome.displayName, 14, biome.color, true)
-		location.Position = UDim2.new(0, 12, 0, 36)
-		location.Size = UDim2.new(1, -24, 0, 20)
-
-		local detail = makeText(summary, "Rod: " .. rod.displayName .. " | Luck: +" .. math.floor(rod.luck * 100) .. "% | AutoFish: " .. autoStatus, 13, Color3.fromRGB(190, 204, 220), false)
-		detail.Position = UDim2.new(0, 12, 0, 60)
-		detail.Size = UDim2.new(1, -24, 0, 18)
-
-		local species = makeText(summary, "Species on this island: " .. #biome.fish, 12, Color3.fromRGB(143, 160, 180), false)
-		species.Position = UDim2.new(0, 12, 0, 82)
-		species.Size = UDim2.new(1, -24, 0, 18)
-	else
-		local detail = makeText(summary, "Enter a fishing island to see your active area here.", 13, Color3.fromRGB(190, 204, 220), false)
-		detail.Position = UDim2.new(0, 12, 0, 38)
-		detail.Size = UDim2.new(1, -24, 0, 20)
-	end
-
-	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
-		local biome = GameConfig.Biomes[biomeId]
-		local header = makeText(mainPanelUI.content, biome.displayName, 16, biome.color, true)
-		header.Size = UDim2.new(1, -8, 0, 28)
-
-		for _, fish in ipairs(biome.fish) do
-			local count = state.Fishdex[fish.id] or 0
-			local discovered = count > 0
-			local card = makeCard(mainPanelUI.content, 76)
-			local color = discovered and (GameConfig.RarityColors[fish.rarity] or Color3.new(1, 1, 1)) or Color3.fromRGB(115, 125, 140)
-
-			local icon = makeFishIcon(card, fish.id, fish.rarity, discovered)
-			icon.Position = UDim2.new(0, 8, 0, 10)
-			icon.Size = UDim2.new(0, 56, 0, 56)
-
-			local name = makeText(card, discovered and fish.name or "???", 14, color, true)
-			name.Position = UDim2.new(0, 68, 0, 7)
-			name.Size = UDim2.new(1, -80, 0, 20)
-
-			local infoText = discovered and string.format("%s | Caught: %d", fish.rarity, count) or (fish.rarity .. " | Not discovered")
-			local info = makeText(card, infoText, 12, Color3.fromRGB(190, 204, 220), false)
-			info.Position = UDim2.new(0, 68, 0, 31)
-			info.Size = UDim2.new(1, -80, 0, 16)
-
-			local marketText = discovered and string.format("Chance: %s%% | Price: %d Coins", fish.chance, fish.value) or "Chance: ??? | Price: ???"
-			local market = makeText(card, marketText, 12, Color3.fromRGB(143, 160, 180), false)
-			market.Position = UDim2.new(0, 68, 0, 51)
-			market.Size = UDim2.new(1, -80, 0, 16)
-		end
-	end
+	fishdexModernUI.buildModernFishdex()
+	mainPanelUI.panel.Visible = false
+	fishdexModernUI.root.Visible = not panelCollapsed
+	fishdexModernUI.renderModernFishdexCards()
 end
 
 local renderAquariumVisitorsSection
@@ -2815,6 +3288,29 @@ function fishyFishMakeShopIcon(parent, text, color)
 	return icon
 end
 
+local fishyFishRobuxPriceCache = {}
+
+function fishyFishGetRobuxPrice(item, infoType)
+	local itemId = tonumber(item.id) or tonumber(item.Id)
+	local fallbackPrice = tonumber(item.priceRobux) or tonumber(item.Price)
+	if not itemId or itemId <= 0 then
+		return fallbackPrice
+	end
+
+	local cacheKey = tostring(infoType) .. ":" .. tostring(itemId)
+	if fishyFishRobuxPriceCache[cacheKey] ~= nil then
+		return fishyFishRobuxPriceCache[cacheKey]
+	end
+
+	local success, productInfo = pcall(function()
+		return MarketplaceService:GetProductInfo(itemId, infoType)
+	end)
+	local livePrice = success and type(productInfo) == "table" and tonumber(productInfo.PriceInRobux) or nil
+	local price = livePrice or fallbackPrice
+	fishyFishRobuxPriceCache[cacheKey] = price
+	return price
+end
+
 function fishyFishRenderShopSubTabs()
 	local selector = Instance.new("Frame")
 	selector.Size = UDim2.new(1, -8, 0, 38)
@@ -2838,7 +3334,7 @@ function fishyFishRenderShopSubTabs()
 	end
 end
 
-function fishyFishRenderRobuxItem(itemKey, item, purchaseAction, owned, iconText, iconColor)
+function fishyFishRenderRobuxItem(itemKey, item, purchaseAction, owned, iconText, iconColor, infoType)
 	local card = makeCard(mainPanelUI.content, 104)
 	fishyFishMakeShopIcon(card, iconText, iconColor)
 
@@ -2851,7 +3347,8 @@ function fishyFishRenderRobuxItem(itemKey, item, purchaseAction, owned, iconText
 	description.Size = UDim2.new(1, -194, 0, 36)
 	description.TextWrapped = true
 
-	local price = makeText(card, tostring(item.priceRobux or "?") .. " Robux", 12, Color3.fromRGB(255, 219, 92), true)
+	local priceInRobux = fishyFishGetRobuxPrice(item, infoType or Enum.InfoType.GamePass)
+	local price = makeText(card, tostring(priceInRobux or "?") .. " Robux", 12, Color3.fromRGB(255, 219, 92), true)
 	price.Position = UDim2.new(0, 76, 0, 74)
 	price.Size = UDim2.new(1, -194, 0, 18)
 
@@ -2888,11 +3385,11 @@ function fishyFishRenderShopGamePasses()
 		fireShopAction("ClaimVipReward", "GamePass", "VipAngler")
 	end)
 
-	for _, passKey in ipairs({ "VipAngler", "AquariumDesigner" }) do
+	for _, passKey in ipairs({ "VipAngler" }) do
 		local pass = MonetizationConfig.GamePasses[passKey]
 		fishyFishRenderRobuxItem(passKey, pass, function(key)
 			fireShopAction("PromptGamePass", "GamePass", key)
-		end, fishyFishOwnsGamePass(passKey), passKey == "VipAngler" and "VIP" or "AQUA", passKey == "VipAngler" and Color3.fromRGB(255, 181, 36) or Color3.fromRGB(58, 174, 205))
+		end, fishyFishOwnsGamePass(passKey), passKey == "VipAngler" and "VIP" or "AQUA", passKey == "VipAngler" and Color3.fromRGB(255, 181, 36) or Color3.fromRGB(58, 174, 205), Enum.InfoType.GamePass)
 	end
 end
 
@@ -2901,7 +3398,7 @@ function fishyFishRenderShopBait()
 		local product = MonetizationConfig.DeveloperProducts[productKey]
 		fishyFishRenderRobuxItem(productKey, product, function(key)
 			fireShopAction("PromptProduct", "Product", key)
-		end, false, "BAIT", Color3.fromRGB(116, 94, 255))
+		end, false, "BAIT", Color3.fromRGB(116, 94, 255), Enum.InfoType.Product)
 	end
 end
 
@@ -2911,7 +3408,7 @@ function fishyFishRenderShopCoins()
 		if product then
 			fishyFishRenderRobuxItem(productKey, product, function(key)
 				fireShopAction("PromptProduct", "Product", key)
-			end, false, "COIN", Color3.fromRGB(255, 181, 36))
+			end, false, "COIN", Color3.fromRGB(255, 181, 36), Enum.InfoType.Product)
 		end
 	end
 end
@@ -2929,24 +3426,23 @@ function fishyFishRenderShopStorage()
 		local pass = MonetizationConfig.GamePasses[passKey]
 		fishyFishRenderRobuxItem(passKey, pass, function(key)
 			fireShopAction("PromptGamePass", "GamePass", key)
-		end, fishyFishOwnsGamePass(passKey), "+" .. tostring(pass.bonusSlots or 0), Color3.fromRGB(76, 160, 92))
+		end, fishyFishOwnsGamePass(passKey), tostring(pass.totalSlots or pass.TotalSlots or GameConfig.BASE_BACKPACK_SIZE) .. " MAX", Color3.fromRGB(76, 160, 92), Enum.InfoType.GamePass)
 	end
 end
 
 function fishyFishRenderAquariumDesignerControls()
 	local monetization = fishyFishGetMonetizationState()
-	local ownsDesigner = fishyFishOwnsGamePass("AquariumDesigner")
 	local currentDesign = monetization.AquariumPreviewDesign or monetization.AquariumDesign or MonetizationConfig.AquariumDesigner.defaultDesign
 	local canEditAquarium = state.AquariumView and state.AquariumView.CanEdit == true
 
 	local summary = makeCard(mainPanelUI.content, 96)
-	fishyFishMakeShopIcon(summary, ownsDesigner and "OPEN" or "LOCK", ownsDesigner and Color3.fromRGB(58, 174, 205) or Color3.fromRGB(96, 106, 122))
+	fishyFishMakeShopIcon(summary, "FREE", Color3.fromRGB(58, 174, 205))
 	local heading = makeText(summary, "Aquarium Designer", 16, Color3.fromRGB(255, 255, 255), true)
 	heading.Position = UDim2.new(0, 76, 0, 8)
 	heading.Size = UDim2.new(1, -194, 0, 22)
 	local status = "Select My Aquarium in the Hub to edit."
 	if canEditAquarium then
-		status = ownsDesigner and "Owned | Preview, apply, and save premium designs." or "Preview is free. Apply premium designs after buying the pass."
+		status = "All editor controls are free. Premium themes unlock with Sea Stars."
 	end
 	local detail = makeText(summary, status, 12, Color3.fromRGB(190, 204, 220), false)
 	detail.Position = UDim2.new(0, 76, 0, 34)
@@ -2963,17 +3459,18 @@ function fishyFishRenderAquariumDesignerControls()
 	end)
 
 	local function renderDesignOption(kind, id, item, labelPrefix)
-		local premium = item.premium == true
+		local premium = item.free ~= true
+		local owned = item.free == true or (state.SeaStarUnlocks and state.SeaStarUnlocks[id] == true)
 		local card = makeCard(mainPanelUI.content, 124)
-		fishyFishMakeShopIcon(card, premium and "LOCK" or "FREE", premium and Color3.fromRGB(255, 181, 36) or Color3.fromRGB(58, 174, 205))
+		fishyFishMakeShopIcon(card, owned and "OWNED" or "LOCK", owned and Color3.fromRGB(58, 174, 205) or Color3.fromRGB(255, 181, 36))
 		local name = makeText(card, (labelPrefix or "") .. item.name, 15, Color3.fromRGB(255, 255, 255), true)
 		name.Position = UDim2.new(0, 76, 0, 8)
 		name.Size = UDim2.new(1, -96, 0, 22)
-		local desc = makeText(card, premium and "Premium aquarium option" or "Standard aquarium option", 12, Color3.fromRGB(190, 204, 220), false)
+		local desc = makeText(card, premium and (tostring(item.seaStarPrice or 0) .. " Sea Stars") or "Free aquarium theme", 12, Color3.fromRGB(190, 204, 220), false)
 		desc.Position = UDim2.new(0, 76, 0, 34)
 		desc.Size = UDim2.new(1, -96, 0, 18)
 		local selected = currentDesign[kind] == id
-		local statusText = makeText(card, selected and "Selected" or (premium and "Requires Designer Pass" or "Available"), 12, selected and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(143, 160, 180), false)
+		local statusText = makeText(card, selected and "Selected" or (owned and "Owned" or "Locked"), 12, selected and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(143, 160, 180), false)
 		statusText.Position = UDim2.new(0, 76, 0, 58)
 		statusText.Size = UDim2.new(1, -96, 0, 18)
 
@@ -2988,14 +3485,18 @@ function fishyFishRenderAquariumDesignerControls()
 			end
 		end)
 
-		local apply = makeButton(card, "Apply", canEditAquarium and Color3.fromRGB(28, 160, 92) or Color3.fromRGB(86, 98, 115))
+		local apply = makeButton(card, owned and "Apply" or "Unlock", canEditAquarium and Color3.fromRGB(28, 160, 92) or Color3.fromRGB(86, 98, 115))
 		apply.Position = UDim2.new(1, -104, 0, 82)
 		apply.Size = UDim2.new(0, 88, 0, 32)
 		apply.TextSize = 12
 		apply.AutoButtonColor = canEditAquarium
 		apply.MouseButton1Click:Connect(function()
 			if canEditAquarium then
-				fireShopAction("ApplyAquariumDesign", "Aquarium", kind, fishyFishCopyAquariumDesignWith({ [kind] = id }))
+				if owned then
+					fireShopAction("ApplyAquariumDesign", "Aquarium", kind, fishyFishCopyAquariumDesignWith({ [kind] = id }))
+				else
+					fireShopAction("PurchaseAquariumTheme", "AquariumTheme", id)
+				end
 			end
 		end)
 	end
@@ -3036,7 +3537,43 @@ function fishyFishRenderAquariumDesignerControls()
 	end)
 end
 
+do
+	local moduleScript = script:FindFirstChild("ShopModernUI")
+	if moduleScript then
+		local ok, module = pcall(require, moduleScript)
+		if ok and type(module) == "table" and type(module.render) == "function" then
+			shopModernUI = module
+		else
+			warn("ShopModernUI could not be loaded; using the legacy shop renderer.", module)
+		end
+	end
+end
+
 local function renderShopTab()
+	if shopModernUI then
+		if not shopModernContext then
+			shopModernContext = {
+				parent = mainPanelUI.content,
+				panel = mainPanelUI.panel,
+				panelTitle = mainPanelUI.panelTitle,
+				panelClose = mainPanelUI.panelClose,
+				MonetizationConfig = MonetizationConfig,
+				fireShopAction = fireShopAction,
+				makeText = makeText,
+				addCorner = addCorner,
+				addStroke = addStroke,
+				close = function()
+					panelCollapsed = true
+					updatePanelCollapsed()
+				end,
+			}
+		end
+
+		shopModernContext.state = state
+		shopModernUI.render(shopModernContext)
+		return
+	end
+
 	fishyFishRenderShopSubTabs()
 
 	if activeShopTab == "Passes" then
@@ -3159,6 +3696,16 @@ local function renderLeaderboardTab()
 end
 
 renderContent = function()
+	if activeTab ~= "Bag" or panelCollapsed then
+		local bagModuleScript = script:FindFirstChild("BagModernUI")
+		if bagModuleScript then
+			local ok, bagModule = pcall(require, bagModuleScript)
+			if ok and bagModule and bagModule.hide then
+				bagModule.hide()
+			end
+		end
+	end
+
 	if activeTab == "Rods" then
 		activeTab = "Bag"
 	elseif activeTab == "Fish" then
@@ -3169,10 +3716,29 @@ renderContent = function()
 		activeTab = "Teleport"
 	end
 
+	if activeTab ~= "Shop" and shopModernUI and shopModernUI.hide then
+		shopModernUI.hide()
+	end
+
+	if fishdexModernUI.root and activeTab ~= "Fishdex" then
+		fishdexModernUI.root.Visible = false
+	end
+	if activeTab ~= "Fishdex" and activeTab ~= "Bag" and activeTab ~= "Quests" then
+		mainPanelUI.panel.Visible = not panelCollapsed
+	else
+		mainPanelUI.panel.Visible = false
+	end
+
 	refreshHud()
 	refreshCenterControls()
 	refreshTabs()
 	mainPanelUI.panelTitle.Text = activeTab
+
+	if activeTab == "Shop" and shopModernUI and state then
+		renderShopTab()
+		return
+	end
+
 	clearChildren(mainPanelUI.content)
 
 	if not state then
@@ -3197,6 +3763,78 @@ renderContent = function()
 		renderLeaderboardTab()
 	end
 end
+
+-- Hard guard for duplicate/older Bag and Fishdex panels.
+-- This runs inside the real FishingClient, so it knows exactly when Bag or
+-- Fishdex is the active tab and does not rely on guessing from UI names alone.
+local legacyBagFishdexGuardElapsed = 0
+
+suppressLegacyBagFishdexPanels = function()
+	if panelCollapsed
+		or (activeTab ~= "Bag" and activeTab ~= "Fishdex")
+	then
+		return
+	end
+
+	-- The integrated old Bag/Fishdex panel must always stay hidden.
+	mainPanelUI.panel.Visible = false
+
+	for _, descendant in ipairs(playerGui:GetDescendants()) do
+		if not descendant:IsA("GuiObject") then
+			continue
+		end
+
+		local lowerName = string.lower(descendant.Name or "")
+		local legacyCandidate = descendant.Name == "MainPanel"
+			or lowerName == "bagpanel"
+			or lowerName == "fishdexpanel"
+			or lowerName == "legacybag"
+			or lowerName == "legacyfishdex"
+			or lowerName == "oldbag"
+			or lowerName == "oldfishdex"
+
+		if not legacyCandidate then
+			continue
+		end
+
+		-- Never touch the modern roots.
+		if descendant.Name == "ModernBagRoot"
+			or descendant.Name == "ModernBag"
+			or descendant.Name == "ModernFishdex"
+		then
+			continue
+		end
+
+		-- Empty marker panels under FishingGui/Panels do not render anything,
+		-- but hiding them is harmless.
+		descendant.Visible = false
+	end
+end
+
+RunService.RenderStepped:Connect(function(deltaTime)
+	legacyBagFishdexGuardElapsed += deltaTime
+	if legacyBagFishdexGuardElapsed < 0.05 then
+		return
+	end
+	legacyBagFishdexGuardElapsed = 0
+
+	suppressLegacyBagFishdexPanels()
+
+	if activeTab == "Fishdex"
+		and not panelCollapsed
+		and fishdexModernUI.root
+	then
+		fishdexModernUI.root.Visible = true
+	end
+
+	if activeTab == "Bag" and not panelCollapsed then
+		local modernBag = root:FindFirstChild("ModernBagRoot")
+			or root:FindFirstChild("ModernBag")
+		if modernBag and modernBag:IsA("GuiObject") then
+			modernBag.Visible = true
+		end
+	end
+end)
 
 function minigameUI.legacyRunMinigame(prompt)
 	if minigameRunning then
@@ -3468,7 +4106,7 @@ local function runMinigame(prompt)
 	minigameRunning = true
 	CastPower.running = false
 	CastPower.activeConfig = nil
-	setMinigameVisible(true)
+	minigameUI.setFishingVisible(true)
 	CastPower.content.Visible = false
 
 	local lifecycleFinished = false
@@ -3479,7 +4117,7 @@ local function runMinigame(prompt)
 
 		lifecycleFinished = true
 		activeMinigameCleanup = nil
-		setMinigameVisible(false)
+		minigameUI.setFishingVisible(false)
 		minigameRunning = false
 		fishingBusy = false
 
@@ -3501,6 +4139,7 @@ local function runMinigame(prompt)
 			state = state,
 			GameConfig = GameConfig,
 			ui = minigameUI,
+			modernUi = minigameUI.modern,
 			RunService = RunService,
 			UserInputService = UserInputService,
 			tapButton = centerCastButton,
@@ -3529,8 +4168,36 @@ local function runMinigame(prompt)
 	end
 end
 
+local function syncEquippedRodAttributes()
+	if not state or not state.EquippedRod then
+		return
+	end
+
+	local rodId = state.EquippedRod
+	local rod = GameConfig.Rods and GameConfig.Rods[rodId]
+
+	local rodName = rod and rod.displayName or tostring(rodId)
+	local rodIcon = ""
+
+	if GameConfig.getRodImage then
+		rodIcon = GameConfig.getRodImage(rodId) or ""
+	end
+
+	if rodIcon ~= "" and not string.find(tostring(rodIcon), "rbxassetid://") and tonumber(rodIcon) then
+		rodIcon = "rbxassetid://" .. tostring(rodIcon)
+	end
+
+	player:SetAttribute("EquippedRodId", rodId)
+	player:SetAttribute("EquippedRodName", rodName)
+	player:SetAttribute("EquippedRodIcon", rodIcon)
+
+	print("[FishingClient] Equipped rod synced:", rodId, rodName, rodIcon)
+end
+
 StateUpdated.OnClientEvent:Connect(function(newState)
 	state = newState
+	syncEquippedRodAttributes()
+
 	refreshHud()
 	renderContent()
 	updateAquariumViewerFallbackButton()
@@ -3556,6 +4223,13 @@ FishingPrompt.OnClientEvent:Connect(function(prompt)
 	else
 		showToast("Fish is biting. Keep it in the green bar!")
 	end
+
+	if not prompt.autoFish then
+		local presentationTimeLeft = castPresentationUntil - os.clock()
+		if presentationTimeLeft > 0 then
+			task.wait(presentationTimeLeft)
+		end
+	end
 	runMinigame(prompt)
 end)
 
@@ -3570,6 +4244,7 @@ Notice.OnClientEvent:Connect(function(message)
 	minigameRunning = false
 	CastPower.running = false
 	CastPower.activeConfig = nil
+	castPresentationUntil = 0
 	CastPower.content.Visible = false
 	setMinigameVisible(false)
 	renderContent()
@@ -3601,6 +4276,7 @@ task.spawn(function()
 
 	if success and result then
 		state = result
+		syncEquippedRodAttributes()
 	end
 
 	renderContent()

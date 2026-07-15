@@ -102,15 +102,6 @@ local function makeButton(parent, text, color)
 	return button
 end
 
-local function getOwnedPasses()
-	local monetization = state and state.Monetization
-	return monetization and monetization.OwnedGamePasses or {}
-end
-
-local function ownsDesignerPass()
-	return getOwnedPasses().AquariumDesigner == true
-end
-
 local function canEditLoadedAquarium()
 	return state and state.AquariumView and state.AquariumView.CanEdit == true
 end

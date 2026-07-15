@@ -238,16 +238,28 @@ local function makeBooth(parent, name, x, z, boothColor, title, description, opt
 			Color3.fromRGB(255, 255, 255),
 			18
 		)
-		makePromptPart(
-			booth,
-			option.key .. "_PromptPart",
-			optionSign.Position + Vector3.new(0, -0.5, -2.2),
-			Vector3.new(optionCount > 1 and 8 or 20, 5, 4),
-			option.kind,
-			option.key,
-			option.actionText or "Purchase",
-			option.objectText or title
-		)
+		if option.kind == "OpenShop" then
+			makeOpenShopPromptPart(
+				booth,
+				option.key .. "_PromptPart",
+				optionSign.Position + Vector3.new(0, -0.5, -2.2),
+				Vector3.new(optionCount > 1 and 8 or 20, 5, 4),
+				option.shopTab or option.key,
+				option.actionText or "Open Shop",
+				option.objectText or title
+			)
+		else
+			makePromptPart(
+				booth,
+				option.key .. "_PromptPart",
+				optionSign.Position + Vector3.new(0, -0.5, -2.2),
+				Vector3.new(optionCount > 1 and 8 or 20, 5, 4),
+				option.kind,
+				option.key,
+				option.actionText or "Purchase",
+				option.objectText or title
+			)
+		end
 	end
 end
 
@@ -291,8 +303,6 @@ function CastleShopService.promptPurchase(player, purchaseKind, purchaseKey)
 			print("Prompting purchase:", pass.name or purchaseKey, pass.id)
 			if purchaseKey == "VipAngler" then
 				print("Prompting VIP Angler Pass purchase:", pass.id)
-			elseif purchaseKey == "AquariumDesigner" then
-				print("Prompting Aquarium Designer Pass purchase:", pass.id)
 			elseif purchaseKey == "SmallBag" then
 				print("Prompting Small Bag Upgrade purchase:", pass.id)
 			elseif purchaseKey == "MediumBag" then
@@ -412,6 +422,33 @@ local function findExistingCastle()
 end
 
 local function repairExistingCastle(castle)
+	local seaStarBooth = castle:FindFirstChild("SeaStarBooth", true) or castle:FindFirstChild("AquariumDesignerBooth", true)
+	if seaStarBooth then
+		seaStarBooth.Name = "SeaStarBooth"
+		local boothSign = seaStarBooth:FindFirstChild("BoothSign", true)
+		local boothText = boothSign and boothSign:FindFirstChildWhichIsA("TextLabel", true)
+		if boothText then
+			boothText.Text = "Sea Star Shop\nCosmetic currency and permanent aquarium themes."
+		end
+		for _, descendant in ipairs(seaStarBooth:GetDescendants()) do
+			if descendant:IsA("BasePart") and descendant:GetAttribute("PurchaseKey") == "AquariumDesigner" then
+				descendant:SetAttribute("PurchaseKind", nil)
+				descendant:SetAttribute("PurchaseKey", nil)
+				descendant:SetAttribute("CastleShopAction", "OpenShop")
+				descendant:SetAttribute("ShopTab", "SeaStars")
+				local prompt = descendant:FindFirstChildWhichIsA("ProximityPrompt")
+				if prompt then
+					prompt.Name = "CastleShopOpenPrompt"
+					prompt.ActionText = "Open Sea Stars"
+					prompt.ObjectText = "Sea Star Shop"
+				end
+			end
+			if descendant:IsA("TextLabel") and (descendant.Text == "Buy Pass" or string.find(descendant.Text, "Aquarium Designer", 1, true)) then
+				descendant.Text = "Open Shop"
+			end
+		end
+	end
+
 	for _, descendant in ipairs(castle:GetDescendants()) do
 		if descendant:IsA("BasePart") and descendant:FindFirstAncestor("AntiFallBorder") then
 			descendant.Transparency = 1
@@ -593,8 +630,8 @@ function CastleShopService.build()
 	makeBooth(boothsFolder, "VipAnglerBooth", -42, 18, GOLD, "VIP Angler Pass", "VIP tag, +10% coin boost, daily bait reward, exclusive lobby title.", {
 		{ kind = "GamePass", key = "VipAngler", label = "Buy VIP", actionText = "Buy VIP", objectText = "VIP Angler Pass" },
 	})
-	makeBooth(boothsFolder, "AquariumDesignerBooth", -14, 18, BLUE, "Aquarium Designer Pass", "Unlock aquarium themes, decoration slots, lighting, backgrounds, and display signs.", {
-		{ kind = "GamePass", key = "AquariumDesigner", label = "Buy Pass", actionText = "Buy Pass", objectText = "Aquarium Designer Pass" },
+	makeBooth(boothsFolder, "SeaStarBooth", -14, 18, BLUE, "Sea Star Shop", "Cosmetic currency and permanent aquarium themes.", {
+		{ kind = "OpenShop", key = "SeaStars", shopTab = "SeaStars", label = "Open Shop", actionText = "Open Sea Stars", objectText = "Sea Star Shop" },
 	})
 	makeBooth(boothsFolder, "BiggerBagBooth", 14, 18, GREEN, "Bigger Bag", "Increase your fish storage.", {
 		{ kind = "GamePass", key = "SmallBag", label = "+25 slots", actionText = "Buy +25", objectText = "Bigger Bag" },
