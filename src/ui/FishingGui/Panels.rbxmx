@@ -1,0 +1,49 @@
+<roblox version="4">
+	<External>null</External>
+	<External>nil</External>
+	<Item class="Folder" referent="RBX00000001">
+		<Properties>
+			<string name="Name">Panels</string>
+		</Properties>
+		<Item class="Frame" referent="RBX00000002">
+			<Properties>
+				<string name="Name">BagPanel</string>
+				<Color3 name="BackgroundColor3">
+					<R>1</R>
+					<G>1</G>
+					<B>1</B>
+				</Color3>
+				<float name="BackgroundTransparency">1</float>
+				<int name="BorderSizePixel">0</int>
+				<UDim2 name="Position">
+					<XS>0</XS><XO>0</XO><YS>0</YS><YO>0</YO>
+				</UDim2>
+				<UDim2 name="Size">
+					<XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO>
+				</UDim2>
+				<bool name="Visible">false</bool>
+				<int name="ZIndex">1</int>
+			</Properties>
+		</Item>
+		<Item class="Frame" referent="RBX00000003">
+			<Properties>
+				<string name="Name">FishdexPanel</string>
+				<Color3 name="BackgroundColor3">
+					<R>1</R>
+					<G>1</G>
+					<B>1</B>
+				</Color3>
+				<float name="BackgroundTransparency">1</float>
+				<int name="BorderSizePixel">0</int>
+				<UDim2 name="Position">
+					<XS>0</XS><XO>0</XO><YS>0</YS><YO>0</YO>
+				</UDim2>
+				<UDim2 name="Size">
+					<XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO>
+				</UDim2>
+				<bool name="Visible">false</bool>
+				<int name="ZIndex">1</int>
+			</Properties>
+		</Item>
+	</Item>
+</roblox>

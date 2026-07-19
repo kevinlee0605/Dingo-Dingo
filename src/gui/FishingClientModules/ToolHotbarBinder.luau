@@ -15,6 +15,7 @@ function ToolHotbarBinder.start(deps)
 	local player = deps.player
 	local setTab = deps.setTab
 	local hasPanel = deps.hasPanel
+	local isToolSwitchLocked = deps.isToolSwitchLocked
 	local watchLegacyAquariumViewerTools = deps.watchLegacyAquariumViewerTools
 
 	task.spawn(function()
@@ -24,6 +25,19 @@ function ToolHotbarBinder.start(deps)
 			local character = player.Character
 			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 			if humanoid then
+				humanoid:UnequipTools()
+			end
+		end
+
+		local function restoreFishingRod()
+			local character = player.Character
+			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+			local backpack = player:FindFirstChild("Backpack")
+			local rod = character and character:FindFirstChild("Fishing Rod")
+				or (backpack and backpack:FindFirstChild("Fishing Rod"))
+			if humanoid and rod and rod:IsA("Tool") then
+				humanoid:EquipTool(rod)
+			elseif humanoid then
 				humanoid:UnequipTools()
 			end
 		end
@@ -42,6 +56,19 @@ function ToolHotbarBinder.start(deps)
 			end
 
 			if connectedHudTools[tool] then
+				return
+			end
+
+			if tool.Name == "Fishing Rod" then
+				connectedHudTools[tool] = true
+				tool.Unequipped:Connect(function()
+					if isToolSwitchLocked and isToolSwitchLocked() then
+						task.defer(restoreFishingRod)
+					end
+				end)
+				tool.Destroying:Connect(function()
+					connectedHudTools[tool] = nil
+				end)
 				return
 			end
 
@@ -92,6 +119,14 @@ function ToolHotbarBinder.start(deps)
 					return
 				end
 				lastActivatedAt = now
+
+				if shouldUnequipAfterOpen
+					and isToolSwitchLocked
+					and isToolSwitchLocked()
+				then
+					task.defer(restoreFishingRod)
+					return
+				end
 
 				if source == "Equipped" and equippedMessage then
 					print(equippedMessage)

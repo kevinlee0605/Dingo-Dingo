@@ -1,0 +1,711 @@
+local GameConfig = {}
+local IslandConfig = require(script.Parent:WaitForChild("IslandConfig"))
+local EconomyConfig = require(script.Parent:WaitForChild("EconomyConfig"))
+
+GameConfig.MAX_LEVEL = 30
+GameConfig.BASE_BACKPACK_SIZE = 30
+
+GameConfig.RarityColors = {
+	Common = Color3.fromRGB(238, 238, 238),
+	Uncommon = Color3.fromRGB(80, 210, 120),
+	Rare = Color3.fromRGB(80, 150, 255),
+	Epic = Color3.fromRGB(175, 100, 255),
+	Legendary = Color3.fromRGB(255, 156, 56),
+	Mythic = Color3.fromRGB(255, 70, 90),
+}
+
+GameConfig.RarityXP = {
+	Common = 8,
+	Uncommon = 16,
+	Rare = 32,
+	Epic = 70,
+	Legendary = 180,
+	Mythic = 500,
+}
+
+GameConfig.FishingMinigame = {
+	Defaults = {
+		baseBarSize = 0.24,
+		progressGainPerSecond = 0.34,
+		progressDrainPerSecond = 0.16,
+		gravity = 1.8,
+		lift = 2.75,
+		damping = 0.90,
+		bounceDamping = 0.36,
+		maxBarVelocity = 1.65,
+		startProgress = 0.34,
+		minSuccessDuration = 1.75,
+		maxDuration = 35,
+	},
+	-- Multi-phase catches keep the full standard reel time, then receive time for their required phases.
+	ExtraDurationByRarity = {
+		Epic = 8,
+		Legendary = 10,
+		Mythic = 20,
+	},
+	RodBonuses = {
+		WoodenRod = {
+			barSizeMultiplier = 1,
+			progressGainMultiplier = 1,
+			progressDrainMultiplier = 1,
+		},
+		IronRod = {
+			barSizeMultiplier = 1.10,
+			progressGainMultiplier = 1.05,
+			progressDrainMultiplier = 0.94,
+		},
+		GoldenRod = {
+			barSizeMultiplier = 1.20,
+			progressGainMultiplier = 1.08,
+			progressDrainMultiplier = 0.90,
+		},
+		EmeraldRod = {
+			barSizeMultiplier = 1.35,
+			progressGainMultiplier = 1.14,
+			progressDrainMultiplier = 0.84,
+		},
+		OceanRod = {
+			barSizeMultiplier = 1.50,
+			progressGainMultiplier = 1.20,
+			progressDrainMultiplier = 0.78,
+		},
+	},
+	RarityDifficulty = {
+		Common = {
+			moveSpeed = 0.16,
+			acceleration = 4.2,
+			turnIntervalMin = 2.2,
+			turnIntervalMax = 3.4,
+			jitter = 0.01,
+			pauseChance = 0.55,
+			pauseMin = 0.35,
+			pauseMax = 0.9,
+			jumpChance = 0,
+			targetSlack = 0.035,
+		},
+		Uncommon = {
+			moveSpeed = 0.22,
+			acceleration = 5.2,
+			turnIntervalMin = 1.5,
+			turnIntervalMax = 2.4,
+			jitter = 0.025,
+			pauseChance = 0.25,
+			pauseMin = 0.2,
+			pauseMax = 0.55,
+			jumpChance = 0.18,
+			jumpMin = 0.10,
+			jumpMax = 0.18,
+			targetSlack = 0.03,
+		},
+		Rare = {
+			moveSpeed = 0.31,
+			acceleration = 6.6,
+			turnIntervalMin = 0.95,
+			turnIntervalMax = 1.55,
+			jitter = 0.04,
+			pauseChance = 0.16,
+			pauseMin = 0.12,
+			pauseMax = 0.38,
+			jumpChance = 0.28,
+			jumpMin = 0.18,
+			jumpMax = 0.32,
+			targetSlack = 0.026,
+		},
+		Epic = {
+			moveSpeed = 0.43,
+			acceleration = 8.5,
+			turnIntervalMin = 0.62,
+			turnIntervalMax = 1.08,
+			jitter = 0.065,
+			pauseChance = 0.18,
+			pauseMin = 0.08,
+			pauseMax = 0.24,
+			jumpChance = 0.38,
+			jumpMin = 0.28,
+			jumpMax = 0.44,
+			targetSlack = 0.022,
+		},
+		Legendary = {
+			moveSpeed = 0.54,
+			acceleration = 10.5,
+			turnIntervalMin = 0.42,
+			turnIntervalMax = 0.78,
+			jitter = 0.085,
+			pauseChance = 0.08,
+			pauseMin = 0.05,
+			pauseMax = 0.16,
+			jumpChance = 0.50,
+			jumpMin = 0.35,
+			jumpMax = 0.58,
+			burstChance = 0.18,
+			burstMultiplier = 1.35,
+			burstMin = 0.25,
+			burstMax = 0.45,
+			targetSlack = 0.018,
+		},
+		Mythic = {
+			moveSpeed = 0.62,
+			acceleration = 12.5,
+			turnIntervalMin = 0.28,
+			turnIntervalMax = 0.58,
+			jitter = 0.11,
+			pauseChance = 0.05,
+			pauseMin = 0.04,
+			pauseMax = 0.12,
+			jumpChance = 0.58,
+			jumpMin = 0.42,
+			jumpMax = 0.68,
+			burstChance = 0.30,
+			burstMultiplier = 1.55,
+			burstMin = 0.18,
+			burstMax = 0.38,
+			targetSlack = 0.014,
+		},
+	},
+}
+
+function GameConfig.getFishingMinigameConfig(rarity, rodId)
+	local defaults = GameConfig.FishingMinigame.Defaults
+	local difficulty = GameConfig.FishingMinigame.RarityDifficulty[rarity] or GameConfig.FishingMinigame.RarityDifficulty.Common
+	local rodBonus = GameConfig.FishingMinigame.RodBonuses[rodId] or GameConfig.FishingMinigame.RodBonuses.WoodenRod
+
+	return {
+		barSize = math.clamp(defaults.baseBarSize * rodBonus.barSizeMultiplier, 0.16, 0.58),
+		progressGainPerSecond = defaults.progressGainPerSecond * rodBonus.progressGainMultiplier,
+		progressDrainPerSecond = defaults.progressDrainPerSecond * rodBonus.progressDrainMultiplier,
+		gravity = defaults.gravity,
+		lift = defaults.lift,
+		damping = defaults.damping,
+		bounceDamping = defaults.bounceDamping,
+		maxBarVelocity = defaults.maxBarVelocity,
+		startProgress = defaults.startProgress,
+		minSuccessDuration = defaults.minSuccessDuration,
+		maxDuration = defaults.maxDuration + (GameConfig.FishingMinigame.ExtraDurationByRarity[rarity] or 0),
+		difficulty = difficulty,
+	}
+end
+
+GameConfig.Casting = {
+	chargeSpeed = 1.05,
+	bounceSpeed = 1.15,
+	defaultPower = 0.5,
+	minDistance = 18,
+	maxDistance = 72,
+	perfectCenter = 0.72,
+	perfectRadius = 0.045,
+	perfectRadiusMin = 0.035,
+	perfectRadiusMax = 0.058,
+	perfectEdgeMargin = 0.08,
+	minPerfectCenterShift = 0.08,
+	greatExtraRadius = 0.065,
+	goodExtraRadius = 0.20,
+	castConfigLifetime = 20,
+	greatRadius = 0.11,
+	goodRadius = 0.24,
+	meterSpeeds = {
+		{ name = "Slow", min = 0.62, max = 0.78 },
+		{ name = "Medium", min = 0.86, max = 1.04 },
+		{ name = "Fast", min = 1.10, max = 1.28 },
+	},
+	RodPerfectZoneBonuses = {
+		WoodenRod = 0,
+		IronRod = 0.05,
+		GoldenRod = 0.10,
+		EmeraldRod = 0.15,
+		OceanRod = 0.20,
+	},
+	Ratings = {
+		Perfect = {
+			displayName = "Perfect!",
+			biteSpeedMultiplier = 0.85,
+			progressGainMultiplier = 1.10,
+			countsAsPerfect = true,
+			sparkle = true,
+		},
+		Great = {
+			displayName = "Great!",
+			biteSpeedMultiplier = 0.92,
+			progressGainMultiplier = 1.05,
+		},
+		Good = {
+			displayName = "Good",
+			biteSpeedMultiplier = 1,
+			progressGainMultiplier = 1,
+		},
+		Weak = {
+			displayName = "Weak",
+			biteSpeedMultiplier = 1.10,
+			progressGainMultiplier = 1,
+		},
+	},
+}
+
+GameConfig.FishImageIds = {
+	SmallFish = "rbxassetid://92425635797325",
+	Carp = "rbxassetid://85530716090863",
+	Bluegill = "rbxassetid://139664436647833",
+	Bass = "rbxassetid://124462000894673",
+	Catfish = "rbxassetid://84885381823789",
+	GoldenCarp = "rbxassetid://138971721449676",
+	Koi = "rbxassetid://135595232171014",
+	PondGuardian = "rbxassetid://86635246735309",
+}
+
+GameConfig.FishImageFiles = {
+	SmallFish = "assets/fish_icons/SmallFish.png",
+	Carp = "assets/fish_icons/Carp.png",
+	Bluegill = "assets/fish_icons/Bluegill.png",
+	Bass = "assets/fish_icons/Bass.png",
+	Catfish = "assets/fish_icons/Catfish.png",
+	GoldenCarp = "assets/fish_icons/GoldenCarp.png",
+	Koi = "assets/fish_icons/Koi.png",
+	PondGuardian = "assets/fish_icons/PondGuardian.png",
+}
+
+GameConfig.RodImageIds = {
+	WoodenRod = "rbxassetid://105149981299569",
+	IronRod = "rbxassetid://101448937429933",
+	GoldenRod = "rbxassetid://106139724127905",
+	EmeraldRod = "rbxassetid://70525367176824",
+	OceanRod = "rbxassetid://113063482139117",
+}
+
+GameConfig.RodImageFiles = {
+	WoodenRod = "assets/rod_icons_transparent/WoodenRod.png",
+	IronRod = "assets/rod_icons_transparent/IronRod.png",
+	GoldenRod = "assets/rod_icons_transparent/GoldenRod.png",
+	EmeraldRod = "assets/rod_icons_transparent/EmeraldRod.png",
+	OceanRod = "assets/rod_icons_transparent/OceanRod.png",
+}
+
+GameConfig.BaitImageIds = {
+	BasicBait = "rbxassetid://83977711719065",
+	FreshBait = "rbxassetid://112896536673425",
+	TastyBait = "rbxassetid://126177305532970",
+	LuckyBait = "rbxassetid://137577581082499",
+	GlowBait = "rbxassetid://103871393730446",
+	MysticBait = "rbxassetid://89466037376797",
+	PondGuardianBait = "rbxassetid://98810046583564",
+}
+
+GameConfig.AquariumCapacities = {
+	[1] = 18,
+	[2] = 40,
+	[3] = 80,
+	[4] = 140,
+}
+
+GameConfig.AquariumUpgradeCosts = {
+	[2] = 1500,
+	[3] = 10000,
+	[4] = 40000,
+}
+
+GameConfig.FishAquariumSpace = {
+	SmallFish = 1,
+	Carp = 2,
+	Bluegill = 2,
+	Bass = 3,
+	Catfish = 3,
+	GoldenCarp = 4,
+	Koi = 5,
+	PondGuardian = 10,
+}
+
+function GameConfig.getAquariumFishSpace(fishOrId)
+	local fishId = fishOrId
+	local rarity = nil
+
+	if type(fishOrId) == "table" then
+		fishId = fishOrId.id or fishOrId.imageKey
+		rarity = fishOrId.rarity
+	end
+
+	if fishId and GameConfig.FishAquariumSpace[fishId] then
+		return GameConfig.FishAquariumSpace[fishId]
+	end
+
+	local raritySpace = {
+		Common = 1,
+		Uncommon = 3,
+		Rare = 4,
+		Epic = 5,
+		Legendary = 10,
+		Mythic = 14,
+	}
+
+	return raritySpace[rarity] or 2
+end
+
+function GameConfig.getAquariumUsedSpace(fishList)
+	local total = 0
+	for _, fish in ipairs(fishList or {}) do
+		total += GameConfig.getAquariumFishSpace(fish)
+	end
+	return total
+end
+
+GameConfig.Rods = {
+	WoodenRod = {
+		displayName = "Wooden Rod",
+		cost = 0,
+		unlockLevel = 1,
+		luck = 0,
+		speed = 1,
+		zoneBonus = 0,
+		order = 1,
+	},
+	IronRod = {
+		displayName = "Iron Rod",
+		cost = 1500,
+		unlockLevel = 5,
+		previousRod = "WoodenRod",
+		resourceCosts = { IronScrap = 12 },
+		luck = 0.10,
+		speed = 0.92,
+		zoneBonus = 0.04,
+		order = 2,
+	},
+	GoldenRod = {
+		displayName = "Golden Rod",
+		cost = 5000,
+		unlockLevel = 12,
+		previousRod = "IronRod",
+		resourceCosts = { GoldNugget = 18 },
+		luck = 0.20,
+		speed = 0.84,
+		zoneBonus = 0.07,
+		order = 3,
+	},
+	EmeraldRod = {
+		displayName = "Emerald Rod",
+		cost = 15000,
+		unlockLevel = 20,
+		previousRod = "GoldenRod",
+		resourceCosts = { EmeraldShard = 24 },
+		luck = 0.35,
+		speed = 0.76,
+		zoneBonus = 0.10,
+		order = 4,
+	},
+	OceanRod = {
+		displayName = "Ocean Rod",
+		cost = 35000,
+		unlockLevel = 25,
+		previousRod = "EmeraldRod",
+		resourceCosts = { OceanShard = 20 },
+		luck = 0.50,
+		speed = 0.68,
+		zoneBonus = 0.14,
+		order = 5,
+	},
+}
+
+GameConfig.BasicBaitId = "BasicBait"
+
+GameConfig.Baits = {
+	BasicBait = {
+		displayName = "Basic Bait",
+		cost = 0,
+		purchaseAmount = 0,
+		unlockLevel = 1,
+		unlimited = true,
+		biteSpeedMultiplier = 1,
+		rareChanceBonus = 0,
+		xpMultiplier = 1,
+		valueMultiplier = 1,
+		order = 1,
+		description = "Default fishing.",
+	},
+	FreshBait = {
+		displayName = "Fresh Bait",
+		cost = 80,
+		purchaseAmount = 10,
+		unlockLevel = 1,
+		biteSpeedMultiplier = 0.88,
+		rareChanceBonus = 0,
+		xpMultiplier = 1,
+		valueMultiplier = 1,
+		order = 2,
+		description = "Slightly faster bites.",
+	},
+	TastyBait = {
+		displayName = "Tasty Bait",
+		cost = 140,
+		purchaseAmount = 10,
+		unlockLevel = 3,
+		biteSpeedMultiplier = 1,
+		rareChanceBonus = 0,
+		xpMultiplier = 1,
+		valueMultiplier = 1.15,
+		order = 3,
+		description = "Fish sell for slightly more.",
+	},
+	LuckyBait = {
+		displayName = "Lucky Bait",
+		cost = 220,
+		purchaseAmount = 10,
+		unlockLevel = 5,
+		biteSpeedMultiplier = 1,
+		rareChanceBonus = 0.15,
+		xpMultiplier = 1,
+		valueMultiplier = 1,
+		order = 4,
+		description = "Slightly better rare fish odds.",
+	},
+	GlowBait = {
+		displayName = "Glow Bait",
+		cost = 300,
+		purchaseAmount = 10,
+		unlockLevel = 8,
+		biteSpeedMultiplier = 1,
+		rareChanceBonus = 0,
+		xpMultiplier = 1.20,
+		valueMultiplier = 1,
+		order = 5,
+		description = "Fish give more Fishing XP.",
+	},
+	MysticBait = {
+		displayName = "Mystic Bait",
+		cost = 500,
+		purchaseAmount = 10,
+		unlockLevel = 12,
+		biteSpeedMultiplier = 0.92,
+		rareChanceBonus = 0.10,
+		xpMultiplier = 1.12,
+		valueMultiplier = 1.10,
+		order = 6,
+		description = "Small boost to bites, luck, XP, and value.",
+	},
+	PondGuardianBait = {
+		displayName = "Pond Guardian Bait",
+		cost = 1000,
+		purchaseAmount = 10,
+		unlockLevel = 20,
+		biteSpeedMultiplier = 1,
+		rareChanceBonus = 0,
+		xpMultiplier = 1,
+		valueMultiplier = 1,
+		targetFishId = "PondGuardian",
+		targetFishChanceMultiplier = 8,
+		order = 7,
+		description = "Greatly increases Pond Guardian chance only.",
+	},
+}
+
+GameConfig.BaitOrder = { "BasicBait", "FreshBait", "TastyBait", "LuckyBait", "GlowBait", "MysticBait", "PondGuardianBait" }
+
+function GameConfig.getBait(baitId)
+	return GameConfig.Baits[baitId] or GameConfig.Baits[GameConfig.BasicBaitId]
+end
+
+GameConfig.Lobby = {
+	displayName = "Seaside Island",
+	islandId = IslandConfig.SeasideIslandId,
+	center = Vector3.new(-170, 8, -452),
+	spawnPosition = Vector3.new(-147, 10, -492),
+	bounds = {
+		minX = -325,
+		maxX = -15,
+		minZ = -605,
+		maxZ = -300,
+	},
+}
+
+GameConfig.Biomes = {
+	LilyshoreIsland = {
+		displayName = "Lilyshore Island",
+		economyTier = EconomyConfig.IslandTiers.LilyshoreIsland,
+		legacyId = "BeginnerPond",
+		icon = "Pond",
+		unlockLevel = 1,
+		cost = 0,
+		position = Vector3.new(0, 8, 0),
+		color = Color3.fromRGB(74, 163, 104),
+		fish = {
+			{ id = "SmallFish", name = "Small Fish", rarity = "Common", chance = 35, value = 8, imageKey = "SmallFish" },
+			{ id = "Carp", name = "Carp", rarity = "Common", chance = 25, value = 12, imageKey = "Carp" },
+			{ id = "Bluegill", name = "Bluegill", rarity = "Common", chance = 18, value = 16, imageKey = "Bluegill" },
+			{ id = "Bass", name = "Bass", rarity = "Uncommon", chance = 10, value = 30, imageKey = "Bass" },
+			{ id = "Catfish", name = "Catfish", rarity = "Uncommon", chance = 7, value = 50, imageKey = "Catfish" },
+			{ id = "GoldenCarp", name = "Golden Carp", rarity = "Rare", chance = 4, value = 120, imageKey = "GoldenCarp" },
+			{ id = "Koi", name = "Koi", rarity = "Epic", chance = 0.9, value = 350, imageKey = "Koi" },
+			{ id = "PondGuardian", name = "Pond Guardian", rarity = "Legendary", chance = 0.1, value = 2500, imageKey = "PondGuardian" },
+		},
+	},
+	RiverbendIsland = {
+		displayName = "Riverbend Island",
+		economyTier = EconomyConfig.IslandTiers.RiverbendIsland,
+		legacyId = "River",
+		icon = "River",
+		unlockLevel = 10,
+		cost = 4000,
+		requiredRod = "IronRod",
+		position = Vector3.new(180, 8, 0),
+		color = Color3.fromRGB(70, 135, 190),
+		fish = {
+			{ id = "Trout", name = "Trout", rarity = "Common", chance = 28, value = 18 },
+			{ id = "Perch", name = "Perch", rarity = "Common", chance = 22, value = 24 },
+			{ id = "Salmon", name = "Salmon", rarity = "Uncommon", chance = 18, value = 40 },
+			{ id = "Pike", name = "Pike", rarity = "Uncommon", chance = 12, value = 60 },
+			{ id = "Sturgeon", name = "Sturgeon", rarity = "Rare", chance = 8, value = 120 },
+			{ id = "Eel", name = "Eel", rarity = "Rare", chance = 6, value = 180 },
+			{ id = "RainbowSalmon", name = "Rainbow Salmon", rarity = "Epic", chance = 5, value = 450 },
+			{ id = "RiverDragon", name = "River Dragon", rarity = "Legendary", chance = 1, value = 3000 },
+		},
+	},
+	CoralCoastIsland = {
+		displayName = "Coral Coast Island",
+		economyTier = EconomyConfig.IslandTiers.CoralCoastIsland,
+		legacyId = "Ocean",
+		icon = "Ocean",
+		unlockLevel = 25,
+		cost = 25000,
+		requiredRod = "OceanRod",
+		position = Vector3.new(360, 8, 0),
+		color = Color3.fromRGB(45, 105, 210),
+		fish = {
+			{ id = "Sardine", name = "Sardine", rarity = "Common", chance = 25, value = 30 },
+			{ id = "Mackerel", name = "Mackerel", rarity = "Common", chance = 20, value = 42 },
+			{ id = "Tuna", name = "Tuna", rarity = "Uncommon", chance = 18, value = 75 },
+			{ id = "Octopus", name = "Octopus", rarity = "Uncommon", chance = 12, value = 125 },
+			{ id = "Swordfish", name = "Swordfish", rarity = "Rare", chance = 10, value = 230 },
+			{ id = "Stingray", name = "Stingray", rarity = "Rare", chance = 7, value = 340 },
+			{ id = "Dolphin", name = "Dolphin", rarity = "Epic", chance = 5, value = 800 },
+			{ id = "Shark", name = "Shark", rarity = "Legendary", chance = 2.5, value = 2200 },
+			{ id = "Whale", name = "Whale", rarity = "Mythic", chance = 0.5, value = 9000 },
+		},
+	},
+}
+
+GameConfig.Biomes.BeginnerPond = GameConfig.Biomes.LilyshoreIsland
+GameConfig.Biomes.River = GameConfig.Biomes.RiverbendIsland
+GameConfig.Biomes.Ocean = GameConfig.Biomes.CoralCoastIsland
+GameConfig.Islands = GameConfig.Biomes
+GameConfig.IslandOrder = table.clone(IslandConfig.Order)
+GameConfig.BiomeOrder = GameConfig.IslandOrder
+GameConfig.LegacyBiomeIdToIslandId = IslandConfig.LegacyIdToIslandId
+GameConfig.IslandIdToLegacyBiomeId = IslandConfig.IslandIdToLegacyId
+GameConfig.RodOrder = { "WoodenRod", "IronRod", "GoldenRod", "EmeraldRod", "OceanRod" }
+
+function GameConfig.normalizeIslandId(areaId)
+	local normalized = IslandConfig.normalizeIslandId(areaId)
+	return GameConfig.Biomes[normalized] and normalized or nil
+end
+
+function GameConfig.normalizeBiomeId(areaId)
+	return GameConfig.normalizeIslandId(areaId)
+end
+
+function GameConfig.getLevelFromXP(xp)
+	local level = 1
+	local remaining = GameConfig.clampXP(xp)
+
+	while level < GameConfig.MAX_LEVEL do
+		local needed = GameConfig.getXPForNextLevel(level)
+		if remaining < needed then
+			break
+		end
+
+		remaining -= needed
+		level += 1
+	end
+
+	return level, remaining, GameConfig.getXPForNextLevel(level)
+end
+
+function GameConfig.getXPForNextLevel(level)
+	if level >= GameConfig.MAX_LEVEL then
+		return 0
+	end
+
+	return 100 + ((level - 1) * 45)
+end
+
+function GameConfig.getFishCount()
+	local total = 0
+
+	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
+		total += #GameConfig.Biomes[biomeId].fish
+	end
+
+	return total
+end
+
+function GameConfig.findFish(fishId)
+	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
+		local biome = GameConfig.Biomes[biomeId]
+		for _, fish in ipairs(biome.fish) do
+			if fish.id == fishId then
+				return fish, biomeId
+			end
+		end
+	end
+
+	return nil, nil
+end
+
+function GameConfig.getFishImage(fishId)
+	local imageId = GameConfig.FishImageIds[fishId]
+	if type(imageId) == "string" and imageId ~= "" then
+		return imageId
+	end
+
+	return nil
+end
+
+function GameConfig.getRodImage(rodId)
+	local imageId = GameConfig.RodImageIds[rodId]
+	if type(imageId) == "string" and imageId ~= "" then
+		return imageId
+	end
+
+	return nil
+end
+
+function GameConfig.getTotalXPForLevel(level)
+	local total = 0
+	local targetLevel = math.clamp(math.floor(tonumber(level) or 1), 1, GameConfig.MAX_LEVEL)
+	for currentLevel = 1, targetLevel - 1 do
+		total += GameConfig.getXPForNextLevel(currentLevel)
+	end
+	return total
+end
+
+function GameConfig.getMaxXP()
+	return GameConfig.getTotalXPForLevel(GameConfig.MAX_LEVEL)
+end
+
+function GameConfig.clampXP(xp)
+	return math.clamp(math.floor(tonumber(xp) or 0), 0, GameConfig.getMaxXP())
+end
+
+function GameConfig.getBaitImage(baitId)
+	local imageId = GameConfig.BaitImageIds[baitId]
+	if type(imageId) == "string" and imageId ~= "" then
+		return imageId
+	end
+
+	return nil
+end
+
+function GameConfig.getBiomeUnlockText(biomeId)
+	biomeId = GameConfig.normalizeIslandId(biomeId)
+	local biome = GameConfig.Biomes[biomeId]
+	if not biome then
+		return "Unknown"
+	end
+
+	if biome.cost == 0 then
+		return "Free"
+	end
+
+	local text = string.format("Level %d + %d Coins", biome.unlockLevel, biome.cost)
+	if biome.requiredRod and GameConfig.Rods[biome.requiredRod] then
+		text ..= " + " .. GameConfig.Rods[biome.requiredRod].displayName
+	end
+
+	return text
+end
+
+return GameConfig

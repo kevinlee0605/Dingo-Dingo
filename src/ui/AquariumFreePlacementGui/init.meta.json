@@ -1,0 +1,17 @@
+{
+  "className": "ScreenGui",
+  "properties": {
+    "Attributes": {
+      "AuthoredUiV2": { "Bool": true },
+      "AquariumPlacementUiV2": { "Bool": true }
+    },
+    "DisplayOrder": 5000,
+    "Enabled": true,
+    "IgnoreGuiInset": true,
+    "ClipToDeviceSafeArea": true,
+    "SafeAreaCompatibility": "FullscreenExtension",
+    "ScreenInsets": "DeviceSafeInsets",
+    "ResetOnSpawn": false,
+    "ZIndexBehavior": "Sibling"
+  }
+}

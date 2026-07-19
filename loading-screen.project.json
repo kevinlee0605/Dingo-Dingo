@@ -1,0 +1,21 @@
+{
+  "name": "Fishy Fish - Safe Client UI",
+  "servePlaceIds": [124368026422180],
+  "tree": {
+    "$className": "DataModel",
+    "$ignoreUnknownInstances": true,
+    "ReplicatedFirst": {
+      "$ignoreUnknownInstances": true,
+      "$path": "src/replicatedfirst"
+    },
+    "StarterPlayer": {
+      "$ignoreUnknownInstances": true,
+      "StarterPlayerScripts": {
+        "$ignoreUnknownInstances": true,
+        "ResponsiveUiAdapter": {
+          "$path": "src/starterplayer/AuthoredUiController.client.luau"
+        }
+      }
+    }
+  }
+}

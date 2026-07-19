@@ -275,6 +275,8 @@ function HudControls.create(deps)
 		end
 
 		local function applyAudioSettings()
+			SoundService:SetAttribute("FishyFishMusicEnabled", musicEnabled)
+			SoundService:SetAttribute("FishyFishSFXEnabled", sfxEnabled)
 			for _, descendant in ipairs(SoundService:GetDescendants()) do
 				if descendant:IsA("Sound") then
 					local originalVolume = getOriginalSoundVolume(descendant)

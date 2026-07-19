@@ -1,0 +1,481 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+	<Meta name="ExplicitAutoJoints">true</Meta>
+	<External>null</External>
+	<External>nil</External>
+	<Item class="Frame" referent="RBX00000001">
+		<Properties>
+			<string name="Name">ModernCastPowerUI</string>
+			<Vector2 name="AnchorPoint">
+				<X>0</X>
+				<Y>0</Y>
+			</Vector2>
+			<Color3 name="BackgroundColor3">
+				<R>0.03137254901960784</R>
+				<G>0.10980392156862745</G>
+				<B>0.23921568627450981</B>
+			</Color3>
+			<float name="BackgroundTransparency">1</float>
+			<int name="BorderSizePixel">0</int>
+			<bool name="ClipsDescendants">false</bool>
+			<int name="LayoutOrder">0</int>
+			<UDim2 name="Position">
+				<XS>0</XS>
+				<XO>0</XO>
+				<YS>0</YS>
+				<YO>0</YO>
+			</UDim2>
+			<UDim2 name="Size">
+				<XS>1</XS>
+				<XO>0</XO>
+				<YS>1</YS>
+				<YO>0</YO>
+			</UDim2>
+			<bool name="Visible">false</bool>
+			<int name="ZIndex">140</int>
+		</Properties>
+		<Item class="Frame" referent="RBX00000002">
+			<Properties>
+				<string name="Name">CastPowerContent</string>
+				<Vector2 name="AnchorPoint">
+					<X>0.5</X>
+					<Y>0.5</Y>
+				</Vector2>
+				<Color3 name="BackgroundColor3">
+					<R>0.03137254901960784</R>
+					<G>0.10980392156862745</G>
+					<B>0.23921568627450981</B>
+				</Color3>
+				<float name="BackgroundTransparency">1</float>
+				<int name="BorderSizePixel">0</int>
+				<bool name="ClipsDescendants">false</bool>
+				<int name="LayoutOrder">0</int>
+				<UDim2 name="Position">
+					<XS>0.5</XS>
+					<XO>0</XO>
+					<YS>0.64</YS>
+					<YO>0</YO>
+				</UDim2>
+				<UDim2 name="Size">
+					<XS>0</XS>
+					<XO>1280</XO>
+					<YS>0</YS>
+					<YO>340</YO>
+				</UDim2>
+				<bool name="Visible">false</bool>
+				<int name="ZIndex">140</int>
+			</Properties>
+			<Item class="UIScale" referent="RBX00000003">
+				<Properties>
+					<string name="Name">CastPowerScale</string>
+					<float name="Scale">1</float>
+				</Properties>
+			</Item>
+			<Item class="TextLabel" referent="RBX00000004">
+				<Properties>
+					<string name="Name">ChargeInstruction</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>0.03137254901960784</R>
+						<G>0.10980392156862745</G>
+						<B>0.23921568627450981</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<token name="Font">26</token>
+					<int name="LayoutOrder">0</int>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>-640</YO>
+					</UDim2>
+					<bool name="RichText">true</bool>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>1280</XO>
+						<YS>0</YS>
+						<YO>78</YO>
+					</UDim2>
+					<string name="Text">Hold to charge. &lt;font color="#043FD0"&gt;Release to cast.&lt;/font&gt;</string>
+					<Color3 name="TextColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<bool name="TextScaled">true</bool>
+					<float name="TextSize">30</float>
+					<Color3 name="TextStrokeColor3">
+						<R>0.0</R>
+						<G>0.0</G>
+						<B>0.0</B>
+					</Color3>
+					<float name="TextStrokeTransparency">0</float>
+					<float name="TextTransparency">0</float>
+					<bool name="TextWrapped">true</bool>
+					<token name="TextXAlignment">2</token>
+					<token name="TextYAlignment">1</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">145</int>
+				</Properties>
+				<Item class="UITextSizeConstraint" referent="RBX00000005">
+					<Properties>
+						<string name="Name">UITextSizeConstraint</string>
+						<int name="MaxTextSize">30</int>
+						<int name="MinTextSize">24</int>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Frame" referent="RBX00000006">
+				<Properties>
+					<string name="Name">CastPowerTrack</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>0.03137254901960784</R>
+						<G>0.10980392156862745</G>
+						<B>0.23921568627450981</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<int name="LayoutOrder">0</int>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>90</XO>
+						<YS>0</YS>
+						<YO>130</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>1100</XO>
+						<YS>0</YS>
+						<YO>142</YO>
+					</UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">142</int>
+				</Properties>
+				<Item class="Frame" referent="RBX00000007">
+					<Properties>
+						<string name="Name">HoldingBar</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">true</bool>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>1100</XO>
+							<YS>0</YS>
+							<YO>142</YO>
+						</UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">142</int>
+					</Properties>
+					<Item class="ImageLabel" referent="RBX00000008">
+						<Properties>
+							<string name="Name">Image</string>
+							<Vector2 name="AnchorPoint">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.03137254901960784</R>
+								<G>0.10980392156862745</G>
+								<B>0.23921568627450981</B>
+							</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<Content name="Image">
+								<url>rbxassetid://94855129831884</url>
+							</Content>
+							<int name="LayoutOrder">0</int>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>-91</XO>
+								<YS>0</YS>
+								<YO>-91</YO>
+							</UDim2>
+							<token name="ScaleType">0</token>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>1277</XO>
+								<YS>0</YS>
+								<YO>319</YO>
+							</UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">142</int>
+						</Properties>
+					</Item>
+				</Item>
+				<Item class="Frame" referent="RBX00000009">
+					<Properties>
+						<string name="Name">MotionArea</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>38</XO>
+							<YS>0</YS>
+							<YO>4</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>1024</XO>
+							<YS>0</YS>
+							<YO>134</YO>
+						</UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">143</int>
+					</Properties>
+					<Item class="Frame" referent="RBX0000000A">
+						<Properties>
+							<string name="Name">TargetIcon</string>
+							<Vector2 name="AnchorPoint">
+								<X>0.5</X>
+								<Y>0.5</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.03137254901960784</R>
+								<G>0.10980392156862745</G>
+								<B>0.23921568627450981</B>
+							</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">true</bool>
+							<int name="LayoutOrder">0</int>
+							<UDim2 name="Position">
+								<XS>0.72</XS>
+								<XO>0</XO>
+								<YS>0.5</YS>
+								<YO>0</YO>
+							</UDim2>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>106</XO>
+								<YS>0</YS>
+								<YO>166</YO>
+							</UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">146</int>
+						</Properties>
+						<Item class="ImageLabel" referent="RBX0000000B">
+							<Properties>
+								<string name="Name">Image</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>0.03137254901960784</R>
+									<G>0.10980392156862745</G>
+									<B>0.23921568627450981</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<Content name="Image">
+									<url>rbxassetid://117292116385823</url>
+								</Content>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>-45</XO>
+									<YS>0</YS>
+									<YO>-57</YO>
+								</UDim2>
+								<token name="ScaleType">0</token>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>196</XO>
+									<YS>0</YS>
+									<YO>291</YO>
+								</UDim2>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">146</int>
+							</Properties>
+						</Item>
+					</Item>
+					<Item class="Frame" referent="RBX0000000C">
+						<Properties>
+							<string name="Name">MovingKnob</string>
+							<Vector2 name="AnchorPoint">
+								<X>0.5</X>
+								<Y>0.5</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.03137254901960784</R>
+								<G>0.10980392156862745</G>
+								<B>0.23921568627450981</B>
+							</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">true</bool>
+							<int name="LayoutOrder">0</int>
+							<UDim2 name="Position">
+								<XS>0.012</XS>
+								<XO>0</XO>
+								<YS>0.5</YS>
+								<YO>0</YO>
+							</UDim2>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>38</XO>
+								<YS>0</YS>
+								<YO>142</YO>
+							</UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">148</int>
+						</Properties>
+						<Item class="ImageLabel" referent="RBX0000000D">
+							<Properties>
+								<string name="Name">Image</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>0.03137254901960784</R>
+									<G>0.10980392156862745</G>
+									<B>0.23921568627450981</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<Content name="Image">
+									<url>rbxassetid://126560428939799</url>
+								</Content>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>-34</XO>
+									<YS>0</YS>
+									<YO>-44</YO>
+								</UDim2>
+								<token name="ScaleType">0</token>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>105</XO>
+									<YS>0</YS>
+									<YO>239</YO>
+								</UDim2>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">148</int>
+							</Properties>
+						</Item>
+					</Item>
+				</Item>
+			</Item>
+		</Item>
+		<Item class="Frame" referent="RBX0000000E">
+			<Properties>
+				<string name="Name">SparkleLayer</string>
+				<Vector2 name="AnchorPoint">
+					<X>0.5</X>
+					<Y>0.5</Y>
+				</Vector2>
+				<Color3 name="BackgroundColor3">
+					<R>0.03137254901960784</R>
+					<G>0.10980392156862745</G>
+					<B>0.23921568627450981</B>
+				</Color3>
+				<float name="BackgroundTransparency">1</float>
+				<int name="BorderSizePixel">0</int>
+				<bool name="ClipsDescendants">false</bool>
+				<int name="LayoutOrder">0</int>
+				<UDim2 name="Position">
+					<XS>0.5</XS>
+					<XO>0</XO>
+					<YS>0.64</YS>
+					<YO>0</YO>
+				</UDim2>
+				<UDim2 name="Size">
+					<XS>0</XS>
+					<XO>1280</XO>
+					<YS>0</YS>
+					<YO>340</YO>
+				</UDim2>
+				<bool name="Visible">false</bool>
+				<int name="ZIndex">159</int>
+			</Properties>
+			<Item class="UIScale" referent="RBX0000000F">
+				<Properties>
+					<string name="Name">SparkleScale</string>
+					<float name="Scale">1</float>
+				</Properties>
+			</Item>
+			<Item class="Frame" referent="RBX00000010">
+				<Properties>
+					<string name="Name">PerfectCastSparkleTemplate</string>
+					<Vector2 name="AnchorPoint">
+						<X>0.5</X>
+						<Y>0.5</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="BackgroundTransparency">0</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<int name="LayoutOrder">0</int>
+					<UDim2 name="Position">
+						<XS>0.4</XS>
+						<XO>0</XO>
+						<YS>0.54</YS>
+						<YO>0</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>10</XO>
+						<YS>0</YS>
+						<YO>10</YO>
+					</UDim2>
+					<bool name="Visible">false</bool>
+					<int name="ZIndex">160</int>
+				</Properties>
+				<Item class="UICorner" referent="RBX00000011">
+					<Properties>
+						<string name="Name">SparkleCorner</string>
+						<UDim name="CornerRadius">
+							<S>0</S>
+							<O>10</O>
+						</UDim>
+					</Properties>
+				</Item>
+			</Item>
+		</Item>
+	</Item>
+</roblox>

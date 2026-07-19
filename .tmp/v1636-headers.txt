@@ -1,0 +1,23 @@
+HTTP/1.1 401 Unauthorized
+content-length: 76
+content-type: application/json
+date: Sat, 18 Jul 2026 16:24:47 GMT
+server: public-gateway
+cache-control: no-cache
+strict-transport-security: max-age=31536000
+strict-transport-security: max-age=3600
+x-frame-options: SAMEORIGIN
+roblox-machine-id: 8a32dc74-36ee-22d8-23db-b44a9791e50c
+x-envoy-upstream-service-time: 28
+x-terms-message: Terms apply https://rblx.co/TOU.
+x-ratelimit-limit: 3000, 3000;w=60
+x-ratelimit-remaining: 2999
+x-ratelimit-reset: 12
+x-ratelimit-limit: 70000
+x-ratelimit-remaining: 70000
+x-ratelimit-reset: 0
+x-ingress-proxy: true
+x-roblox-edge: c087
+report-to: {"group":"network-errors","max_age":604800,"endpoints":[{"url":"https://ncs.roblox.com/upload"}]}
+nel: {"report_to":"network-errors","max_age":604800,"success_fraction":0.001,"failure_fraction":1}
+

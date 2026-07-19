@@ -1,0 +1,1251 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+	<Meta name="ExplicitAutoJoints">true</Meta>
+	<External>null</External>
+	<External>nil</External>
+	<Item class="Frame" referent="RBX00000001">
+		<Properties>
+			<string name="Name">RodShopOverlay</string>
+			<Vector2 name="AnchorPoint">
+				<X>0</X>
+				<Y>0</Y>
+			</Vector2>
+			<Color3 name="BackgroundColor3">
+				<R>0.0</R>
+				<G>0.0</G>
+				<B>0.0</B>
+			</Color3>
+			<float name="BackgroundTransparency">0.35</float>
+			<int name="BorderSizePixel">0</int>
+			<bool name="ClipsDescendants">false</bool>
+			<int name="LayoutOrder">0</int>
+			<UDim2 name="Position">
+				<XS>0</XS>
+				<XO>0</XO>
+				<YS>0</YS>
+				<YO>0</YO>
+			</UDim2>
+			<UDim2 name="Size">
+				<XS>1</XS>
+				<XO>0</XO>
+				<YS>1</YS>
+				<YO>0</YO>
+			</UDim2>
+			<bool name="Visible">false</bool>
+			<int name="ZIndex">95</int>
+		</Properties>
+		<Item class="Frame" referent="RBX00000002">
+			<Properties>
+				<string name="Name">RodShopPanel</string>
+				<Vector2 name="AnchorPoint">
+					<X>0.5</X>
+					<Y>0.5</Y>
+				</Vector2>
+				<Color3 name="BackgroundColor3">
+					<R>0.06666666666666667</R>
+					<G>0.09411764705882353</G>
+					<B>0.13333333333333333</B>
+				</Color3>
+				<float name="BackgroundTransparency">0</float>
+				<int name="BorderSizePixel">0</int>
+				<bool name="ClipsDescendants">false</bool>
+				<int name="LayoutOrder">0</int>
+				<UDim2 name="Position">
+					<XS>0.5</XS>
+					<XO>0</XO>
+					<YS>0.5</YS>
+					<YO>0</YO>
+				</UDim2>
+				<UDim2 name="Size">
+					<XS>0</XS>
+					<XO>520</XO>
+					<YS>0</YS>
+					<YO>500</YO>
+				</UDim2>
+				<bool name="Visible">true</bool>
+				<int name="ZIndex">96</int>
+			</Properties>
+			<Item class="UICorner" referent="RBX00000003">
+				<Properties>
+					<string name="Name">UICorner</string>
+					<UDim name="CornerRadius">
+						<S>0</S>
+						<O>8</O>
+					</UDim>
+				</Properties>
+			</Item>
+			<Item class="UIStroke" referent="RBX00000004">
+				<Properties>
+					<string name="Name">Border</string>
+					<Color3 name="Color">
+						<R>0.27450980392156865</R>
+						<G>0.3686274509803922</G>
+						<B>0.5254901960784314</B>
+					</Color3>
+					<float name="Thickness">1</float>
+					<float name="Transparency">0</float>
+				</Properties>
+			</Item>
+			<Item class="TextLabel" referent="RBX00000005">
+				<Properties>
+					<string name="Name">Title</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>0.03137254901960784</R>
+						<G>0.10980392156862745</G>
+						<B>0.23921568627450981</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<token name="Font">19</token>
+					<int name="LayoutOrder">0</int>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>18</XO>
+						<YS>0</YS>
+						<YO>12</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>-72</XO>
+						<YS>0</YS>
+						<YO>28</YO>
+					</UDim2>
+					<string name="Text">Supply Shop</string>
+					<Color3 name="TextColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<bool name="TextScaled">false</bool>
+					<float name="TextSize">20</float>
+					<float name="TextStrokeTransparency">1</float>
+					<float name="TextTransparency">0</float>
+					<bool name="TextWrapped">false</bool>
+					<token name="TextXAlignment">0</token>
+					<token name="TextYAlignment">1</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">97</int>
+				</Properties>
+			</Item>
+			<Item class="TextButton" referent="RBX00000006">
+				<Properties>
+					<string name="Name">CloseButton</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<bool name="AutoButtonColor">true</bool>
+					<Color3 name="BackgroundColor3">
+						<R>0.3568627450980392</R>
+						<G>0.40784313725490196</G>
+						<B>0.48627450980392156</B>
+					</Color3>
+					<float name="BackgroundTransparency">0</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<token name="Font">19</token>
+					<int name="LayoutOrder">0</int>
+					<UDim2 name="Position">
+						<XS>1</XS>
+						<XO>-48</XO>
+						<YS>0</YS>
+						<YO>12</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>32</XO>
+						<YS>0</YS>
+						<YO>28</YO>
+					</UDim2>
+					<string name="Text">X</string>
+					<Color3 name="TextColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<bool name="TextScaled">false</bool>
+					<float name="TextSize">14</float>
+					<float name="TextStrokeTransparency">1</float>
+					<float name="TextTransparency">0</float>
+					<bool name="TextWrapped">false</bool>
+					<token name="TextXAlignment">1</token>
+					<token name="TextYAlignment">1</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">97</int>
+				</Properties>
+				<Item class="UICorner" referent="RBX00000007">
+					<Properties>
+						<string name="Name">UICorner</string>
+						<UDim name="CornerRadius">
+							<S>0</S>
+							<O>7</O>
+						</UDim>
+					</Properties>
+				</Item>
+				<Item class="UIStroke" referent="RBX00000008">
+					<Properties>
+						<string name="Name">UIStroke</string>
+						<Color3 name="Color">
+							<R>1.0</R>
+							<G>1.0</G>
+							<B>1.0</B>
+						</Color3>
+						<float name="Thickness">1</float>
+						<float name="Transparency">0.85</float>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Frame" referent="RBX00000009">
+				<Properties>
+					<string name="Name">SupplyShopTabs</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>0.03137254901960784</R>
+						<G>0.10980392156862745</G>
+						<B>0.23921568627450981</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<int name="LayoutOrder">0</int>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>16</XO>
+						<YS>0</YS>
+						<YO>52</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>-32</XO>
+						<YS>0</YS>
+						<YO>34</YO>
+					</UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">97</int>
+				</Properties>
+				<Item class="UIListLayout" referent="RBX0000000A">
+					<Properties>
+						<string name="Name">UIListLayout</string>
+						<token name="FillDirection">0</token>
+						<UDim name="Padding">
+							<S>0</S>
+							<O>8</O>
+						</UDim>
+						<token name="SortOrder">2</token>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="ScrollingFrame" referent="RBX0000000B">
+				<Properties>
+					<string name="Name">RodShopList</string>
+					<bool name="Active">true</bool>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<token name="AutomaticCanvasSize">2</token>
+					<Color3 name="BackgroundColor3">
+						<R>0.03137254901960784</R>
+						<G>0.10980392156862745</G>
+						<B>0.23921568627450981</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<UDim2 name="CanvasSize">
+						<XS>0</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>0</YO>
+					</UDim2>
+					<bool name="ClipsDescendants">true</bool>
+					<int name="LayoutOrder">0</int>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>16</XO>
+						<YS>0</YS>
+						<YO>94</YO>
+					</UDim2>
+					<int name="ScrollBarThickness">6</int>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>-32</XO>
+						<YS>1</YS>
+						<YO>-110</YO>
+					</UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">97</int>
+				</Properties>
+				<Item class="UIListLayout" referent="RBX0000000C">
+					<Properties>
+						<string name="Name">UIListLayout</string>
+						<token name="FillDirection">1</token>
+						<UDim name="Padding">
+							<S>0</S>
+							<O>10</O>
+						</UDim>
+						<token name="SortOrder">2</token>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Folder" referent="RBX0000000D">
+				<Properties>
+					<string name="Name">Templates</string>
+				</Properties>
+				<Item class="TextButton" referent="RBX0000000E">
+					<Properties>
+						<string name="Name">TabButtonTemplate</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<bool name="AutoButtonColor">true</bool>
+						<Color3 name="BackgroundColor3">
+							<R>0.14901960784313725</R>
+							<G>0.17647058823529413</G>
+							<B>0.2235294117647059</B>
+						</Color3>
+						<float name="BackgroundTransparency">0</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<token name="Font">19</token>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>112</XO>
+							<YS>1</YS>
+							<YO>0</YO>
+						</UDim2>
+						<string name="Text">Tab</string>
+						<Color3 name="TextColor3">
+							<R>1.0</R>
+							<G>1.0</G>
+							<B>1.0</B>
+						</Color3>
+						<bool name="TextScaled">false</bool>
+						<float name="TextSize">14</float>
+						<float name="TextStrokeTransparency">1</float>
+						<float name="TextTransparency">0</float>
+						<bool name="TextWrapped">false</bool>
+						<token name="TextXAlignment">1</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">false</bool>
+						<int name="ZIndex">98</int>
+					</Properties>
+					<Item class="UICorner" referent="RBX0000000F">
+						<Properties>
+							<string name="Name">UICorner</string>
+							<UDim name="CornerRadius">
+								<S>0</S>
+								<O>7</O>
+							</UDim>
+						</Properties>
+					</Item>
+					<Item class="UIStroke" referent="RBX00000010">
+						<Properties>
+							<string name="Name">UIStroke</string>
+							<Color3 name="Color">
+								<R>1.0</R>
+								<G>1.0</G>
+								<B>1.0</B>
+							</Color3>
+							<float name="Thickness">1</float>
+							<float name="Transparency">0.85</float>
+						</Properties>
+					</Item>
+				</Item>
+				<Item class="Frame" referent="RBX00000011">
+					<Properties>
+						<string name="Name">RodRowTemplate</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>-18</XO>
+							<YS>0</YS>
+							<YO>136</YO>
+						</UDim2>
+						<bool name="Visible">false</bool>
+						<int name="ZIndex">97</int>
+					</Properties>
+					<Item class="Frame" referent="RBX00000012">
+						<Properties>
+							<string name="Name">Card</string>
+							<Vector2 name="AnchorPoint">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.09411764705882353</R>
+								<G>0.12549019607843137</G>
+								<B>0.17254901960784313</B>
+							</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<int name="LayoutOrder">0</int>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>6</XO>
+								<YS>0</YS>
+								<YO>1</YO>
+							</UDim2>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>-12</XO>
+								<YS>1</YS>
+								<YO>-2</YO>
+							</UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">97</int>
+						</Properties>
+						<Item class="UICorner" referent="RBX00000013">
+							<Properties>
+								<string name="Name">UICorner</string>
+								<UDim name="CornerRadius">
+									<S>0</S>
+									<O>8</O>
+								</UDim>
+							</Properties>
+						</Item>
+						<Item class="UIStroke" referent="RBX00000014">
+							<Properties>
+								<string name="Name">Border</string>
+								<token name="ApplyStrokeMode">1</token>
+								<Color3 name="Color">
+									<R>0.3254901960784314</R>
+									<G>0.40784313725490196</G>
+									<B>0.5254901960784314</B>
+								</Color3>
+								<float name="Thickness">1</float>
+								<float name="Transparency">0.25</float>
+							</Properties>
+						</Item>
+						<Item class="Frame" referent="RBX00000015">
+							<Properties>
+								<string name="Name">Icon</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>0.08235294117647059</R>
+									<G>0.10980392156862745</G>
+									<B>0.14901960784313725</B>
+								</Color3>
+								<float name="BackgroundTransparency">0</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>8</XO>
+									<YS>0</YS>
+									<YO>28</YO>
+								</UDim2>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>72</XO>
+									<YS>0</YS>
+									<YO>72</YO>
+								</UDim2>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">98</int>
+							</Properties>
+							<Item class="UICorner" referent="RBX00000016">
+								<Properties>
+									<string name="Name">UICorner</string>
+									<UDim name="CornerRadius">
+										<S>0</S>
+										<O>6</O>
+									</UDim>
+								</Properties>
+							</Item>
+							<Item class="UIStroke" referent="RBX00000017">
+								<Properties>
+									<string name="Name">Border</string>
+									<Color3 name="Color">
+										<R>0.5098039215686274</R>
+										<G>0.5725490196078431</G>
+										<B>0.6509803921568628</B>
+									</Color3>
+									<float name="Thickness">1</float>
+									<float name="Transparency">0.2</float>
+								</Properties>
+							</Item>
+							<Item class="ImageLabel" referent="RBX00000018">
+								<Properties>
+									<string name="Name">Image</string>
+									<Vector2 name="AnchorPoint">
+										<X>0</X>
+										<Y>0</Y>
+									</Vector2>
+									<Color3 name="BackgroundColor3">
+										<R>0.03137254901960784</R>
+										<G>0.10980392156862745</G>
+										<B>0.23921568627450981</B>
+									</Color3>
+									<float name="BackgroundTransparency">1</float>
+									<int name="BorderSizePixel">0</int>
+									<bool name="ClipsDescendants">false</bool>
+									<Content name="Image">
+										<url />
+									</Content>
+									<int name="LayoutOrder">0</int>
+									<UDim2 name="Position">
+										<XS>0</XS>
+										<XO>0</XO>
+										<YS>0</YS>
+										<YO>0</YO>
+									</UDim2>
+									<token name="ScaleType">3</token>
+									<UDim2 name="Size">
+										<XS>1</XS>
+										<XO>0</XO>
+										<YS>1</YS>
+										<YO>0</YO>
+									</UDim2>
+									<bool name="Visible">true</bool>
+									<int name="ZIndex">99</int>
+								</Properties>
+							</Item>
+							<Item class="TextLabel" referent="RBX00000019">
+								<Properties>
+									<string name="Name">Fallback</string>
+									<Vector2 name="AnchorPoint">
+										<X>0</X>
+										<Y>0</Y>
+									</Vector2>
+									<Color3 name="BackgroundColor3">
+										<R>0.03137254901960784</R>
+										<G>0.10980392156862745</G>
+										<B>0.23921568627450981</B>
+									</Color3>
+									<float name="BackgroundTransparency">1</float>
+									<int name="BorderSizePixel">0</int>
+									<bool name="ClipsDescendants">false</bool>
+									<token name="Font">19</token>
+									<int name="LayoutOrder">0</int>
+									<UDim2 name="Position">
+										<XS>0</XS>
+										<XO>0</XO>
+										<YS>0</YS>
+										<YO>0</YO>
+									</UDim2>
+									<UDim2 name="Size">
+										<XS>1</XS>
+										<XO>0</XO>
+										<YS>1</YS>
+										<YO>0</YO>
+									</UDim2>
+									<string name="Text">FISH</string>
+									<Color3 name="TextColor3">
+										<R>0.5098039215686274</R>
+										<G>0.5725490196078431</G>
+										<B>0.6509803921568628</B>
+									</Color3>
+									<bool name="TextScaled">false</bool>
+									<float name="TextSize">12</float>
+									<float name="TextStrokeTransparency">1</float>
+									<float name="TextTransparency">0</float>
+									<bool name="TextWrapped">false</bool>
+									<token name="TextXAlignment">1</token>
+									<token name="TextYAlignment">1</token>
+									<bool name="Visible">false</bool>
+									<int name="ZIndex">99</int>
+								</Properties>
+							</Item>
+						</Item>
+						<Item class="TextLabel" referent="RBX0000001A">
+							<Properties>
+								<string name="Name">Name</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>0.03137254901960784</R>
+									<G>0.10980392156862745</G>
+									<B>0.23921568627450981</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<token name="Font">19</token>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>84</XO>
+									<YS>0</YS>
+									<YO>10</YO>
+								</UDim2>
+								<UDim2 name="Size">
+									<XS>1</XS>
+									<XO>-208</XO>
+									<YS>0</YS>
+									<YO>22</YO>
+								</UDim2>
+								<string name="Text">Rod</string>
+								<Color3 name="TextColor3">
+									<R>1.0</R>
+									<G>1.0</G>
+									<B>1.0</B>
+								</Color3>
+								<bool name="TextScaled">false</bool>
+								<float name="TextSize">16</float>
+								<float name="TextStrokeTransparency">1</float>
+								<float name="TextTransparency">0</float>
+								<bool name="TextWrapped">false</bool>
+								<token name="TextXAlignment">0</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">98</int>
+							</Properties>
+						</Item>
+						<Item class="TextLabel" referent="RBX0000001B">
+							<Properties>
+								<string name="Name">Info</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>0.03137254901960784</R>
+									<G>0.10980392156862745</G>
+									<B>0.23921568627450981</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<token name="Font">17</token>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>84</XO>
+									<YS>0</YS>
+									<YO>34</YO>
+								</UDim2>
+								<UDim2 name="Size">
+									<XS>1</XS>
+									<XO>-208</XO>
+									<YS>0</YS>
+									<YO>20</YO>
+								</UDim2>
+								<string name="Text">Requirements</string>
+								<Color3 name="TextColor3">
+									<R>0.7450980392156863</R>
+									<G>0.8</G>
+									<B>0.8627450980392157</B>
+								</Color3>
+								<bool name="TextScaled">false</bool>
+								<float name="TextSize">13</float>
+								<float name="TextStrokeTransparency">1</float>
+								<float name="TextTransparency">0</float>
+								<bool name="TextWrapped">false</bool>
+								<token name="TextXAlignment">0</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">98</int>
+							</Properties>
+						</Item>
+						<Item class="TextLabel" referent="RBX0000001C">
+							<Properties>
+								<string name="Name">Previous</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>0.03137254901960784</R>
+									<G>0.10980392156862745</G>
+									<B>0.23921568627450981</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<token name="Font">17</token>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>84</XO>
+									<YS>0</YS>
+									<YO>57</YO>
+								</UDim2>
+								<UDim2 name="Size">
+									<XS>1</XS>
+									<XO>-208</XO>
+									<YS>0</YS>
+									<YO>18</YO>
+								</UDim2>
+								<string name="Text">Previous</string>
+								<Color3 name="TextColor3">
+									<R>0.5607843137254902</R>
+									<G>0.6274509803921569</G>
+									<B>0.7058823529411765</B>
+								</Color3>
+								<bool name="TextScaled">false</bool>
+								<float name="TextSize">12</float>
+								<float name="TextStrokeTransparency">1</float>
+								<float name="TextTransparency">0</float>
+								<bool name="TextWrapped">false</bool>
+								<token name="TextXAlignment">0</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">98</int>
+							</Properties>
+						</Item>
+						<Item class="TextLabel" referent="RBX0000001D">
+							<Properties>
+								<string name="Name">Resource</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>0.03137254901960784</R>
+									<G>0.10980392156862745</G>
+									<B>0.23921568627450981</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<token name="Font">17</token>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>84</XO>
+									<YS>0</YS>
+									<YO>78</YO>
+								</UDim2>
+								<UDim2 name="Size">
+									<XS>1</XS>
+									<XO>-208</XO>
+									<YS>0</YS>
+									<YO>18</YO>
+								</UDim2>
+								<string name="Text">Resources</string>
+								<Color3 name="TextColor3">
+									<R>0.5607843137254902</R>
+									<G>0.6274509803921569</G>
+									<B>0.7058823529411765</B>
+								</Color3>
+								<bool name="TextScaled">false</bool>
+								<float name="TextSize">12</float>
+								<float name="TextStrokeTransparency">1</float>
+								<float name="TextTransparency">0</float>
+								<bool name="TextWrapped">false</bool>
+								<token name="TextXAlignment">0</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">98</int>
+							</Properties>
+						</Item>
+						<Item class="TextLabel" referent="RBX0000001E">
+							<Properties>
+								<string name="Name">Status</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>0.03137254901960784</R>
+									<G>0.10980392156862745</G>
+									<B>0.23921568627450981</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<token name="Font">17</token>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>84</XO>
+									<YS>0</YS>
+									<YO>104</YO>
+								</UDim2>
+								<UDim2 name="Size">
+									<XS>1</XS>
+									<XO>-208</XO>
+									<YS>0</YS>
+									<YO>18</YO>
+								</UDim2>
+								<string name="Text">Status</string>
+								<Color3 name="TextColor3">
+									<R>0.5607843137254902</R>
+									<G>0.6274509803921569</G>
+									<B>0.7058823529411765</B>
+								</Color3>
+								<bool name="TextScaled">false</bool>
+								<float name="TextSize">12</float>
+								<float name="TextStrokeTransparency">1</float>
+								<float name="TextTransparency">0</float>
+								<bool name="TextWrapped">false</bool>
+								<token name="TextXAlignment">0</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">98</int>
+							</Properties>
+						</Item>
+						<Item class="TextButton" referent="RBX0000001F">
+							<Properties>
+								<string name="Name">ActionButton</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<bool name="AutoButtonColor">true</bool>
+								<Color3 name="BackgroundColor3">
+									<R>0.20784313725490197</R>
+									<G>0.5098039215686274</G>
+									<B>0.9647058823529412</B>
+								</Color3>
+								<float name="BackgroundTransparency">0</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<token name="Font">19</token>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>1</XS>
+									<XO>-110</XO>
+									<YS>0</YS>
+									<YO>50</YO>
+								</UDim2>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>94</XO>
+									<YS>0</YS>
+									<YO>36</YO>
+								</UDim2>
+								<string name="Text">Buy</string>
+								<Color3 name="TextColor3">
+									<R>1.0</R>
+									<G>1.0</G>
+									<B>1.0</B>
+								</Color3>
+								<bool name="TextScaled">false</bool>
+								<float name="TextSize">14</float>
+								<float name="TextStrokeTransparency">1</float>
+								<float name="TextTransparency">0</float>
+								<bool name="TextWrapped">false</bool>
+								<token name="TextXAlignment">1</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">98</int>
+							</Properties>
+							<Item class="UICorner" referent="RBX00000020">
+								<Properties>
+									<string name="Name">UICorner</string>
+									<UDim name="CornerRadius">
+										<S>0</S>
+										<O>7</O>
+									</UDim>
+								</Properties>
+							</Item>
+							<Item class="UIStroke" referent="RBX00000021">
+								<Properties>
+									<string name="Name">UIStroke</string>
+									<Color3 name="Color">
+										<R>1.0</R>
+										<G>1.0</G>
+										<B>1.0</B>
+									</Color3>
+									<float name="Thickness">1</float>
+									<float name="Transparency">0.85</float>
+								</Properties>
+							</Item>
+						</Item>
+					</Item>
+				</Item>
+				<Item class="Frame" referent="RBX00000022">
+					<Properties>
+						<string name="Name">BaitRowTemplate</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>-18</XO>
+							<YS>0</YS>
+							<YO>104</YO>
+						</UDim2>
+						<bool name="Visible">false</bool>
+						<int name="ZIndex">97</int>
+					</Properties>
+					<Item class="Frame" referent="RBX00000023">
+						<Properties>
+							<string name="Name">Card</string>
+							<Vector2 name="AnchorPoint">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.09411764705882353</R>
+								<G>0.12549019607843137</G>
+								<B>0.17254901960784313</B>
+							</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<int name="LayoutOrder">0</int>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>6</XO>
+								<YS>0</YS>
+								<YO>1</YO>
+							</UDim2>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>-12</XO>
+								<YS>1</YS>
+								<YO>-2</YO>
+							</UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">97</int>
+						</Properties>
+						<Item class="UICorner" referent="RBX00000024">
+							<Properties>
+								<string name="Name">UICorner</string>
+								<UDim name="CornerRadius">
+									<S>0</S>
+									<O>8</O>
+								</UDim>
+							</Properties>
+						</Item>
+						<Item class="UIStroke" referent="RBX00000025">
+							<Properties>
+								<string name="Name">Border</string>
+								<token name="ApplyStrokeMode">1</token>
+								<Color3 name="Color">
+									<R>0.3254901960784314</R>
+									<G>0.40784313725490196</G>
+									<B>0.5254901960784314</B>
+								</Color3>
+								<float name="Thickness">1</float>
+								<float name="Transparency">0.25</float>
+							</Properties>
+						</Item>
+						<Item class="TextLabel" referent="RBX00000026">
+							<Properties>
+								<string name="Name">Name</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>0.03137254901960784</R>
+									<G>0.10980392156862745</G>
+									<B>0.23921568627450981</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<token name="Font">19</token>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>12</XO>
+									<YS>0</YS>
+									<YO>8</YO>
+								</UDim2>
+								<UDim2 name="Size">
+									<XS>1</XS>
+									<XO>-222</XO>
+									<YS>0</YS>
+									<YO>22</YO>
+								</UDim2>
+								<string name="Text">Bait</string>
+								<Color3 name="TextColor3">
+									<R>1.0</R>
+									<G>1.0</G>
+									<B>1.0</B>
+								</Color3>
+								<bool name="TextScaled">false</bool>
+								<float name="TextSize">16</float>
+								<float name="TextStrokeTransparency">1</float>
+								<float name="TextTransparency">0</float>
+								<bool name="TextWrapped">false</bool>
+								<token name="TextXAlignment">0</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">98</int>
+							</Properties>
+						</Item>
+						<Item class="TextLabel" referent="RBX00000027">
+							<Properties>
+								<string name="Name">Effect</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>0.03137254901960784</R>
+									<G>0.10980392156862745</G>
+									<B>0.23921568627450981</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<token name="Font">17</token>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>12</XO>
+									<YS>0</YS>
+									<YO>34</YO>
+								</UDim2>
+								<UDim2 name="Size">
+									<XS>1</XS>
+									<XO>-222</XO>
+									<YS>0</YS>
+									<YO>34</YO>
+								</UDim2>
+								<string name="Text">Effect</string>
+								<Color3 name="TextColor3">
+									<R>0.7450980392156863</R>
+									<G>0.8</G>
+									<B>0.8627450980392157</B>
+								</Color3>
+								<bool name="TextScaled">false</bool>
+								<float name="TextSize">12</float>
+								<float name="TextStrokeTransparency">1</float>
+								<float name="TextTransparency">0</float>
+								<bool name="TextWrapped">true</bool>
+								<token name="TextXAlignment">0</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">98</int>
+							</Properties>
+						</Item>
+						<Item class="TextLabel" referent="RBX00000028">
+							<Properties>
+								<string name="Name">Detail</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>0.03137254901960784</R>
+									<G>0.10980392156862745</G>
+									<B>0.23921568627450981</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<token name="Font">17</token>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>12</XO>
+									<YS>0</YS>
+									<YO>72</YO>
+								</UDim2>
+								<UDim2 name="Size">
+									<XS>1</XS>
+									<XO>-222</XO>
+									<YS>0</YS>
+									<YO>18</YO>
+								</UDim2>
+								<string name="Text">Count</string>
+								<Color3 name="TextColor3">
+									<R>0.5607843137254902</R>
+									<G>0.6274509803921569</G>
+									<B>0.7058823529411765</B>
+								</Color3>
+								<bool name="TextScaled">false</bool>
+								<float name="TextSize">12</float>
+								<float name="TextStrokeTransparency">1</float>
+								<float name="TextTransparency">0</float>
+								<bool name="TextWrapped">false</bool>
+								<token name="TextXAlignment">0</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">98</int>
+							</Properties>
+						</Item>
+						<Item class="TextButton" referent="RBX00000029">
+							<Properties>
+								<string name="Name">BuyButton</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<bool name="AutoButtonColor">true</bool>
+								<Color3 name="BackgroundColor3">
+									<R>0.10980392156862745</R>
+									<G>0.6274509803921569</G>
+									<B>0.3607843137254902</B>
+								</Color3>
+								<float name="BackgroundTransparency">0</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<token name="Font">19</token>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>1</XS>
+									<XO>-194</XO>
+									<YS>0</YS>
+									<YO>35</YO>
+								</UDim2>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>84</XO>
+									<YS>0</YS>
+									<YO>34</YO>
+								</UDim2>
+								<string name="Text">Buy +1</string>
+								<Color3 name="TextColor3">
+									<R>1.0</R>
+									<G>1.0</G>
+									<B>1.0</B>
+								</Color3>
+								<bool name="TextScaled">false</bool>
+								<float name="TextSize">12</float>
+								<float name="TextStrokeTransparency">1</float>
+								<float name="TextTransparency">0</float>
+								<bool name="TextWrapped">false</bool>
+								<token name="TextXAlignment">1</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">98</int>
+							</Properties>
+							<Item class="UICorner" referent="RBX0000002A">
+								<Properties>
+									<string name="Name">UICorner</string>
+									<UDim name="CornerRadius">
+										<S>0</S>
+										<O>7</O>
+									</UDim>
+								</Properties>
+							</Item>
+							<Item class="UIStroke" referent="RBX0000002B">
+								<Properties>
+									<string name="Name">UIStroke</string>
+									<Color3 name="Color">
+										<R>1.0</R>
+										<G>1.0</G>
+										<B>1.0</B>
+									</Color3>
+									<float name="Thickness">1</float>
+									<float name="Transparency">0.85</float>
+								</Properties>
+							</Item>
+						</Item>
+						<Item class="TextButton" referent="RBX0000002C">
+							<Properties>
+								<string name="Name">EquipButton</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<bool name="AutoButtonColor">true</bool>
+								<Color3 name="BackgroundColor3">
+									<R>0.20784313725490197</R>
+									<G>0.5098039215686274</G>
+									<B>0.9647058823529412</B>
+								</Color3>
+								<float name="BackgroundTransparency">0</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<token name="Font">19</token>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>1</XS>
+									<XO>-102</XO>
+									<YS>0</YS>
+									<YO>35</YO>
+								</UDim2>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>86</XO>
+									<YS>0</YS>
+									<YO>34</YO>
+								</UDim2>
+								<string name="Text">Equip</string>
+								<Color3 name="TextColor3">
+									<R>1.0</R>
+									<G>1.0</G>
+									<B>1.0</B>
+								</Color3>
+								<bool name="TextScaled">false</bool>
+								<float name="TextSize">12</float>
+								<float name="TextStrokeTransparency">1</float>
+								<float name="TextTransparency">0</float>
+								<bool name="TextWrapped">false</bool>
+								<token name="TextXAlignment">1</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">98</int>
+							</Properties>
+							<Item class="UICorner" referent="RBX0000002D">
+								<Properties>
+									<string name="Name">UICorner</string>
+									<UDim name="CornerRadius">
+										<S>0</S>
+										<O>7</O>
+									</UDim>
+								</Properties>
+							</Item>
+							<Item class="UIStroke" referent="RBX0000002E">
+								<Properties>
+									<string name="Name">UIStroke</string>
+									<Color3 name="Color">
+										<R>1.0</R>
+										<G>1.0</G>
+										<B>1.0</B>
+									</Color3>
+									<float name="Thickness">1</float>
+									<float name="Transparency">0.85</float>
+								</Properties>
+							</Item>
+						</Item>
+					</Item>
+				</Item>
+			</Item>
+		</Item>
+	</Item>
+</roblox>

@@ -1,0 +1,75 @@
+{
+  "name": "Fishy Fish UI Import Bundle",
+  "tree": {
+    "$className": "Model",
+    "StarterGui": {
+      "$className": "Folder",
+      "AquariumFreePlacementEditor": {
+        "$path": "src/startergui/AquariumFreePlacementEditor.client.luau"
+      },
+      "AquariumDesignerShopCleanup": {
+        "$path": "src/startergui/AquariumDesignerShopCleanup.client.luau"
+      },
+      "FishingGui": {
+        "$path": "src/ui/FishingGui"
+      },
+      "TopHudGui": {
+        "$path": "src/ui/TopHudGui"
+      },
+      "ServerUtcClockGui": {
+        "$path": "src/ui/ServerUtcClockGui",
+        "ServerUtcClock": {
+          "$path": "src/starterplayer/ServerUtcClock.client.luau"
+        }
+      },
+      "Phase3EconomyGui": {
+        "$path": "src/ui/Phase3EconomyGui",
+        "Phase3EconomyUI": {
+          "$path": "src/starterplayer/Phase3EconomyUI.client.luau"
+        }
+      },
+      "AquariumFreePlacementGui": {
+        "$path": "src/ui/AquariumFreePlacementGui"
+      },
+      "CustomHotbarGui": {
+        "$path": "src/ui/CustomHotbarGui",
+        "CustomHotbarClient": {
+          "$path": "src/starterplayer/CustomHotbarClient.client.luau"
+        }
+      }
+    },
+    "StarterPlayerScripts": {
+      "$className": "Folder",
+      "FishingAreaButtonsVisibility": {
+        "$path": "src/starterplayer/FishingAreaButtonsVisibility.client.luau"
+      },
+      "FishingCastAnimation": {
+        "$path": "src/starterplayer/FishingCastAnimation.client.luau"
+      },
+      "BaitIconController": {
+        "$path": "src/starterplayer/BaitIconController.client.luau"
+      },
+      "EconomyUIIntegration": {
+        "$path": "src/starterplayer/EconomyUIIntegration.client.luau"
+      },
+      "Phase3EconomyUI": {
+        "$path": "src/starterplayer/RetiredPhase3EconomyUI.client.luau"
+      },
+      "ServerUtcClock": {
+        "$path": "src/starterplayer/RetiredServerUtcClock.client.luau"
+      },
+      "ForceTopHudPosition": {
+        "$path": "src/starterplayer/RetiredForceTopHudPosition.client.luau"
+      },
+      "SeastarHudOverride": {
+        "$path": "src/starterplayer/RetiredSeastarHudOverride.client.luau"
+      },
+      "ResponsiveUiAdapter": {
+        "$path": "src/starterplayer/AuthoredUiController.client.luau"
+      },
+      "CustomHotbarClient": {
+        "$path": "src/starterplayer/RetiredCustomHotbarClient.client.luau"
+      }
+    }
+  }
+}

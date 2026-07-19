@@ -1,0 +1,13 @@
+{
+  "className": "ScreenGui",
+  "properties": {
+    "ClipToDeviceSafeArea": true,
+    "DisplayOrder": 2100,
+    "Enabled": true,
+    "IgnoreGuiInset": false,
+    "ResetOnSpawn": false,
+    "SafeAreaCompatibility": "None",
+    "ScreenInsets": "CoreUISafeInsets",
+    "ZIndexBehavior": "Sibling"
+  }
+}

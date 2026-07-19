@@ -1,0 +1,885 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+	<Meta name="ExplicitAutoJoints">true</Meta>
+	<External>null</External>
+	<External>nil</External>
+	<Item class="Folder" referent="RBXAUXILIARYUITEMPLATES">
+		<Properties>
+			<string name="Name">AuxiliaryUiTemplates</string>
+		</Properties>
+		<Item class="ScreenGui" referent="RBXAUXLOADINGBACKGROUND">
+			<Properties>
+				<string name="Name">FishyFishLoadingBackground</string>
+				<int name="DisplayOrder">99999</int>
+				<bool name="ResetOnSpawn">false</bool>
+			</Properties>
+			<Item class="CanvasGroup" referent="RBXAUXFULLBLEEDBACKGROUND">
+				<Properties>
+					<string name="Name">FullBleedBackgroundCanvas</string>
+					<UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO></UDim2>
+					<Color3 name="BackgroundColor3"><R>0.30980393</R><G>0.6156863</G><B>0.85882354</B></Color3>
+					<int name="BorderSizePixel">0</int>
+					<float name="GroupTransparency">0</float>
+					<bool name="Active">true</bool>
+				</Properties>
+				<Item class="ImageLabel" referent="RBXAUXHARBORBACKGROUND">
+					<Properties>
+						<string name="Name">HarborBackground</string>
+						<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+						<UDim2 name="Position"><XS>0.5</XS><XO>0</XO><YS>0.5</YS><YO>0</YO></UDim2>
+						<UDim2 name="Size"><XS>1.012</XS><XO>0</XO><YS>1.012</YS><YO>0</YO></UDim2>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<Content name="Image"><url>rbxassetid://127539948539559</url></Content>
+						<int name="ZIndex">1</int>
+					</Properties>
+				</Item>
+				<Item class="Frame" referent="RBXAUXLOWERCONTRASTSHADE">
+					<Properties>
+						<string name="Name">LowerContrastShade</string>
+						<UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO></UDim2>
+						<Color3 name="BackgroundColor3"><R>0.019607844</R><G>0.16862746</G><B>0.35686275</B></Color3>
+						<float name="BackgroundTransparency">0.82</float>
+						<int name="BorderSizePixel">0</int>
+						<int name="ZIndex">2</int>
+					</Properties>
+					<Item class="UIGradient" referent="RBXAUXLOWERSHADEGRADIENT">
+						<Properties>
+							<string name="Name">LowerShadeGradient</string>
+							<float name="Rotation">90</float>
+						</Properties>
+					</Item>
+				</Item>
+			</Item>
+		</Item>
+		<Item class="ScreenGui" referent="RBXAUXLOADINGSCREEN">
+			<Properties>
+				<string name="Name">FishyFishLoadingScreen</string>
+				<int name="DisplayOrder">100000</int>
+				<bool name="ResetOnSpawn">false</bool>
+			</Properties>
+			<Item class="CanvasGroup" referent="RBXAUXLOADINGCANVAS">
+				<Properties>
+					<string name="Name">LoadingCanvas</string>
+					<UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO></UDim2>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<float name="GroupTransparency">0</float>
+					<bool name="Active">true</bool>
+				</Properties>
+				<Item class="Frame" referent="RBXAUXLOGOMOTION">
+					<Properties>
+						<string name="Name">LogoMotion</string>
+						<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+						<UDim2 name="Position"><XS>0.5</XS><XO>0</XO><YS>0.5</YS><YO>0</YO></UDim2>
+						<UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO></UDim2>
+						<float name="BackgroundTransparency">1</float>
+						<int name="ZIndex">5</int>
+					</Properties>
+					<Item class="ImageLabel" referent="RBXAUXFISHYFISHLOGO">
+						<Properties>
+							<string name="Name">FishyFishLogo</string>
+							<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+							<UDim2 name="Position"><XS>0.5</XS><XO>0</XO><YS>0.43</YS><YO>0</YO></UDim2>
+							<UDim2 name="Size"><XS>0.54</XS><XO>0</XO><YS>0.54</YS><YO>0</YO></UDim2>
+							<float name="BackgroundTransparency">1</float>
+							<Content name="Image"><url>rbxassetid://72585587327009</url></Content>
+							<float name="ImageTransparency">1</float>
+							<int name="ZIndex">6</int>
+						</Properties>
+						<Item class="UIAspectRatioConstraint" referent="RBXAUXLOGOASPECT">
+							<Properties>
+								<string name="Name">LogoAspect</string>
+								<float name="AspectRatio">1.8152778</float>
+							</Properties>
+						</Item>
+					</Item>
+					<Item class="ImageLabel" referent="RBXAUXFALLBACKLOGO">
+						<Properties>
+							<string name="Name">FishyFishLogoFallback</string>
+							<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+							<UDim2 name="Position"><XS>0.5</XS><XO>0</XO><YS>0.43</YS><YO>0</YO></UDim2>
+							<UDim2 name="Size"><XS>0.54</XS><XO>0</XO><YS>0.54</YS><YO>0</YO></UDim2>
+							<float name="BackgroundTransparency">1</float>
+							<Content name="Image"><url>rbxassetid://137479516081769</url></Content>
+							<float name="ImageTransparency">1</float>
+							<int name="ZIndex">5</int>
+						</Properties>
+						<Item class="UIAspectRatioConstraint" referent="RBXAUXFALLBACKLOGOASPECT">
+							<Properties>
+								<string name="Name">FallbackLogoAspect</string>
+								<float name="AspectRatio">1.7768332</float>
+							</Properties>
+						</Item>
+					</Item>
+				</Item>
+				<Item class="Frame" referent="RBXAUXLOADINGINFORMATION">
+					<Properties>
+						<string name="Name">LoadingInformation</string>
+						<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+						<UDim2 name="Position"><XS>0.5</XS><XO>0</XO><YS>0.775</YS><YO>0</YO></UDim2>
+						<UDim2 name="Size"><XS>0.56</XS><XO>0</XO><YS>0.22</YS><YO>0</YO></UDim2>
+						<float name="BackgroundTransparency">1</float>
+						<int name="ZIndex">10</int>
+					</Properties>
+					<Item class="Frame" referent="RBXAUXANCHORANDWAVES">
+						<Properties>
+							<string name="Name">AnchorAndWaves</string>
+							<Vector2 name="AnchorPoint"><X>0.5</X><Y>0</Y></Vector2>
+							<UDim2 name="Position"><XS>0.5</XS><XO>0</XO><YS>0</YS><YO>0</YO></UDim2>
+							<UDim2 name="Size"><XS>0.42</XS><XO>0</XO><YS>0.28</YS><YO>0</YO></UDim2>
+							<float name="BackgroundTransparency">1</float>
+							<int name="ZIndex">10</int>
+						</Properties>
+						<Item class="Frame" referent="RBXAUXLEFTWAVE">
+							<Properties>
+								<string name="Name">LeftWave</string>
+								<Vector2 name="AnchorPoint"><X>1</X><Y>0.5</Y></Vector2>
+								<UDim2 name="Position"><XS>0.38</XS><XO>0</XO><YS>0.53</YS><YO>0</YO></UDim2>
+								<UDim2 name="Size"><XS>0.24</XS><XO>0</XO><YS>0.52</YS><YO>0</YO></UDim2>
+								<float name="BackgroundTransparency">1</float>
+								<int name="ZIndex">10</int>
+							</Properties>
+							<Item class="Frame" referent="RBXAUXLEFTSEGMENT01000000">
+								<Properties>
+									<string name="Name">CurveSegment1</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">1</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXLEFTSEGMENT01000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXLEFTSEGMENT02000000">
+								<Properties>
+									<string name="Name">CurveSegment2</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">2</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXLEFTSEGMENT02000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXLEFTSEGMENT03000000">
+								<Properties>
+									<string name="Name">CurveSegment3</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">3</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXLEFTSEGMENT03000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXLEFTSEGMENT04000000">
+								<Properties>
+									<string name="Name">CurveSegment4</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">4</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXLEFTSEGMENT04000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXLEFTSEGMENT05000000">
+								<Properties>
+									<string name="Name">CurveSegment5</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">5</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXLEFTSEGMENT05000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXLEFTSEGMENT06000000">
+								<Properties>
+									<string name="Name">CurveSegment6</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">6</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXLEFTSEGMENT06000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXLEFTSEGMENT07000000">
+								<Properties>
+									<string name="Name">CurveSegment7</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">7</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXLEFTSEGMENT07000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXLEFTSEGMENT08000000">
+								<Properties>
+									<string name="Name">CurveSegment8</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">8</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXLEFTSEGMENT08000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXLEFTSEGMENT09000000">
+								<Properties>
+									<string name="Name">CurveSegment9</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">9</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXLEFTSEGMENT09000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXLEFTSEGMENT10000000">
+								<Properties>
+									<string name="Name">CurveSegment10</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">10</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXLEFTSEGMENT10000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXLEFTSEGMENT11000000">
+								<Properties>
+									<string name="Name">CurveSegment11</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">11</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXLEFTSEGMENT11000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXLEFTSEGMENT12000000">
+								<Properties>
+									<string name="Name">CurveSegment12</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">12</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXLEFTSEGMENT12000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXLEFTSEGMENT13000000">
+								<Properties>
+									<string name="Name">CurveSegment13</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">13</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXLEFTSEGMENT13000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXLEFTSEGMENT14000000">
+								<Properties>
+									<string name="Name">CurveSegment14</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">14</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXLEFTSEGMENT14000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXLEFTSEGMENT15000000">
+								<Properties>
+									<string name="Name">CurveSegment15</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">15</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXLEFTSEGMENT15000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXLEFTSEGMENT16000000">
+								<Properties>
+									<string name="Name">CurveSegment16</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">16</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXLEFTSEGMENT16000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXLEFTSEGMENT17000000">
+								<Properties>
+									<string name="Name">CurveSegment17</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">17</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXLEFTSEGMENT17000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXLEFTSEGMENT18000000">
+								<Properties>
+									<string name="Name">CurveSegment18</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">18</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXLEFTSEGMENT18000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+						</Item>
+						<Item class="Frame" referent="RBXAUXRIGHTWAVE">
+							<Properties>
+								<string name="Name">RightWave</string>
+								<Vector2 name="AnchorPoint"><X>0</X><Y>0.5</Y></Vector2>
+								<UDim2 name="Position"><XS>0.62</XS><XO>0</XO><YS>0.53</YS><YO>0</YO></UDim2>
+								<UDim2 name="Size"><XS>0.24</XS><XO>0</XO><YS>0.52</YS><YO>0</YO></UDim2>
+								<float name="BackgroundTransparency">1</float>
+								<int name="ZIndex">10</int>
+							</Properties>
+							<Item class="Frame" referent="RBXAUXRIGHTSEGMENT01000000">
+								<Properties>
+									<string name="Name">CurveSegment1</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">1</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXRIGHTSEGMENT01000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXRIGHTSEGMENT02000000">
+								<Properties>
+									<string name="Name">CurveSegment2</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">2</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXRIGHTSEGMENT02000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXRIGHTSEGMENT03000000">
+								<Properties>
+									<string name="Name">CurveSegment3</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">3</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXRIGHTSEGMENT03000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXRIGHTSEGMENT04000000">
+								<Properties>
+									<string name="Name">CurveSegment4</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">4</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXRIGHTSEGMENT04000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXRIGHTSEGMENT05000000">
+								<Properties>
+									<string name="Name">CurveSegment5</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">5</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXRIGHTSEGMENT05000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXRIGHTSEGMENT06000000">
+								<Properties>
+									<string name="Name">CurveSegment6</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">6</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXRIGHTSEGMENT06000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXRIGHTSEGMENT07000000">
+								<Properties>
+									<string name="Name">CurveSegment7</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">7</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXRIGHTSEGMENT07000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXRIGHTSEGMENT08000000">
+								<Properties>
+									<string name="Name">CurveSegment8</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">8</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXRIGHTSEGMENT08000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXRIGHTSEGMENT09000000">
+								<Properties>
+									<string name="Name">CurveSegment9</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">9</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXRIGHTSEGMENT09000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXRIGHTSEGMENT10000000">
+								<Properties>
+									<string name="Name">CurveSegment10</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">10</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXRIGHTSEGMENT10000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXRIGHTSEGMENT11000000">
+								<Properties>
+									<string name="Name">CurveSegment11</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">11</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXRIGHTSEGMENT11000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXRIGHTSEGMENT12000000">
+								<Properties>
+									<string name="Name">CurveSegment12</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">12</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXRIGHTSEGMENT12000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXRIGHTSEGMENT13000000">
+								<Properties>
+									<string name="Name">CurveSegment13</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">13</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXRIGHTSEGMENT13000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXRIGHTSEGMENT14000000">
+								<Properties>
+									<string name="Name">CurveSegment14</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">14</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXRIGHTSEGMENT14000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXRIGHTSEGMENT15000000">
+								<Properties>
+									<string name="Name">CurveSegment15</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">15</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXRIGHTSEGMENT15000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXRIGHTSEGMENT16000000">
+								<Properties>
+									<string name="Name">CurveSegment16</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">16</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXRIGHTSEGMENT16000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXRIGHTSEGMENT17000000">
+								<Properties>
+									<string name="Name">CurveSegment17</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">17</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXRIGHTSEGMENT17000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+							<Item class="Frame" referent="RBXAUXRIGHTSEGMENT18000000">
+								<Properties>
+									<string name="Name">CurveSegment18</string>
+									<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+									<Color3 name="BackgroundColor3"><R>0.16470589</R><G>0.5019608</G><B>0.73333335</B></Color3>
+									<int name="BorderSizePixel">0</int>
+									<int name="LayoutOrder">18</int>
+									<int name="ZIndex">10</int>
+								</Properties>
+								<Item class="UICorner" referent="RBXAUXRIGHTSEGMENT18000000CORNER">
+									<Properties>
+										<string name="Name">SegmentCorner</string>
+										<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+									</Properties>
+								</Item>
+							</Item>
+						</Item>
+						<Item class="TextLabel" referent="RBXAUXANCHORTEXT">
+							<Properties>
+								<string name="Name">Anchor</string>
+								<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
+								<UDim2 name="Position"><XS>0.5</XS><XO>0</XO><YS>0.53</YS><YO>0</YO></UDim2>
+								<UDim2 name="Size"><XS>0.18</XS><XO>0</XO><YS>1.08</YS><YO>0</YO></UDim2>
+								<float name="BackgroundTransparency">1</float>
+								<Font name="FontFace"><Family><url>rbxasset://fonts/families/GothamSSm.json</url></Family><Weight>700</Weight><Style>Normal</Style></Font>
+								<string name="Text">&#9875;</string>
+								<Color3 name="TextColor3"><R>0.06666667</R><G>0.32156864</G><B>0.5921569</B></Color3>
+								<bool name="TextScaled">true</bool>
+								<int name="ZIndex">11</int>
+							</Properties>
+							<Item class="UITextSizeConstraint" referent="RBXAUXANCHORTEXTSIZE">
+								<Properties>
+									<string name="Name">AnchorTextSize</string>
+									<int name="MinTextSize">16</int>
+									<int name="MaxTextSize">42</int>
+								</Properties>
+							</Item>
+						</Item>
+					</Item>
+					<Item class="TextLabel" referent="RBXAUXSTATUSTEXT">
+						<Properties>
+							<string name="Name">StatusText</string>
+							<Vector2 name="AnchorPoint"><X>0.5</X><Y>0</Y></Vector2>
+							<UDim2 name="Position"><XS>0.5</XS><XO>0</XO><YS>0.34</YS><YO>0</YO></UDim2>
+							<UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>0.3</YS><YO>0</YO></UDim2>
+							<float name="BackgroundTransparency">1</float>
+							<Font name="FontFace"><Family><url>rbxasset://fonts/families/GothamSSm.json</url></Family><Weight>700</Weight><Style>Normal</Style></Font>
+							<string name="Text">PREPARING YOUR FISHING ADVENTURE...</string>
+							<Color3 name="TextColor3"><R>0.06666667</R><G>0.32156864</G><B>0.5921569</B></Color3>
+							<bool name="TextScaled">true</bool>
+							<Color3 name="TextStrokeColor3"><R>0.8627451</R><G>0.94509804</G><B>0.9764706</B></Color3>
+							<float name="TextStrokeTransparency">0.82</float>
+							<int name="ZIndex">10</int>
+						</Properties>
+						<Item class="UITextSizeConstraint" referent="RBXAUXSTATUSTEXTSIZE">
+							<Properties>
+								<string name="Name">StatusTextSize</string>
+								<int name="MinTextSize">12</int>
+								<int name="MaxTextSize">25</int>
+							</Properties>
+						</Item>
+					</Item>
+					<Item class="Frame" referent="RBXAUXLOADINGDOTS">
+						<Properties>
+							<string name="Name">LoadingDots</string>
+							<Vector2 name="AnchorPoint"><X>0.5</X><Y>0</Y></Vector2>
+							<UDim2 name="Position"><XS>0.5</XS><XO>0</XO><YS>0.7</YS><YO>0</YO></UDim2>
+							<UDim2 name="Size"><XS>0</XS><XO>150</XO><YS>0</YS><YO>24</YO></UDim2>
+							<float name="BackgroundTransparency">1</float>
+							<int name="ZIndex">10</int>
+						</Properties>
+						<Item class="UIListLayout" referent="RBXAUXDOTLAYOUT">
+							<Properties>
+								<string name="Name">DotLayout</string>
+								<UDim name="Padding"><S>0</S><O>10</O></UDim>
+							</Properties>
+						</Item>
+						<Item class="Frame" referent="RBXAUXLOADINGDOT1000000">
+							<Properties>
+								<string name="Name">Dot1</string>
+								<UDim2 name="Size"><XS>0</XS><XO>18</XO><YS>0</YS><YO>18</YO></UDim2>
+								<Color3 name="BackgroundColor3"><R>0.49411765</R><G>0.7529412</G><B>0.87058824</B></Color3>
+								<float name="BackgroundTransparency">0.35</float>
+								<int name="BorderSizePixel">0</int>
+								<int name="LayoutOrder">1</int>
+								<int name="ZIndex">10</int>
+							</Properties>
+							<Item class="UICorner" referent="RBXAUXLOADINGDOT1000000CORNER">
+								<Properties>
+									<string name="Name">DotCorner</string>
+									<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+								</Properties>
+							</Item>
+						</Item>
+						<Item class="Frame" referent="RBXAUXLOADINGDOT2000000">
+							<Properties>
+								<string name="Name">Dot2</string>
+								<UDim2 name="Size"><XS>0</XS><XO>18</XO><YS>0</YS><YO>18</YO></UDim2>
+								<Color3 name="BackgroundColor3"><R>0.49411765</R><G>0.7529412</G><B>0.87058824</B></Color3>
+								<float name="BackgroundTransparency">0.35</float>
+								<int name="BorderSizePixel">0</int>
+								<int name="LayoutOrder">2</int>
+								<int name="ZIndex">10</int>
+							</Properties>
+							<Item class="UICorner" referent="RBXAUXLOADINGDOT2000000CORNER">
+								<Properties>
+									<string name="Name">DotCorner</string>
+									<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+								</Properties>
+							</Item>
+						</Item>
+						<Item class="Frame" referent="RBXAUXLOADINGDOT3000000">
+							<Properties>
+								<string name="Name">Dot3</string>
+								<UDim2 name="Size"><XS>0</XS><XO>18</XO><YS>0</YS><YO>18</YO></UDim2>
+								<Color3 name="BackgroundColor3"><R>0.49411765</R><G>0.7529412</G><B>0.87058824</B></Color3>
+								<float name="BackgroundTransparency">0.35</float>
+								<int name="BorderSizePixel">0</int>
+								<int name="LayoutOrder">3</int>
+								<int name="ZIndex">10</int>
+							</Properties>
+							<Item class="UICorner" referent="RBXAUXLOADINGDOT3000000CORNER">
+								<Properties>
+									<string name="Name">DotCorner</string>
+									<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+								</Properties>
+							</Item>
+						</Item>
+						<Item class="Frame" referent="RBXAUXLOADINGDOT4000000">
+							<Properties>
+								<string name="Name">Dot4</string>
+								<UDim2 name="Size"><XS>0</XS><XO>18</XO><YS>0</YS><YO>18</YO></UDim2>
+								<Color3 name="BackgroundColor3"><R>0.49411765</R><G>0.7529412</G><B>0.87058824</B></Color3>
+								<float name="BackgroundTransparency">0.35</float>
+								<int name="BorderSizePixel">0</int>
+								<int name="LayoutOrder">4</int>
+								<int name="ZIndex">10</int>
+							</Properties>
+							<Item class="UICorner" referent="RBXAUXLOADINGDOT4000000CORNER">
+								<Properties>
+									<string name="Name">DotCorner</string>
+									<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+								</Properties>
+							</Item>
+						</Item>
+						<Item class="Frame" referent="RBXAUXLOADINGDOT5000000">
+							<Properties>
+								<string name="Name">Dot5</string>
+								<UDim2 name="Size"><XS>0</XS><XO>18</XO><YS>0</YS><YO>18</YO></UDim2>
+								<Color3 name="BackgroundColor3"><R>0.49411765</R><G>0.7529412</G><B>0.87058824</B></Color3>
+								<float name="BackgroundTransparency">0.35</float>
+								<int name="BorderSizePixel">0</int>
+								<int name="LayoutOrder">5</int>
+								<int name="ZIndex">10</int>
+							</Properties>
+							<Item class="UICorner" referent="RBXAUXLOADINGDOT5000000CORNER">
+								<Properties>
+									<string name="Name">DotCorner</string>
+									<UDim name="CornerRadius"><S>1</S><O>0</O></UDim>
+								</Properties>
+							</Item>
+						</Item>
+						<Item class="UIScale" referent="RBXAUXDOTSCALE">
+							<Properties>
+								<string name="Name">ResponsiveScale</string>
+								<float name="Scale">1</float>
+							</Properties>
+						</Item>
+					</Item>
+				</Item>
+			</Item>
+		</Item>
+	</Item>
+</roblox>

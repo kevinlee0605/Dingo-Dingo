@@ -1,0 +1,535 @@
+<?xml version="1.0" encoding="utf-8"?>
+<roblox version="4">
+	<External>null</External>
+	<External>nil</External>
+	<Item class="Frame" referent="RBX00000001">
+		<Properties>
+			<string name="Name">Holder</string>
+			<Vector2 name="AnchorPoint">
+				<X>0.5</X>
+				<Y>1</Y>
+			</Vector2>
+			<float name="BackgroundTransparency">1</float>
+			<UDim2 name="Position">
+				<XS>0.5</XS>
+				<XO>0</XO>
+				<YS>1</YS>
+				<YO>-12</YO>
+			</UDim2>
+			<UDim2 name="Size">
+				<XS>0</XS>
+				<XO>308</XO>
+				<YS>0</YS>
+				<YO>124</YO>
+			</UDim2>
+		</Properties>
+		<Item class="UIScale" referent="RBX00000002">
+			<Properties>
+				<string name="Name">DeviceScale</string>
+				<float name="Scale">0.9324</float>
+			</Properties>
+		</Item>
+		<Item class="UIListLayout" referent="RBX00000003">
+			<Properties>
+				<string name="Name">UIListLayout</string>
+				<token name="FillDirection">0</token>
+				<token name="HorizontalAlignment">1</token>
+				<UDim name="Padding">
+					<S>0</S>
+					<O>10</O>
+				</UDim>
+				<token name="SortOrder">2</token>
+				<token name="VerticalAlignment">2</token>
+			</Properties>
+		</Item>
+		<Item class="TextButton" referent="RBX00000004">
+			<Properties>
+				<string name="Name">Slot1</string>
+				<bool name="AutoButtonColor">false</bool>
+				<Color3 name="BackgroundColor3">
+					<R>0.0862745098039216</R>
+					<G>0.0705882352941176</G>
+					<B>0.0588235294117647</B>
+				</Color3>
+				<float name="BackgroundTransparency">0.22</float>
+				<bool name="ClipsDescendants">false</bool>
+				<int name="LayoutOrder">1</int>
+				<UDim2 name="Size">
+					<XS>0</XS>
+					<XO>96</XO>
+					<YS>0</YS>
+					<YO>88</YO>
+				</UDim2>
+				<string name="Text"></string>
+			</Properties>
+			<Item class="UICorner" referent="RBX00000005">
+				<Properties>
+					<string name="Name">UICorner</string>
+					<UDim name="CornerRadius">
+						<S>0</S>
+						<O>10</O>
+					</UDim>
+				</Properties>
+			</Item>
+			<Item class="UIStroke" referent="RBX00000006">
+				<Properties>
+					<string name="Name">UIStroke</string>
+					<token name="ApplyStrokeMode">1</token>
+					<Color3 name="Color">
+						<R>0</R>
+						<G>0</G>
+						<B>0</B>
+					</Color3>
+					<float name="Thickness">3</float>
+				</Properties>
+			</Item>
+			<Item class="UIScale" referent="RBX00000007">
+				<Properties>
+					<string name="Name">UIScale</string>
+					<float name="Scale">1</float>
+				</Properties>
+			</Item>
+			<Item class="TextLabel" referent="RBX00000008">
+				<Properties>
+					<string name="Name">NumberBox</string>
+					<Color3 name="BackgroundColor3">
+						<R>0.215686274509804</R>
+						<G>0.215686274509804</G>
+						<B>0.215686274509804</B>
+					</Color3>
+					<float name="BackgroundTransparency">0.15</float>
+					<token name="Font">20</token>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>6</XO>
+						<YS>0</YS>
+						<YO>6</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>22</XO>
+						<YS>0</YS>
+						<YO>22</YO>
+					</UDim2>
+					<string name="Text">1</string>
+					<Color3 name="TextColor3">
+						<R>1</R>
+						<G>1</G>
+						<B>1</B>
+					</Color3>
+					<bool name="TextScaled">false</bool>
+					<float name="TextSize">16</float>
+					<float name="TextStrokeTransparency">0</float>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">20</int>
+				</Properties>
+				<Item class="UICorner" referent="RBX00000009">
+					<Properties>
+						<string name="Name">UICorner</string>
+						<UDim name="CornerRadius">
+							<S>0</S>
+							<O>7</O>
+						</UDim>
+					</Properties>
+				</Item>
+				<Item class="UIStroke" referent="RBX0000000A">
+					<Properties>
+						<string name="Name">UIStroke</string>
+						<token name="ApplyStrokeMode">1</token>
+						<Color3 name="Color">
+							<R>0.705882352941177</R>
+							<G>0.705882352941177</G>
+							<B>0.705882352941177</B>
+						</Color3>
+						<float name="Thickness">1.5</float>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="ImageLabel" referent="RBX0000000B">
+				<Properties>
+					<string name="Name">Icon</string>
+					<Vector2 name="AnchorPoint">
+						<X>0.5</X>
+						<Y>0.5</Y>
+					</Vector2>
+					<float name="BackgroundTransparency">1</float>
+					<Content name="Image">
+						<url>rbxassetid://105149981299569</url>
+					</Content>
+					<UDim2 name="Position">
+						<XS>0.5</XS>
+						<XO>0</XO>
+						<YS>0.46</YS>
+						<YO>0</YO>
+					</UDim2>
+					<token name="ScaleType">3</token>
+					<UDim2 name="Size">
+						<XS>0.78</XS>
+						<XO>0</XO>
+						<YS>0.7</YS>
+						<YO>0</YO>
+					</UDim2>
+					<int name="ZIndex">10</int>
+				</Properties>
+			</Item>
+			<Item class="TextLabel" referent="RBX0000000C">
+				<Properties>
+					<string name="Name">Label</string>
+					<Vector2 name="AnchorPoint">
+						<X>0.5</X>
+						<Y>1</Y>
+					</Vector2>
+					<float name="BackgroundTransparency">1</float>
+					<token name="Font">20</token>
+					<UDim2 name="Position">
+						<XS>0.5</XS>
+						<XO>0</XO>
+						<YS>0.98</YS>
+						<YO>0</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>0.95</XS>
+						<XO>0</XO>
+						<YS>0.27</YS>
+						<YO>0</YO>
+					</UDim2>
+					<string name="Text">Wooden Rod</string>
+					<Color3 name="TextColor3">
+						<R>0.627450980392157</R>
+						<G>1</G>
+						<B>0.313725490196078</B>
+					</Color3>
+					<bool name="TextScaled">true</bool>
+					<float name="TextStrokeTransparency">0</float>
+					<int name="ZIndex">15</int>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="TextButton" referent="RBX0000000D">
+			<Properties>
+				<string name="Name">Slot2</string>
+				<bool name="AutoButtonColor">false</bool>
+				<Color3 name="BackgroundColor3">
+					<R>0.0862745098039216</R>
+					<G>0.0705882352941176</G>
+					<B>0.0588235294117647</B>
+				</Color3>
+				<float name="BackgroundTransparency">0.22</float>
+				<bool name="ClipsDescendants">false</bool>
+				<int name="LayoutOrder">2</int>
+				<UDim2 name="Size">
+					<XS>0</XS>
+					<XO>96</XO>
+					<YS>0</YS>
+					<YO>88</YO>
+				</UDim2>
+				<string name="Text"></string>
+			</Properties>
+			<Item class="UICorner" referent="RBX0000000E">
+				<Properties>
+					<string name="Name">UICorner</string>
+					<UDim name="CornerRadius">
+						<S>0</S>
+						<O>10</O>
+					</UDim>
+				</Properties>
+			</Item>
+			<Item class="UIStroke" referent="RBX0000000F">
+				<Properties>
+					<string name="Name">UIStroke</string>
+					<token name="ApplyStrokeMode">1</token>
+					<Color3 name="Color">
+						<R>0</R>
+						<G>0</G>
+						<B>0</B>
+					</Color3>
+					<float name="Thickness">3</float>
+				</Properties>
+			</Item>
+			<Item class="UIScale" referent="RBX00000010">
+				<Properties>
+					<string name="Name">UIScale</string>
+					<float name="Scale">1</float>
+				</Properties>
+			</Item>
+			<Item class="TextLabel" referent="RBX00000011">
+				<Properties>
+					<string name="Name">NumberBox</string>
+					<Color3 name="BackgroundColor3">
+						<R>0.215686274509804</R>
+						<G>0.215686274509804</G>
+						<B>0.215686274509804</B>
+					</Color3>
+					<float name="BackgroundTransparency">0.15</float>
+					<token name="Font">20</token>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>6</XO>
+						<YS>0</YS>
+						<YO>6</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>22</XO>
+						<YS>0</YS>
+						<YO>22</YO>
+					</UDim2>
+					<string name="Text">2</string>
+					<Color3 name="TextColor3">
+						<R>1</R>
+						<G>1</G>
+						<B>1</B>
+					</Color3>
+					<bool name="TextScaled">false</bool>
+					<float name="TextSize">16</float>
+					<float name="TextStrokeTransparency">0</float>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">20</int>
+				</Properties>
+				<Item class="UICorner" referent="RBX00000012">
+					<Properties>
+						<string name="Name">UICorner</string>
+						<UDim name="CornerRadius">
+							<S>0</S>
+							<O>7</O>
+						</UDim>
+					</Properties>
+				</Item>
+				<Item class="UIStroke" referent="RBX00000013">
+					<Properties>
+						<string name="Name">UIStroke</string>
+						<token name="ApplyStrokeMode">1</token>
+						<Color3 name="Color">
+							<R>0.705882352941177</R>
+							<G>0.705882352941177</G>
+							<B>0.705882352941177</B>
+						</Color3>
+						<float name="Thickness">1.5</float>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="ImageLabel" referent="RBX00000014">
+				<Properties>
+					<string name="Name">Icon</string>
+					<Vector2 name="AnchorPoint">
+						<X>0.5</X>
+						<Y>0.5</Y>
+					</Vector2>
+					<float name="BackgroundTransparency">1</float>
+					<Content name="Image">
+						<url>rbxassetid://75795273892452</url>
+					</Content>
+					<UDim2 name="Position">
+						<XS>0.5</XS>
+						<XO>0</XO>
+						<YS>0.46</YS>
+						<YO>0</YO>
+					</UDim2>
+					<token name="ScaleType">3</token>
+					<UDim2 name="Size">
+						<XS>0.78</XS>
+						<XO>0</XO>
+						<YS>0.7</YS>
+						<YO>0</YO>
+					</UDim2>
+					<int name="ZIndex">10</int>
+				</Properties>
+			</Item>
+			<Item class="TextLabel" referent="RBX00000015">
+				<Properties>
+					<string name="Name">Label</string>
+					<Vector2 name="AnchorPoint">
+						<X>0.5</X>
+						<Y>1</Y>
+					</Vector2>
+					<float name="BackgroundTransparency">1</float>
+					<token name="Font">20</token>
+					<UDim2 name="Position">
+						<XS>0.5</XS>
+						<XO>0</XO>
+						<YS>0.98</YS>
+						<YO>0</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>0.95</XS>
+						<XO>0</XO>
+						<YS>0.27</YS>
+						<YO>0</YO>
+					</UDim2>
+					<string name="Text">Bag</string>
+					<Color3 name="TextColor3">
+						<R>0.176470588235294</R>
+						<G>0.823529411764706</G>
+						<B>1</B>
+					</Color3>
+					<bool name="TextScaled">true</bool>
+					<float name="TextStrokeTransparency">0</float>
+					<int name="ZIndex">15</int>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="TextButton" referent="RBX00000016">
+			<Properties>
+				<string name="Name">Slot3</string>
+				<bool name="AutoButtonColor">false</bool>
+				<Color3 name="BackgroundColor3">
+					<R>0.0862745098039216</R>
+					<G>0.0705882352941176</G>
+					<B>0.0588235294117647</B>
+				</Color3>
+				<float name="BackgroundTransparency">0.22</float>
+				<bool name="ClipsDescendants">false</bool>
+				<int name="LayoutOrder">3</int>
+				<UDim2 name="Size">
+					<XS>0</XS>
+					<XO>96</XO>
+					<YS>0</YS>
+					<YO>88</YO>
+				</UDim2>
+				<string name="Text"></string>
+			</Properties>
+			<Item class="UICorner" referent="RBX00000017">
+				<Properties>
+					<string name="Name">UICorner</string>
+					<UDim name="CornerRadius">
+						<S>0</S>
+						<O>10</O>
+					</UDim>
+				</Properties>
+			</Item>
+			<Item class="UIStroke" referent="RBX00000018">
+				<Properties>
+					<string name="Name">UIStroke</string>
+					<token name="ApplyStrokeMode">1</token>
+					<Color3 name="Color">
+						<R>0</R>
+						<G>0</G>
+						<B>0</B>
+					</Color3>
+					<float name="Thickness">3</float>
+				</Properties>
+			</Item>
+			<Item class="UIScale" referent="RBX00000019">
+				<Properties>
+					<string name="Name">UIScale</string>
+					<float name="Scale">1</float>
+				</Properties>
+			</Item>
+			<Item class="TextLabel" referent="RBX0000001A">
+				<Properties>
+					<string name="Name">NumberBox</string>
+					<Color3 name="BackgroundColor3">
+						<R>0.215686274509804</R>
+						<G>0.215686274509804</G>
+						<B>0.215686274509804</B>
+					</Color3>
+					<float name="BackgroundTransparency">0.15</float>
+					<token name="Font">20</token>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>6</XO>
+						<YS>0</YS>
+						<YO>6</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>22</XO>
+						<YS>0</YS>
+						<YO>22</YO>
+					</UDim2>
+					<string name="Text">3</string>
+					<Color3 name="TextColor3">
+						<R>1</R>
+						<G>1</G>
+						<B>1</B>
+					</Color3>
+					<bool name="TextScaled">false</bool>
+					<float name="TextSize">16</float>
+					<float name="TextStrokeTransparency">0</float>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">20</int>
+				</Properties>
+				<Item class="UICorner" referent="RBX0000001B">
+					<Properties>
+						<string name="Name">UICorner</string>
+						<UDim name="CornerRadius">
+							<S>0</S>
+							<O>7</O>
+						</UDim>
+					</Properties>
+				</Item>
+				<Item class="UIStroke" referent="RBX0000001C">
+					<Properties>
+						<string name="Name">UIStroke</string>
+						<token name="ApplyStrokeMode">1</token>
+						<Color3 name="Color">
+							<R>0.705882352941177</R>
+							<G>0.705882352941177</G>
+							<B>0.705882352941177</B>
+						</Color3>
+						<float name="Thickness">1.5</float>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="ImageLabel" referent="RBX0000001D">
+				<Properties>
+					<string name="Name">Icon</string>
+					<Vector2 name="AnchorPoint">
+						<X>0.5</X>
+						<Y>0.5</Y>
+					</Vector2>
+					<float name="BackgroundTransparency">1</float>
+					<Content name="Image">
+						<url>rbxassetid://135629767511743</url>
+					</Content>
+					<UDim2 name="Position">
+						<XS>0.5</XS>
+						<XO>0</XO>
+						<YS>0.46</YS>
+						<YO>0</YO>
+					</UDim2>
+					<token name="ScaleType">3</token>
+					<UDim2 name="Size">
+						<XS>0.78</XS>
+						<XO>0</XO>
+						<YS>0.7</YS>
+						<YO>0</YO>
+					</UDim2>
+					<int name="ZIndex">10</int>
+				</Properties>
+			</Item>
+			<Item class="TextLabel" referent="RBX0000001E">
+				<Properties>
+					<string name="Name">Label</string>
+					<Vector2 name="AnchorPoint">
+						<X>0.5</X>
+						<Y>1</Y>
+					</Vector2>
+					<float name="BackgroundTransparency">1</float>
+					<token name="Font">20</token>
+					<UDim2 name="Position">
+						<XS>0.5</XS>
+						<XO>0</XO>
+						<YS>0.98</YS>
+						<YO>0</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>0.95</XS>
+						<XO>0</XO>
+						<YS>0.27</YS>
+						<YO>0</YO>
+					</UDim2>
+					<string name="Text">Fishdex</string>
+					<Color3 name="TextColor3">
+						<R>1</R>
+						<G>0.862745098039216</G>
+						<B>0.509803921568627</B>
+					</Color3>
+					<bool name="TextScaled">true</bool>
+					<float name="TextStrokeTransparency">0</float>
+					<int name="ZIndex">15</int>
+				</Properties>
+			</Item>
+		</Item>
+	</Item>
+</roblox>

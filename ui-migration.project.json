@@ -1,0 +1,131 @@
+{
+  "name": "Fishy Fish UI Migration",
+  "servePlaceIds": [124368026422180],
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedFirst": {
+      "$ignoreUnknownInstances": true,
+      "$path": "src/replicatedfirst"
+    },
+    "ReplicatedStorage": {
+      "$ignoreUnknownInstances": true,
+      "Shared": {
+        "$className": "Folder",
+        "$ignoreUnknownInstances": true,
+        "$path": "src/shared"
+      },
+      "FishingRemotes": {
+        "$className": "Folder",
+        "$ignoreUnknownInstances": true,
+        "StartFishing": { "$className": "RemoteEvent" },
+        "GetCastConfig": { "$className": "RemoteFunction" },
+        "FinishMinigame": { "$className": "RemoteEvent" },
+        "SellFish": { "$className": "RemoteEvent" },
+        "BuyRod": { "$className": "RemoteEvent" },
+        "BaitAction": { "$className": "RemoteEvent" },
+        "QuestAction": { "$className": "RemoteEvent" },
+        "LoginRewardAction": { "$className": "RemoteEvent" },
+        "ShopAction": { "$className": "RemoteEvent" },
+        "UnlockBiome": { "$className": "RemoteEvent" },
+        "TeleportTo": { "$className": "RemoteEvent" },
+        "OpenBiomeWarp": { "$className": "RemoteEvent" },
+        "OpenSellFish": { "$className": "RemoteEvent" },
+        "OpenRodShop": { "$className": "RemoteEvent" },
+        "OpenShop": { "$className": "RemoteEvent" },
+        "OpenAquariumHub": { "$className": "RemoteEvent" },
+        "AquariumAction": { "$className": "RemoteEvent" },
+        "ToggleAutoFish": { "$className": "RemoteEvent" },
+        "StateUpdated": { "$className": "RemoteEvent" },
+        "FishingPrompt": { "$className": "RemoteEvent" },
+        "Notice": { "$className": "RemoteEvent" },
+        "GetState": { "$className": "RemoteFunction" }
+      }
+    },
+    "ServerScriptService": {
+      "$ignoreUnknownInstances": true,
+      "$path": "src/server"
+    },
+    "StarterGui": {
+      "$ignoreUnknownInstances": true,
+      "AquariumFreePlacementEditor": {
+        "$path": "src/startergui/AquariumFreePlacementEditor.client.luau"
+      },
+      "AquariumDesignerShopCleanup": {
+        "$path": "src/startergui/AquariumDesignerShopCleanup.client.luau"
+      },
+      "FishingGui": {
+        "$ignoreUnknownInstances": false,
+        "$path": "src/ui/FishingGui"
+      },
+      "TopHudGui": {
+        "$ignoreUnknownInstances": false,
+        "$path": "src/ui/TopHudGui"
+      },
+      "ServerUtcClockGui": {
+        "$ignoreUnknownInstances": false,
+        "$path": "src/ui/ServerUtcClockGui",
+        "ServerUtcClock": {
+          "$path": "src/starterplayer/ServerUtcClock.client.luau"
+        }
+      },
+      "Phase3EconomyGui": {
+        "$ignoreUnknownInstances": false,
+        "$path": "src/ui/Phase3EconomyGui",
+        "Phase3EconomyUI": {
+          "$path": "src/starterplayer/Phase3EconomyUI.client.luau"
+        }
+      },
+      "AquariumFreePlacementGui": {
+        "$ignoreUnknownInstances": false,
+        "$path": "src/ui/AquariumFreePlacementGui"
+      },
+      "AquariumViewerGui": {
+        "$ignoreUnknownInstances": false,
+        "$path": "src/ui/AquariumViewerGui"
+      },
+      "CustomHotbarGui": {
+        "$ignoreUnknownInstances": false,
+        "$path": "src/ui/CustomHotbarGui",
+        "CustomHotbarClient": {
+          "$path": "src/starterplayer/CustomHotbarClient.client.luau"
+        }
+      }
+    },
+    "StarterPlayer": {
+      "$ignoreUnknownInstances": true,
+      "StarterPlayerScripts": {
+        "$ignoreUnknownInstances": true,
+        "FishingAreaButtonsVisibility": {
+          "$path": "src/starterplayer/FishingAreaButtonsVisibility.client.luau"
+        },
+        "FishingCastAnimation": {
+          "$path": "src/starterplayer/FishingCastAnimation.client.luau"
+        },
+        "BaitIconController": {
+          "$path": "src/starterplayer/BaitIconController.client.luau"
+        },
+        "EconomyUIIntegration": {
+          "$path": "src/starterplayer/EconomyUIIntegration.client.luau"
+        },
+        "Phase3EconomyUI": {
+          "$path": "src/starterplayer/RetiredPhase3EconomyUI.client.luau"
+        },
+        "ServerUtcClock": {
+          "$path": "src/starterplayer/RetiredServerUtcClock.client.luau"
+        },
+        "ForceTopHudPosition": {
+          "$path": "src/starterplayer/RetiredForceTopHudPosition.client.luau"
+        },
+        "SeastarHudOverride": {
+          "$path": "src/starterplayer/RetiredSeastarHudOverride.client.luau"
+        },
+        "ResponsiveUiAdapter": {
+          "$path": "src/starterplayer/AuthoredUiController.client.luau"
+        },
+        "CustomHotbarClient": {
+          "$path": "src/starterplayer/RetiredCustomHotbarClient.client.luau"
+        }
+      }
+    }
+  }
+}

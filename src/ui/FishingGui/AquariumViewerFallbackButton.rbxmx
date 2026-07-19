@@ -1,0 +1,78 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+	<Meta name="ExplicitAutoJoints">true</Meta>
+	<External>null</External>
+	<External>nil</External>
+	<Item class="TextButton" referent="RBX00000001">
+		<Properties>
+			<string name="Name">AquariumViewerFallbackButton</string>
+			<bool name="Active">true</bool>
+			<Vector2 name="AnchorPoint">
+				<X>1</X>
+				<Y>1</Y>
+			</Vector2>
+			<bool name="AutoButtonColor">true</bool>
+			<Color3 name="BackgroundColor3">
+				<R>0.20784313725490197</R>
+				<G>0.5098039215686274</G>
+				<B>0.9647058823529412</B>
+			</Color3>
+			<float name="BackgroundTransparency">0</float>
+			<Color3 name="BorderColor3">
+				<R>0.10588235294117647</R>
+				<G>0.16470588235294117</G>
+				<B>0.20784313725490197</B>
+			</Color3>
+			<int name="BorderSizePixel">1</int>
+			<bool name="ClipsDescendants">false</bool>
+			<token name="Font">19</token>
+			<int name="LayoutOrder">0</int>
+			<UDim2 name="Position">
+				<XS>1</XS>
+				<XO>-18</XO>
+				<YS>1</YS>
+				<YO>-82</YO>
+			</UDim2>
+			<bool name="Selectable">true</bool>
+			<UDim2 name="Size">
+				<XS>0</XS>
+				<XO>146</XO>
+				<YS>0</YS>
+				<YO>48</YO>
+			</UDim2>
+			<string name="Text">Open Viewer</string>
+			<Color3 name="TextColor3">
+				<R>1.0</R>
+				<G>1.0</G>
+				<B>1.0</B>
+			</Color3>
+			<float name="TextSize">14</float>
+			<float name="TextStrokeTransparency">1</float>
+			<float name="TextTransparency">0</float>
+			<token name="TextXAlignment">1</token>
+			<token name="TextYAlignment">1</token>
+			<bool name="Visible">false</bool>
+			<int name="ZIndex">31</int>
+		</Properties>
+		<Item class="UICorner" referent="RBX00000002">
+			<Properties>
+				<string name="Name">ButtonCorner</string>
+				<UDim name="CornerRadius">
+					<S>0</S>
+					<O>7</O>
+				</UDim>
+			</Properties>
+		</Item>
+		<Item class="UIStroke" referent="RBX00000003">
+			<Properties>
+				<string name="Name">ButtonStroke</string>
+				<Color3 name="Color">
+					<R>1.0</R>
+					<G>1.0</G>
+					<B>1.0</B>
+				</Color3>
+				<float name="Thickness">1</float>
+				<float name="Transparency">0.85</float>
+			</Properties>
+		</Item>
+	</Item>
+</roblox>

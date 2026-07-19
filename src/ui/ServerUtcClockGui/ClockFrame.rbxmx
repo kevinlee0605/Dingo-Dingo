@@ -1,0 +1,50 @@
+<roblox version="4">
+  <Item class="Frame" referent="RBXSERVERCLOCKFRAME">
+    <Properties>
+      <string name="Name">ClockFrame</string>
+      <Vector2 name="AnchorPoint"><X>0</X><Y>1</Y></Vector2>
+      <UDim2 name="Position"><XS>0</XS><XO>13</XO><YS>1</YS><YO>-10</YO></UDim2>
+      <UDim2 name="Size"><XS>0</XS><XO>380</XO><YS>0</YS><YO>34</YO></UDim2>
+      <Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
+      <float name="BackgroundTransparency">1</float>
+      <int name="BorderSizePixel">0</int>
+      <bool name="Visible">true</bool>
+      <int name="ZIndex">100</int>
+    </Properties>
+    <Item class="TextLabel" referent="RBXSERVERUTCTEXT">
+      <Properties>
+        <string name="Name">ServerUtcText</string>
+        <UDim2 name="Position"><XS>0</XS><XO>8</XO><YS>0</YS><YO>2</YO></UDim2>
+        <UDim2 name="Size"><XS>1</XS><XO>-16</XO><YS>1</YS><YO>-4</YO></UDim2>
+        <Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
+        <float name="BackgroundTransparency">1</float>
+        <int name="BorderSizePixel">0</int>
+        <bool name="AutoLocalize">false</bool>
+        <token name="Font">20</token>
+        <string name="Text">SERVER UTC  &#8226;  --:--:--</string>
+        <Color3 name="TextColor3"><R>1</R><G>1</G><B>1</B></Color3>
+        <float name="TextSize">14</float>
+        <Color3 name="TextStrokeColor3"><R>0</R><G>0</G><B>0</B></Color3>
+        <float name="TextStrokeTransparency">0</float>
+        <token name="TextXAlignment">0</token>
+        <token name="TextYAlignment">1</token>
+        <int name="ZIndex">101</int>
+      </Properties>
+      <Item class="UIStroke" referent="RBXSERVERUTCTEXTOUTLINE">
+        <Properties>
+          <string name="Name">ServerUtcTextOutline</string>
+          <token name="ApplyStrokeMode">0</token>
+          <Color3 name="Color"><R>0</R><G>0</G><B>0</B></Color3>
+          <float name="Thickness">3</float>
+          <float name="Transparency">0</float>
+        </Properties>
+      </Item>
+    </Item>
+    <Item class="UIScale" referent="RBXSERVERCLOCKSCALE">
+      <Properties>
+        <string name="Name">FishyFishDeviceScale</string>
+        <float name="Scale">0.74</float>
+      </Properties>
+    </Item>
+  </Item>
+</roblox>

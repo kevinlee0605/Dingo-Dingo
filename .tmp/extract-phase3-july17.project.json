@@ -1,0 +1,18 @@
+{
+  "name": "Extract July 17 Phase3 UI",
+  "tree": {
+    "$className": "DataModel",
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "Phase3EconomyUI": {
+          "$path": "phase3-july17/Phase3EconomyUI.client.luau"
+        },
+        "EconomyUIIntegration": {
+          "$path": "phase3-july17/EconomyUIIntegration.client.luau"
+        }
+      }
+    }
+  }
+}

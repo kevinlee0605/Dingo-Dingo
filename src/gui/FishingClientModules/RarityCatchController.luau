@@ -1,5 +1,11 @@
 local RarityCatchController = {}
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local FishingMinigameSimulation = require(
+	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("FishingMinigameSimulation")
+)
+local FishingSFX = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("FishingSFX"))
+
 local PURPLE_TOP = Color3.fromRGB(222, 137, 255)
 local PURPLE_BOTTOM = Color3.fromRGB(119, 52, 226)
 local ORANGE_TOP = Color3.fromRGB(255, 207, 92)
@@ -148,7 +154,6 @@ function RarityCatchController.start(options)
 			or '<font color="#38D9FF">Cast:</font> --'
 	end
 
-	local random = Random.new(math.floor((os.clock() * 100000) % 2147483647))
 	local tapFill = ensureTapProgressFill(ui)
 	local standardProgressBackground = ui.progressFill.BackgroundColor3
 	local standardProgressGradient = ui.progressFill:FindFirstChildOfClass("UIGradient")
@@ -163,11 +168,20 @@ function RarityCatchController.start(options)
 		tapCount = 0,
 		tapGoal = TAP_GOALS[rarity] or 0,
 		lastTapAt = 0,
-		rareReversalTriggered = false,
-		forcedReverseUntil = 0,
-		forcedReverseDirection = 0,
 	}
 	local connections = {}
+	local evidenceStartedAt = tonumber(options.startedAt) or os.clock()
+
+	local function reportInput(kind, holding)
+		if isAutoFish or type(options.onInputEvent) ~= "function" then
+			return
+		end
+		options.onInputEvent({
+			kind = kind,
+			holding = holding,
+			elapsed = math.max(0, os.clock() - evidenceStartedAt),
+		})
+	end
 
 	local function setCurrentTapEnabled(enabled)
 		tapButton.Text = enabled and "Tap" or "Fishing..."
@@ -287,6 +301,7 @@ function RarityCatchController.start(options)
 		end
 
 		session.cancelled = true
+		FishingSFX.stopReeling()
 		disconnectAll()
 		resetFishingOnlyVisuals()
 	end
@@ -297,12 +312,17 @@ function RarityCatchController.start(options)
 		end
 
 		session.finished = true
+		FishingSFX.stopReeling()
+		if success == true then
+			FishingSFX.playCatchReveal(rarity, isAutoFish)
+		end
 		disconnectAll()
 		resetFishingOnlyVisuals()
 		options.onFinish(success == true, isAutoFish)
 	end
 
 	local function beginTapPhase(phaseNumber)
+		FishingSFX.stopReeling()
 		session.phase = "TAP"
 		session.phaseNumber = phaseNumber
 		session.phaseProgress = 0
@@ -323,6 +343,7 @@ function RarityCatchController.start(options)
 	end
 
 	local function beginDrain(nextPhaseNumber)
+		FishingSFX.stopReeling()
 		session.phase = "DRAIN"
 		session.phaseNumber = nextPhaseNumber
 		setCurrentTapEnabled(false)
@@ -344,6 +365,7 @@ function RarityCatchController.start(options)
 		end
 		session.lastTapAt = now
 		session.tapCount = math.min(session.tapGoal, session.tapCount + 1)
+		reportInput("Tap")
 		usePhaseGauge()
 	end
 
@@ -375,93 +397,54 @@ function RarityCatchController.start(options)
 		end
 
 		if session.phase == "REEL" and isReelInput(input) then
-			session.holding = true
+			if not session.holding then
+				session.holding = true
+				FishingSFX.setReelingHolding(true)
+				reportInput("Hold", true)
+			end
 		elseif session.phase == "TAP" and isKeyboardTapInput(input) then
 			registerTap()
 		end
 	end))
 	table.insert(connections, inputService.InputEnded:Connect(function(input)
 		if session.phase == "REEL" and isReelInput(input) then
-			session.holding = false
+			if session.holding then
+				session.holding = false
+				FishingSFX.setReelingHolding(false)
+				reportInput("Hold", false)
+			end
 		end
 	end))
 
-	task.delay(tonumber(prompt.biteDelay) or 0, function()
+	local remainingBiteDelay = math.max(
+		0,
+		(tonumber(prompt.biteDelay) or 0) - math.max(0, os.clock() - evidenceStartedAt)
+	)
+	task.delay(remainingBiteDelay, function()
 		if session.cancelled or session.finished then
 			return
 		end
 
-		local barSize = math.clamp(tonumber(minigameConfig.barSize) or 0.24, 0.16, 0.58)
-		local maxBarTop = 1 - barSize
-		local barTop = math.clamp(0.70, 0, maxBarTop)
-		local barVelocity = 0
-		local fishY = random:NextNumber(0.20, 0.80)
-		local fishTarget = random:NextNumber(0.15, 0.85)
-		local fishVelocity = 0
+		local simulation = FishingMinigameSimulation.new(
+			minigameConfig,
+			difficulty,
+			prompt.minigameSeed,
+			rarity
+		)
+		local snapshot = simulation:getSnapshot()
+		local barSize = snapshot.barSize
 		local gameStartedAt = os.clock()
-		local nextDecisionAt = gameStartedAt
-			+ random:NextNumber(difficulty.turnIntervalMin or 1, difficulty.turnIntervalMax or 2)
-		local pauseUntil = 0
-		local burstUntil = 0
-		local minSuccessDuration = tonumber(minigameConfig.minSuccessDuration) or 1.75
 		local maxDuration = tonumber(minigameConfig.maxDuration) or 35
-		local gainMultiplier = rarity == "Uncommon" and 0.88 or 1
 		local phaseDuration = PHASE_DURATIONS[rarity] or 0
 
-		local function chooseFishTarget(fromY, preferFarTarget)
-			if preferFarTarget then
-				local jumpMin = tonumber(difficulty.jumpMin) or 0.12
-				local jumpMax = math.max(jumpMin, tonumber(difficulty.jumpMax) or jumpMin)
-				local direction = random:NextInteger(0, 1) == 0 and -1 or 1
-				local distance = random:NextNumber(jumpMin, jumpMax)
-				local target = fromY + (direction * distance)
-
-				if target < 0.08 or target > 0.92 then
-					target = fromY - (direction * distance)
-				end
-
-				return math.clamp(target, 0.08, 0.92)
-			end
-
-			return random:NextNumber(0.08, 0.92)
-		end
-
-		local function getRareMovementDirection()
-			local currentDirection = fishVelocity > 0.01 and 1 or (fishVelocity < -0.01 and -1 or 0)
-			if currentDirection == 0 then
-				currentDirection = fishTarget >= fishY and 1 or -1
-			end
-
-			return currentDirection
-		end
-
-		local function hasRoomForRareReversal()
-			local reverseDirection = -getRareMovementDirection()
-			local availableDistance = reverseDirection < 0 and (fishY - 0.04) or (0.96 - fishY)
-			return availableDistance >= 0.12
-		end
-
-		local function triggerRareReversal(now)
-			if rarity ~= "Rare" or session.rareReversalTriggered then
-				return
-			end
-
-			session.rareReversalTriggered = true
-			session.forcedReverseDirection = -getRareMovementDirection()
-			session.forcedReverseUntil = now + 0.32
-			local reverseSpeed = math.max((tonumber(difficulty.moveSpeed) or 0.25) * 2.4, 0.72)
-			fishVelocity = session.forcedReverseDirection * reverseSpeed
-			fishTarget = math.clamp(fishY + (session.forcedReverseDirection * 0.42), 0.06, 0.94)
-			pauseUntil = 0
-			burstUntil = 0
-			nextDecisionAt = session.forcedReverseUntil + 0.10
-		end
-
+		FishingSFX.playBiteAlert()
+		FishingSFX.startReeling(isAutoFish)
 		session.phase = "REEL"
 		session.holding = false
 		ui.catchBar.Size = modernUi and UDim2.fromScale(0.82, barSize) or UDim2.new(1, -32, barSize, 0)
-		ui.catchBar.Position = UDim2.new(0.5, 0, barTop, 0)
-		ui.fishMarker.Position = UDim2.new(0.5, 0, fishY, 0)
+		ui.catchBar.Position = UDim2.new(0.5, 0, snapshot.barTop, 0)
+		ui.fishMarker.Position = UDim2.new(0.5, 0, snapshot.fishY, 0)
+		reportInput("Hold", false)
 		useStandardGauge()
 		ui.minigameText.Text = isAutoFish and "AutoFish is reeling..." or "Keep the fish inside the green bar!"
 		ui.minigameFishInfo.Text = string.format(
@@ -527,117 +510,19 @@ function RarityCatchController.start(options)
 					end
 				end
 			else
-				if now >= nextDecisionAt then
-					local pauseChance = difficulty.pauseChance or 0
-					local jumpChance = difficulty.jumpChance or 0
-					local burstChance = difficulty.burstChance or 0
-
-					fishTarget = chooseFishTarget(fishY, jumpChance > 0 and random:NextNumber() < jumpChance)
-
-					if pauseChance > 0 and random:NextNumber() < pauseChance then
-						pauseUntil = now + random:NextNumber(difficulty.pauseMin or 0.12, difficulty.pauseMax or 0.45)
-					end
-
-					if burstChance > 0 and random:NextNumber() < burstChance then
-						burstUntil = now + random:NextNumber(difficulty.burstMin or 0.18, difficulty.burstMax or 0.38)
-					end
-
-					nextDecisionAt = now
-						+ random:NextNumber(difficulty.turnIntervalMin or 1, difficulty.turnIntervalMax or 2)
-				end
-
-				local targetVelocity = 0
-				if now < session.forcedReverseUntil then
-					targetVelocity = session.forcedReverseDirection
-						* math.max((tonumber(difficulty.moveSpeed) or 0.25) * 2.4, 0.72)
-				elseif now >= pauseUntil then
-					local distance = fishTarget - fishY
-					local targetSlack = tonumber(difficulty.targetSlack) or 0.025
-					if math.abs(distance) < targetSlack then
-						fishTarget = chooseFishTarget(fishY, false)
-						distance = fishTarget - fishY
-					end
-
-					local direction = distance >= 0 and 1 or -1
-					local jitter = random:NextNumber(-(difficulty.jitter or 0), difficulty.jitter or 0)
-					local speed = tonumber(difficulty.moveSpeed) or 0.25
-					if now < burstUntil then
-						speed *= tonumber(difficulty.burstMultiplier) or 1.35
-					end
-
-					targetVelocity = (direction * speed) + jitter
-				end
-
-				local fishAcceleration = tonumber(difficulty.acceleration) or 6
-				local velocityBlend = math.min(1, fishAcceleration * deltaTime)
-				fishVelocity += (targetVelocity - fishVelocity) * velocityBlend
-				fishY += fishVelocity * deltaTime
-
-				if fishY <= 0.04 then
-					fishY = 0.04
-					fishVelocity = math.abs(fishVelocity) * 0.35
-					fishTarget = math.max(fishTarget, 0.16)
-				elseif fishY >= 0.96 then
-					fishY = 0.96
-					fishVelocity = -math.abs(fishVelocity) * 0.35
-					fishTarget = math.min(fishTarget, 0.84)
-				end
-
+				snapshot = simulation:advance(deltaTime, session.holding)
 				if isAutoFish then
-					local targetTop = math.clamp(fishY - (barSize / 2), 0, maxBarTop)
-					barTop += (targetTop - barTop) * math.min(1, deltaTime * 5)
 					session.progress = math.clamp(
 						session.progress + (minigameConfig.progressGainPerSecond or 0.34) * deltaTime,
 						0,
 						1
 					)
 				else
-					local barAcceleration = session.holding
-						and -(minigameConfig.lift or 2.75)
-						or (minigameConfig.gravity or 1.8)
-					barVelocity += barAcceleration * deltaTime
-					barVelocity = math.clamp(
-						barVelocity,
-						-(minigameConfig.maxBarVelocity or 1.65),
-						minigameConfig.maxBarVelocity or 1.65
-					)
-					barVelocity *= math.pow(minigameConfig.damping or 0.90, deltaTime * 60)
-					barTop += barVelocity * deltaTime
-
-					if barTop <= 0 then
-						barTop = 0
-						barVelocity = math.abs(barVelocity) * (minigameConfig.bounceDamping or 0.36)
-					elseif barTop >= maxBarTop then
-						barTop = maxBarTop
-						barVelocity = -math.abs(barVelocity) * (minigameConfig.bounceDamping or 0.36)
-					end
-
-					local fishInsideBar = fishY >= barTop and fishY <= barTop + barSize
-					if fishInsideBar then
-						session.progress += (minigameConfig.progressGainPerSecond or 0.34)
-							* gainMultiplier
-							* deltaTime
-					else
-						session.progress -= (minigameConfig.progressDrainPerSecond or 0.16) * deltaTime
-					end
-					session.progress = math.clamp(session.progress, 0, 1)
+					session.progress = snapshot.progress
 				end
 
-				if rarity == "Rare" and not session.rareReversalTriggered and session.progress >= 0.85 then
-					if hasRoomForRareReversal() then
-						triggerRareReversal(now)
-					else
-						-- Hold just below the threshold until the opposite dash has room to be visible.
-						session.progress = math.min(session.progress, 0.849)
-					end
-				end
-
-				if rarity == "Rare" and now < session.forcedReverseUntil and session.progress >= 1 then
-					session.progress = 0.995
-				end
-
-				ui.catchBar.Position = UDim2.new(0.5, 0, barTop, 0)
-				ui.fishMarker.Position = UDim2.new(0.5, 0, fishY, 0)
+				ui.catchBar.Position = UDim2.new(0.5, 0, snapshot.barTop, 0)
+				ui.fishMarker.Position = UDim2.new(0.5, 0, snapshot.fishY, 0)
 				useStandardGauge()
 				ui.minigameProgressText.Text = string.format(
 					"Progress %d%%",
@@ -647,22 +532,22 @@ function RarityCatchController.start(options)
 				if isAutoFish and elapsed >= (prompt.visualTime or 3) then
 					ui.minigameText.Text = "AutoFish caught it!"
 					finish(true)
-				elseif not isAutoFish and session.progress >= 1 then
+				elseif not isAutoFish and snapshot.reelCompletedAt then
 					if rarity == "Epic" or rarity == "Legendary" or rarity == "Mythic" then
 						beginDrain(2)
-					elseif elapsed >= minSuccessDuration then
+					else
 						ui.minigameText.Text = "Caught!"
 						finish(true)
 					end
-				elseif not isAutoFish and session.progress <= 0 then
-					ui.minigameText.Text = "The fish escaped!"
-					finish(false)
+				elseif not isAutoFish and snapshot.failedAt then
+					ui.minigameText.Text = "Caught!"
+					finish(true)
 				end
 			end
 
 			if not isAutoFish and not session.finished and elapsed >= maxDuration then
-				ui.minigameText.Text = "The fish escaped!"
-				finish(false)
+				ui.minigameText.Text = "Caught!"
+				finish(true)
 			end
 		end))
 	end)

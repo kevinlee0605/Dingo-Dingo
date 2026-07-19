@@ -1,0 +1,33 @@
+{
+  "name": "Validate authored daily and clock controllers",
+  "tree": {
+    "$className": "DataModel",
+    "StarterGui": {
+      "$className": "StarterGui",
+      "Phase3EconomyGui": {
+        "$path": "../src/ui/Phase3EconomyGui",
+        "Phase3EconomyUI": {
+          "$path": "../src/starterplayer/Phase3EconomyUI.client.luau"
+        }
+      },
+      "ServerUtcClockGui": {
+        "$path": "../src/ui/ServerUtcClockGui",
+        "ServerUtcClock": {
+          "$path": "../src/starterplayer/ServerUtcClock.client.luau"
+        }
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "Phase3EconomyUI": {
+          "$path": "../src/starterplayer/RetiredPhase3EconomyUI.client.luau"
+        },
+        "ServerUtcClock": {
+          "$path": "../src/starterplayer/RetiredServerUtcClock.client.luau"
+        }
+      }
+    }
+  }
+}

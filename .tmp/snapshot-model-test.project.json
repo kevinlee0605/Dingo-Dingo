@@ -1,0 +1,11 @@
+{
+  "name": "Snapshot Model Test",
+  "tree": {
+    "$className": "DataModel",
+    "ServerStorage": {
+      "Snapshot": {
+        "$path": "LobbyAreaRecovered.rbxmx"
+      }
+    }
+  }
+}

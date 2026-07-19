@@ -1,9 +1,25 @@
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const { spawn } = require("child_process");
 
 const projectRoot = path.resolve(__dirname, "..");
-const rojoExe = "C:\\Users\\Andrew\\.aftman\\tool-storage\\rojo-rbx\\rojo\\7.7.0\\rojo.exe";
+const aftmanStorage = path.join(os.homedir(), ".aftman", "tool-storage", "rojo-rbx", "rojo");
+
+function findStoredRojo() {
+  if (process.platform !== "win32" || !fs.existsSync(aftmanStorage)) {
+    return null;
+  }
+  for (const version of fs.readdirSync(aftmanStorage).sort().reverse()) {
+    const candidate = path.join(aftmanStorage, version, "rojo.exe");
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+const rojoExe = process.env.ROJO_EXE || findStoredRojo() || "rojo";
 const logsDir = path.join(projectRoot, "logs");
 const outLogPath = path.join(logsDir, "rojo.out.log");
 const errLogPath = path.join(logsDir, "rojo.err.log");

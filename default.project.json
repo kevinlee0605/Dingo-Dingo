@@ -1,7 +1,12 @@
 {
     "name":  "Stop it and Stop it",
+    "servePlaceIds":  [124368026422180],
     "tree":  {
                  "$className":  "DataModel",
+                 "ReplicatedFirst":  {
+                                          "$ignoreUnknownInstances":  true,
+                                          "$path":  "src/replicatedfirst"
+                                      },
                  "ReplicatedStorage":  {
                                            "$ignoreUnknownInstances":  true,
                                            "Shared":  {
@@ -53,6 +58,9 @@
                                                                   "OpenRodShop":  {
                                                                                       "$className":  "RemoteEvent"
                                                                                   },
+                                                                  "OpenShop":  {
+                                                                                   "$className":  "RemoteEvent"
+                                                                               },
                                                                   "OpenAquariumHub":  {
                                                                                           "$className":  "RemoteEvent"
                                                                                       },
@@ -90,6 +98,52 @@
                  "Workspace":  {
                                    "$ignoreUnknownInstances":  true
                                },
+                 "StarterGui":  {
+                                    "$ignoreUnknownInstances":  true,
+                                    "AquariumFreePlacementEditor":  {
+                                                                           "$path":  "src/startergui/AquariumFreePlacementEditor.client.luau"
+                                                                       },
+                                    "AquariumDesignerShopCleanup":  {
+                                                                          "$path":  "src/startergui/AquariumDesignerShopCleanup.client.luau"
+                                                                      },
+                                    "FishingGui":  {
+                                                       "$path":  "src/ui/FishingGui",
+                                                       "$ignoreUnknownInstances":  false
+                                                   },
+                                    "TopHudGui":  {
+                                                      "$path":  "src/ui/TopHudGui",
+                                                      "$ignoreUnknownInstances":  false
+                                                  },
+                                    "ServerUtcClockGui":  {
+                                                                "$path":  "src/ui/ServerUtcClockGui",
+                                                                "$ignoreUnknownInstances":  false
+                                                                ,"ServerUtcClock":  {
+                                                                                          "$path":  "src/starterplayer/ServerUtcClock.client.luau"
+                                                                                      }
+                                                           },
+                                    "Phase3EconomyGui":  {
+                                                              "$path":  "src/ui/Phase3EconomyGui",
+                                                              "$ignoreUnknownInstances":  false
+                                                              ,"Phase3EconomyUI":  {
+                                                                                         "$path":  "src/starterplayer/Phase3EconomyUI.client.luau"
+                                                                                     }
+                                                         },
+                                    "AquariumFreePlacementGui":  {
+                                                                       "$path":  "src/ui/AquariumFreePlacementGui",
+                                                                       "$ignoreUnknownInstances":  false
+                                                           },
+                                    "AquariumViewerGui":  {
+                                                                "$path":  "src/ui/AquariumViewerGui",
+                                                                "$ignoreUnknownInstances":  false
+                                                            },
+                                    "CustomHotbarGui":  {
+                                                               "$path":  "src/ui/CustomHotbarGui",
+                                                               "$ignoreUnknownInstances":  false,
+                                                               "CustomHotbarClient":  {
+                                                                                          "$path":  "src/starterplayer/CustomHotbarClient.client.luau"
+                                                                                      }
+                                                           }
+                                },
                  "StarterPlayer":  {
                                        "$ignoreUnknownInstances":  true,
                                        "StarterPlayerScripts":  {
@@ -102,10 +156,28 @@
                                                                                               },
                                                                      "BaitIconController":  {
                                                                                                  "$path":  "src/starterplayer/BaitIconController.client.luau"
-                                                                                                       },
+                                                                                             },
+                                                                     "EconomyUIIntegration":  {
+                                                                                                  "$path":  "src/starterplayer/EconomyUIIntegration.client.luau"
+                                                                                             },
                                                                      "Phase3EconomyUI":  {
-                                                                                              "$path":  "src/starterplayer/Phase3EconomyUI.client.luau"
-                                                                                                       }
+                                                                                              "$path":  "src/starterplayer/RetiredPhase3EconomyUI.client.luau"
+                                                                                         },
+                                                                     "ServerUtcClock":  {
+                                                                                            "$path":  "src/starterplayer/RetiredServerUtcClock.client.luau"
+                                                                                         },
+                                                                     "ForceTopHudPosition":  {
+                                                                                                  "$path":  "src/starterplayer/RetiredForceTopHudPosition.client.luau"
+                                                                                             },
+                                                                     "SeastarHudOverride":  {
+                                                                                                "$path":  "src/starterplayer/RetiredSeastarHudOverride.client.luau"
+                                                                                           },
+                                                                     "ResponsiveUiAdapter":  {
+                                                                                                  "$path":  "src/starterplayer/AuthoredUiController.client.luau"
+                                                                                             },
+                                                                     "CustomHotbarClient":  {
+                                                                                                  "$path":  "src/starterplayer/RetiredCustomHotbarClient.client.luau"
+                                                                                             }
                                                                  }
                                    },
                  "StarterPack":  {

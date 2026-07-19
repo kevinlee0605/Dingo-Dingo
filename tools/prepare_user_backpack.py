@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import bpy
 from mathutils import Vector
 
 
-SOURCE = Path(r"C:\Users\Andrew\Downloads\Backpack_New.glb")
+SOURCE = Path(os.environ.get("FISHY_FISH_BACKPACK_SOURCE", Path.home() / "Downloads" / "Backpack_New.glb")).expanduser()
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "assets" / "backpack_selected"
 OUTPUT.mkdir(parents=True, exist_ok=True)

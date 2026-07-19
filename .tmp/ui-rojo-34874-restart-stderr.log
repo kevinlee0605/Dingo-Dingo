@@ -1,0 +1,8 @@
+[ERROR rojo] Rojo crashed! You are running Rojo 7.7.0.
+[ERROR rojo] This is probably a Rojo bug.
+[ERROR rojo] 
+[ERROR rojo] Please consider filing an issue: https://github.com/rojo-rbx/rojo/issues
+[ERROR rojo] 
+[ERROR rojo] Details: called `Result::unwrap()` on an `Err` value: Custom { kind: NotFound, error: Error { kind: Canonicalize, source: Os { code: 2, kind: NotFound, message: "The system cannot find the file specified." }, path: "C:\\Users\\Andrew\\Documents\\RB\\src/ui/FishingGui\\__pycache__" } }
+[ERROR rojo] in file src\change_processor.rs on line 179
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace.

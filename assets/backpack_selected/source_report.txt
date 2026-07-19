@@ -1,4 +1,4 @@
-Source: C:\Users\Andrew\Downloads\Backpack_New.glb
+Source: Backpack_New.glb (set FISHY_FISH_BACKPACK_SOURCE when regenerating)
 Mesh objects: 12
 Materials: 3
 Minimum XYZ: (-1.399959, -1.587147, -1.784116)

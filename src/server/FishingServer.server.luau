@@ -1,12 +1,13 @@
-local Players = game:GetService("Players")
-local DataStoreService = game:GetService("DataStoreService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerStorage = game:GetService("ServerStorage")
-local StarterPack = game:GetService("StarterPack")
-local CollectionService = game:GetService("CollectionService")
-local RunService = game:GetService("RunService")
+local Services = {
+	Players = game:GetService("Players"),
+	DataStoreService = game:GetService("DataStoreService"),
+	ReplicatedStorage = game:GetService("ReplicatedStorage"),
+	ServerStorage = game:GetService("ServerStorage"),
+	StarterPack = game:GetService("StarterPack"),
+	CollectionService = game:GetService("CollectionService"),
+	RunService = game:GetService("RunService"),
+}
 
-local EARLY_ROD_TEMPLATE_FOLDER_NAME = "FishyFishModelTemplates"
 local AQUARIUM_DECOR_TEMPLATE_FOLDER_NAME = "AquariumDecorationTemplates"
 local AQUARIUM_DECOR_TEMPLATE_LARGEST_AXIS = {
 	Coral = 4.2,
@@ -19,231 +20,20 @@ local AQUARIUM_DECOR_TEMPLATE_LARGEST_AXIS = {
 	Driftwood = 4.2,
 }
 
-local function normalizeEarlyRodName(name)
-	return string.lower(name):gsub("[%s_%-]", "")
-end
-
-local function shouldStoreEarlyRodModel(name)
-	local normalized = normalizeEarlyRodName(name)
-	return normalized == "woodenrodmk411"
-		or normalized == "bluegillnew"
-		or normalized == "bassnew"
-		or normalized == "woodenrodsplit"
-		or normalized == "woodenrodsplit2"
-		or normalized == "woodenrodmk4"
-		or normalized == "woodenrodmk3"
-		or normalized == "woodenrod"
-		or normalized == "wooden"
-		or normalized == "ironrodsplit"
-		or normalized == "ironrodsplit2"
-		or normalized == "ironrod11"
-		or normalized == "ironrod"
-		or normalized == "iron"
-		or normalized == "emeraldrodsplit"
-		or normalized == "emeraldrodsplit2"
-		or normalized == "emeraldrod11"
-		or normalized == "emeraldrod"
-		or normalized == "emerald"
-		or normalized == "goldenrodsplit"
-		or normalized == "goldenrodsplit2"
-		or normalized == "goldenrod11"
-		or normalized == "goldenrod"
-		or normalized == "goldrod"
-		or normalized == "golden"
-		or normalized == "oceanrodsplit"
-		or normalized == "oceanrodsplit2"
-		or normalized == "oceanrod11"
-		or normalized == "oceanrod"
-		or normalized == "ocean"
-end
-
-local function isImportedSplitRodModel(instance)
-	if not instance:IsA("Model") then
-		return false
-	end
-
-	local normalized = normalizeEarlyRodName(instance.Name)
-	if normalized == "woodenrodsplit2" then
-		return true
-	end
-
-	if normalized == "goldenrodsplit" or normalized == "goldenrodsplit2" then
-		return true
-	end
-
-	if normalized == "emeraldrodsplit" or normalized == "emeraldrodsplit2" then
-		return true
-	end
-
-	if normalized == "oceanrodsplit" or normalized == "oceanrodsplit2" then
-		return true
-	end
-
-	return instance:FindFirstChild("Rod_Body", true) ~= nil
-		and instance:FindFirstChild("Rod_Bobber", true) ~= nil
-		and instance:FindFirstChild("Rod_String", true) ~= nil
-end
-
-local function getImportedSplitRodTemplateName(instance)
-	local normalized = normalizeEarlyRodName(instance.Name)
-	if instance:IsA("Model") or instance:IsA("BasePart") then
-		if normalized == "bluegillnew" then
-			return "Bluegill"
-		elseif normalized == "bassnew" then
-			return "Bass"
-		end
-	end
-
-	if not isImportedSplitRodModel(instance) then
-		return nil
-	end
-
-	if normalized == "ironrodsplit" or normalized == "ironrodsplit2" then
-		return "IronRod_Split"
-	end
-
-	if normalized == "goldenrodsplit" or normalized == "goldenrodsplit2" then
-		return "GoldenRod_Split"
-	end
-
-	if normalized == "emeraldrodsplit" or normalized == "emeraldrodsplit2" then
-		return "EmeraldRod_Split"
-	end
-
-	if normalized == "oceanrodsplit" or normalized == "oceanrodsplit2" then
-		return "OceanRod_Split"
-	end
-
-	if normalized == "woodenrodsplit2" then
-		return "WoodenRod_Split2"
-	end
-
-	if normalized == "woodenrodsplit" or normalized == "scene" then
-		return "WoodenRod_split"
-	end
-
-	return nil
-end
-
-local function disablePhysicsForSourceModel(instance)
-	if instance:IsA("BasePart") then
-		instance.Anchored = true
-		instance.CanCollide = false
-		instance.Massless = true
-	end
-
-	for _, descendant in ipairs(instance:GetDescendants()) do
-		if descendant:IsA("BasePart") then
-			descendant.Anchored = true
-			descendant.CanCollide = false
-			descendant.Massless = true
-		end
-	end
-end
-
-local function removeWorkspaceModelsFolder()
-	local models = workspace:FindFirstChild("Models")
-	local storage = ServerStorage:FindFirstChild(EARLY_ROD_TEMPLATE_FOLDER_NAME)
-	if not storage then
-		storage = Instance.new("Folder")
-		storage.Name = EARLY_ROD_TEMPLATE_FOLDER_NAME
-		storage.Parent = ServerStorage
-	end
-
-	local moved = {}
-	local function moveRodSource(instance)
-		if moved[instance] then
-			return
-		end
-
-		local splitTemplateName = getImportedSplitRodTemplateName(instance)
-		if not shouldStoreEarlyRodModel(instance.Name) and not splitTemplateName then
-			return
-		end
-
-		if instance:IsA("Model") or instance:IsA("BasePart") then
-			moved[instance] = true
-			local fishTemplateName = if splitTemplateName == "Bluegill" or splitTemplateName == "Bass"
-				then splitTemplateName
-				else nil
-			if splitTemplateName then
-				instance.Name = splitTemplateName
-			end
-			if fishTemplateName then
-				local existingFishTemplate = storage:FindFirstChild(fishTemplateName)
-				if existingFishTemplate and existingFishTemplate ~= instance then
-					existingFishTemplate:Destroy()
-				end
-				instance:SetAttribute("FishTemplateId", fishTemplateName)
-				if instance:GetAttribute("FishVisualYawDegrees") == nil then
-					instance:SetAttribute("FishVisualYawDegrees", 90)
-				end
-			end
-			disablePhysicsForSourceModel(instance)
-			instance.Parent = storage
-			if fishTemplateName then
-				local clientFolder = ReplicatedStorage:FindFirstChild(EARLY_ROD_TEMPLATE_FOLDER_NAME)
-				if not clientFolder then
-					clientFolder = Instance.new("Folder")
-					clientFolder.Name = EARLY_ROD_TEMPLATE_FOLDER_NAME
-					clientFolder.Parent = ReplicatedStorage
-				end
-
-				local existingClientFishTemplate = clientFolder:FindFirstChild(fishTemplateName)
-				if existingClientFishTemplate then
-					existingClientFishTemplate:Destroy()
-				end
-
-				local clientFishTemplate = instance:Clone()
-				clientFishTemplate.Name = fishTemplateName
-				clientFishTemplate.Parent = clientFolder
-				disablePhysicsForSourceModel(clientFishTemplate)
-
-				for _, descendant in ipairs(workspace:GetDescendants()) do
-					if descendant:IsA("Model") and descendant.Name == "AquariumFish_" .. fishTemplateName then
-						descendant:Destroy()
-					end
-				end
-
-				print("[FishyFish] " .. fishTemplateName .. " template source:", instance:GetFullName())
-				print("[FishyFish] Aquarium runtime source path:", "ServerStorage." .. EARLY_ROD_TEMPLATE_FOLDER_NAME .. "." .. fishTemplateName)
-			end
-		end
-	end
-
-	if models then
-		for _, child in ipairs(models:GetChildren()) do
-			moveRodSource(child)
-		end
-	end
-
-	for _, child in ipairs(workspace:GetChildren()) do
-		if child ~= models then
-			moveRodSource(child)
-		end
-	end
-end
-
-removeWorkspaceModelsFolder()
-workspace.ChildAdded:Connect(function(child)
-	if child.Name == "Models" then
-		task.defer(removeWorkspaceModelsFolder)
-	end
-end)
-
-local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
-EconomyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("EconomyConfig"))
-ResourceConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ResourceConfig"))
-IslandConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("IslandConfig"))
-LoginRewardConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("LoginRewardConfig"))
-local DailyQuestConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("DailyQuestConfig"))
-local WeeklyQuestConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("WeeklyQuestConfig"))
-local MonthlyQuestConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("MonthlyQuestConfig"))
+require(script.Parent:WaitForChild("EarlyModelMigrationService")).start()
+local GameConfig = require(Services.ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
+local EconomyConfig = require(Services.ReplicatedStorage:WaitForChild("Shared"):WaitForChild("EconomyConfig"))
+local ResourceConfig = require(Services.ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ResourceConfig"))
+local IslandConfig = require(Services.ReplicatedStorage:WaitForChild("Shared"):WaitForChild("IslandConfig"))
+local LoginRewardConfig = require(Services.ReplicatedStorage:WaitForChild("Shared"):WaitForChild("LoginRewardConfig"))
+local DailyQuestConfig = require(Services.ReplicatedStorage:WaitForChild("Shared"):WaitForChild("DailyQuestConfig"))
+local WeeklyQuestConfig = require(Services.ReplicatedStorage:WaitForChild("Shared"):WaitForChild("WeeklyQuestConfig"))
+local MonthlyQuestConfig = require(Services.ReplicatedStorage:WaitForChild("Shared"):WaitForChild("MonthlyQuestConfig"))
 
 ResourceConfig.Validate(GameConfig)
 LoginRewardConfig.Validate()
 
-function fishyFishValidateEconomyInStudio()
+if Services.RunService:IsStudio() then
 	local success, report = pcall(EconomyConfig.ValidateFishEconomy, GameConfig)
 	if success then
 		for _, islandId in ipairs(GameConfig.IslandOrder) do
@@ -255,11 +45,7 @@ function fishyFishValidateEconomyInStudio()
 	end
 end
 
-if RunService:IsStudio() then
-	fishyFishValidateEconomyInStudio()
-end
-
-FishingResources = {}
+local FishingResources = {}
 
 function FishingResources.getRating(castResult)
 	local rating = type(castResult) == "table" and castResult.rating or nil
@@ -303,44 +89,63 @@ function FishingResources.rollForCatch(data, isAutoFish, castResult, dropRoll, r
 	return resourceId
 end
 
-local Remotes = ReplicatedStorage:WaitForChild("FishingRemotes")
-local function getOrCreateRemoteEvent(name)
-	local remote = Remotes:FindFirstChild(name)
+local Remote = {
+	Folder = Services.ReplicatedStorage:WaitForChild("FishingRemotes"),
+}
+
+function Remote.getOrCreateEvent(name)
+	local remote = Remote.Folder:FindFirstChild(name)
 	if remote and remote:IsA("RemoteEvent") then
 		return remote
 	end
 
 	remote = Instance.new("RemoteEvent")
 	remote.Name = name
-	remote.Parent = Remotes
+	remote.Parent = Remote.Folder
 	return remote
 end
 
-local StartFishing = Remotes:WaitForChild("StartFishing")
-local FinishMinigame = Remotes:WaitForChild("FinishMinigame")
-local SellFish = Remotes:WaitForChild("SellFish")
-local BuyRod = Remotes:WaitForChild("BuyRod")
-local BaitAction = getOrCreateRemoteEvent("BaitAction")
-local QuestAction = getOrCreateRemoteEvent("QuestAction")
-LoginRewardAction = getOrCreateRemoteEvent("LoginRewardAction")
-local UnlockBiome = Remotes:WaitForChild("UnlockBiome")
-local TeleportTo = Remotes:WaitForChild("TeleportTo")
-local OpenBiomeWarp = getOrCreateRemoteEvent("OpenBiomeWarp")
-local OpenSellFish = getOrCreateRemoteEvent("OpenSellFish")
-local OpenRodShop = getOrCreateRemoteEvent("OpenRodShop")
-local OpenShop = getOrCreateRemoteEvent("OpenShop")
-local OpenAquariumHub = getOrCreateRemoteEvent("OpenAquariumHub")
-local AquariumAction = Remotes:WaitForChild("AquariumAction")
-local ToggleAutoFish = Remotes:WaitForChild("ToggleAutoFish")
-local StateUpdated = Remotes:WaitForChild("StateUpdated")
-local FishingPrompt = Remotes:WaitForChild("FishingPrompt")
-local Notice = Remotes:WaitForChild("Notice")
-local GetState = Remotes:WaitForChild("GetState")
+Remote.StartFishing = Remote.Folder:WaitForChild("StartFishing")
+Remote.FinishMinigame = Remote.Folder:WaitForChild("FinishMinigame")
+Remote.SellFish = Remote.Folder:WaitForChild("SellFish")
+Remote.BuyRod = Remote.Folder:WaitForChild("BuyRod")
+Remote.BaitAction = Remote.getOrCreateEvent("BaitAction")
+Remote.QuestAction = Remote.getOrCreateEvent("QuestAction")
+Remote.LoginRewardAction = Remote.getOrCreateEvent("LoginRewardAction")
+Remote.UnlockBiome = Remote.Folder:WaitForChild("UnlockBiome")
+Remote.TeleportTo = Remote.Folder:WaitForChild("TeleportTo")
+Remote.OpenBiomeWarp = Remote.getOrCreateEvent("OpenBiomeWarp")
+Remote.OpenSellFish = Remote.getOrCreateEvent("OpenSellFish")
+Remote.OpenRodShop = Remote.getOrCreateEvent("OpenRodShop")
+Remote.OpenShop = Remote.getOrCreateEvent("OpenShop")
+Remote.OpenAquariumHub = Remote.getOrCreateEvent("OpenAquariumHub")
+Remote.AquariumAction = Remote.Folder:WaitForChild("AquariumAction")
+Remote.ToggleAutoFish = Remote.Folder:WaitForChild("ToggleAutoFish")
+Remote.StateUpdated = Remote.Folder:WaitForChild("StateUpdated")
+Remote.FishingPrompt = Remote.Folder:WaitForChild("FishingPrompt")
+Remote.Notice = Remote.Folder:WaitForChild("Notice")
+Remote.GetState = Remote.Folder:WaitForChild("GetState")
 
 local SAVE_STORE = "FishyFish_v1"
-local saveStore = DataStoreService:GetDataStore(SAVE_STORE)
+local saveStore = Services.DataStoreService:GetDataStore(SAVE_STORE)
 
 local playerData = {}
+playerData.SaveLocks = {}
+playerData.SaveScheduled = {}
+playerData.SaveRevision = {}
+
+function playerData.copyForSave(value)
+	if type(value) ~= "table" then
+		return value
+	end
+
+	local copy = {}
+	for key, childValue in pairs(value) do
+		copy[playerData.copyForSave(key)] = playerData.copyForSave(childValue)
+	end
+	return copy
+end
+
 local pendingFishing = {}
 local fishSerial = 0
 local getPlayerFishingBiome
@@ -370,6 +175,7 @@ local RuntimeConfig = {
 	ownerUsername = "Wingdisk00",
 	ownerCoinGrant = 100000,
 }
+local Travel
 
 -- Optional fallback: paste a single uploaded rod MeshId here if you prefer an asset-id based rod.
 local RodVisual = {
@@ -408,7 +214,7 @@ local rarityLuckWeight = {
 	Mythic = 3.25,
 }
 
-local function copyArray(source)
+function playerData.copyArray(source)
 	local result = {}
 
 	for index, value in ipairs(source) do
@@ -426,7 +232,7 @@ local function copyArray(source)
 	return result
 end
 
-local function shallowCopyMap(source)
+function playerData.shallowCopyMap(source)
 	local result = {}
 
 	for key, value in pairs(source) do
@@ -436,13 +242,13 @@ local function shallowCopyMap(source)
 	return result
 end
 
-local function getRodData(data)
+function RodVisual.getRodData(data)
 	return GameConfig.Rods[data.EquippedRod] or GameConfig.Rods.WoodenRod
 end
 
 local DEFAULT_FISHING_ISLAND_ID = "LilyshoreIsland"
 
-local function normalizeBiomeId(biomeId)
+function IslandConfig.normalizeBiomeId(biomeId)
 	if GameConfig.normalizeIslandId then
 		return GameConfig.normalizeIslandId(biomeId)
 	end
@@ -454,7 +260,7 @@ local function normalizeBiomeId(biomeId)
 	return nil
 end
 
-function normalizeTravelTarget(target)
+function IslandConfig.normalizeTravelTarget(target)
 	if type(target) ~= "string" then
 		return nil
 	end
@@ -470,12 +276,12 @@ function normalizeTravelTarget(target)
 	return nil
 end
 
-local function normalizeUnlockedBiomes(unlockedBiomes)
+function IslandConfig.normalizeUnlockedBiomes(unlockedBiomes)
 	local result = {}
 	if type(unlockedBiomes) == "table" then
 		for biomeId, unlocked in pairs(unlockedBiomes) do
 			if unlocked == true then
-				local normalized = normalizeBiomeId(biomeId)
+				local normalized = IslandConfig.normalizeBiomeId(biomeId)
 				if normalized then
 					result[normalized] = true
 				end
@@ -486,18 +292,18 @@ local function normalizeUnlockedBiomes(unlockedBiomes)
 	return result
 end
 
-local function getBiomeData(data)
-	local biomeId = normalizeBiomeId(data.CurrentBiome) or DEFAULT_FISHING_ISLAND_ID
+function IslandConfig.getBiomeData(data)
+	local biomeId = IslandConfig.normalizeBiomeId(data.CurrentBiome) or DEFAULT_FISHING_ISLAND_ID
 	data.CurrentBiome = biomeId
 	return GameConfig.Biomes[biomeId] or GameConfig.Biomes[DEFAULT_FISHING_ISLAND_ID]
 end
 
-local function isBiomeUnlocked(data, biomeId)
-	biomeId = normalizeBiomeId(biomeId)
+function IslandConfig.isBiomeUnlocked(data, biomeId)
+	biomeId = IslandConfig.normalizeBiomeId(biomeId)
 	return biomeId ~= nil and data.UnlockedBiomes[biomeId] == true
 end
 
-local function ownsRod(data, rodId)
+function RodVisual.ownsRod(data, rodId)
 	return data.OwnedRods[rodId] == true
 end
 
@@ -596,11 +402,18 @@ function Bait.consumeForCast(data)
 end
 
 local Monetization = {
-	Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("MonetizationConfig")),
+	Config = require(Services.ReplicatedStorage:WaitForChild("Shared"):WaitForChild("MonetizationConfig")),
 	MarketplaceService = game:GetService("MarketplaceService"),
 }
 
-SeaStars = {
+do
+	local resolved, resolutionError = Monetization.Config.ResolveDeveloperProductIds(Monetization.MarketplaceService)
+	if not resolved then
+		warn("[FishyFish] Sea Star product discovery failed:", resolutionError)
+	end
+end
+
+local SeaStars = {
 	TransactionLocks = {},
 }
 
@@ -941,6 +754,14 @@ end
 
 function Monetization.getClientState(data)
 	Monetization.ensureState(data)
+	local developerProductIds = {}
+	for _, productKey in ipairs(Monetization.Config.SeaStarProductOrder or {}) do
+		local product = Monetization.Config.DeveloperProducts[productKey]
+		local productId = product and (tonumber(product.id) or tonumber(product.Id))
+		if productId and productId > 0 then
+			developerProductIds[productKey] = productId
+		end
+	end
 	return {
 		OwnedGamePasses = table.clone(data.OwnedGamePasses),
 		VipRewardAvailable = Monetization.canClaimVipReward(data),
@@ -949,6 +770,7 @@ function Monetization.getClientState(data)
 		AquariumDesign = Monetization.normalizeAquariumDesign(data.AquariumDesign),
 		AquariumPreviewActive = data.AquariumPreviewDesign ~= nil,
 		AquariumPreviewDesign = data.AquariumPreviewDesign and Monetization.normalizeAquariumDesign(data.AquariumPreviewDesign) or nil,
+		DeveloperProductIds = developerProductIds,
 	}
 end
 
@@ -977,7 +799,7 @@ function Monetization.syncGamePassOwnership(player, data)
 	player:SetAttribute("FishyFishTitle", Monetization.ownsPass(data, "VipAngler") and Monetization.Config.Vip.title or "")
 end
 
-LoginRewards = {
+local LoginRewards = {
 	ClaimLocks = {},
 }
 
@@ -1215,7 +1037,7 @@ end
 function Quest.getUnlockedBiomeIds(data)
 	local result = {}
 	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
-		if isBiomeUnlocked(data, biomeId) then
+		if IslandConfig.isBiomeUnlocked(data, biomeId) then
 			table.insert(result, biomeId)
 		end
 	end
@@ -1565,15 +1387,15 @@ local function getTotalXPForLevel(level)
 	return GameConfig.getTotalXPForLevel(level)
 end
 
-function fishyFishGetDefaultCoins()
-	if RunService:IsStudio() and RuntimeConfig.studioTestOverridesEnabled then
+function RuntimeConfig.getDefaultCoins()
+	if Services.RunService:IsStudio() and RuntimeConfig.studioTestOverridesEnabled then
 		return math.max(0, math.floor(tonumber(RuntimeConfig.studioTestingStartCoins) or 0))
 	end
 	return 0
 end
 
-function fishyFishGetDefaultXP()
-	if RunService:IsStudio() and RuntimeConfig.studioTestOverridesEnabled then
+function RuntimeConfig.getDefaultXP()
+	if Services.RunService:IsStudio() and RuntimeConfig.studioTestOverridesEnabled then
 		return GameConfig.clampXP(getTotalXPForLevel(RuntimeConfig.studioTestingStartLevel))
 	end
 	return 0
@@ -1618,7 +1440,7 @@ local function makeInventoryFishEntry(fish, biomeId, score)
 end
 
 local function giveStudioBeginnerFishInBag(data)
-	if not RuntimeConfig.studioGiveBeginnerFishInBag or not RunService:IsStudio() then
+	if not RuntimeConfig.studioGiveBeginnerFishInBag or not Services.RunService:IsStudio() then
 		return false
 	end
 
@@ -1685,7 +1507,10 @@ local function findInventoryFishIndex(data, fishSerial, fishIndex)
 end
 
 local function getLoadedAquariumViewState(player)
-	local world = workspace:FindFirstChild("FishyFishWorld")
+	-- FishyFishWorld is nested inside the authored map.  The aquarium itself was
+	-- being built correctly under that world, but this direct lookup reported it
+	-- as unloaded, so AquariumView.CanEdit stayed false and hid Decor Editor.
+	local world = workspace:FindFirstChild("FishyFishWorld", true)
 	local folder = world and world:FindFirstChild("PersonalAquariums")
 	local aquarium = folder and folder:FindFirstChild("AquariumViewerTank")
 	local ownerUserId = aquarium and tonumber(aquarium:GetAttribute("OccupantUserId")) or nil
@@ -1731,26 +1556,26 @@ local function makeClientState(player, data)
 		Level = data.Level,
 		LevelProgressXP = data.LevelProgressXP,
 		NextLevelXP = data.NextLevelXP,
-		Inventory = copyArray(data.Inventory),
+		Inventory = playerData.copyArray(data.Inventory),
 		BackpackSize = data.BackpackSize,
 		InventoryValue = getInventoryValue(data),
-		ResourceInventory = shallowCopyMap(data.ResourceInventory),
+		ResourceInventory = playerData.shallowCopyMap(data.ResourceInventory),
 		ResourcePity = data.ResourcePity,
 		SeaStars = data.SeaStars,
-		SeaStarUnlocks = shallowCopyMap(data.SeaStarUnlocks),
-		OwnedRods = shallowCopyMap(data.OwnedRods),
+		SeaStarUnlocks = playerData.shallowCopyMap(data.SeaStarUnlocks),
+		OwnedRods = playerData.shallowCopyMap(data.OwnedRods),
 		EquippedRod = data.EquippedRod,
-		BaitInventory = shallowCopyMap(data.BaitInventory),
+		BaitInventory = playerData.shallowCopyMap(data.BaitInventory),
 		EquippedBait = equippedBait,
 		EquippedBaitRemaining = Bait.getRemainingForClient(data, equippedBait),
-		UnlockedBiomes = shallowCopyMap(data.UnlockedBiomes),
-		UnlockedIslands = shallowCopyMap(data.UnlockedBiomes),
+		UnlockedBiomes = playerData.shallowCopyMap(data.UnlockedBiomes),
+		UnlockedIslands = playerData.shallowCopyMap(data.UnlockedBiomes),
 		CurrentBiome = data.CurrentBiome,
 		CurrentIsland = data.CurrentBiome,
 		ActualBiome = getPlayerFishingBiome and getPlayerFishingBiome(player) or nil,
 		ActualLocation = getPlayerTravelLocation and getPlayerTravelLocation(player) or nil,
 		AutoFishEnabled = data.AutoFishEnabled,
-		Fishdex = shallowCopyMap(data.Fishdex),
+		Fishdex = playerData.shallowCopyMap(data.Fishdex),
 		FishdexTotal = GameConfig.getFishCount(),
 		TotalFishCaught = data.TotalFishCaught or 0,
 		Quests = Quest.getClientState(data),
@@ -1761,11 +1586,11 @@ local function makeClientState(player, data)
 			Level = aquariumLevel,
 			Capacity = GameConfig.AquariumCapacities[aquariumLevel] or GameConfig.AquariumCapacities[1],
 			UsedCapacity = GameConfig.getAquariumUsedSpace(aquariumFish),
-			Fish = copyArray(aquariumFish),
+			Fish = playerData.copyArray(aquariumFish),
 		},
 		AquariumVisitors = aquariumVisitors,
 		AquariumView = getLoadedAquariumViewState(player),
-		AquariumDecorations = shallowCopyMap(data.AquariumDecorations),
+		AquariumDecorations = playerData.shallowCopyMap(data.AquariumDecorations),
 		BestCatch = data.BestCatch,
 	}
 end
@@ -1782,23 +1607,23 @@ local function sendState(player)
 		return
 	end
 
-	StateUpdated:FireClient(player, clientState)
+	Remote.StateUpdated:FireClient(player, clientState)
 end
 
 local function sendStateToAll()
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(Services.Players:GetPlayers()) do
 		sendState(player)
 	end
 end
 
 local function notify(player, message)
-	Notice:FireClient(player, message)
+	Remote.Notice:FireClient(player, message)
 end
 
 local function makeDefaultData()
 	local data = {
-		Coins = fishyFishGetDefaultCoins(),
-		XP = fishyFishGetDefaultXP(),
+		Coins = RuntimeConfig.getDefaultCoins(),
+		XP = RuntimeConfig.getDefaultXP(),
 		Level = 1,
 		LevelProgressXP = 0,
 		NextLevelXP = GameConfig.getXPForNextLevel(1),
@@ -1868,8 +1693,8 @@ local function sanitizeLoadedData(loaded)
 
 	local equippedRod = normalizeRodId(loaded.EquippedRod)
 	data.EquippedRod = GameConfig.Rods[equippedRod] and equippedRod or data.EquippedRod
-	data.UnlockedBiomes = normalizeUnlockedBiomes(loaded.UnlockedIslands or loaded.UnlockedBiomes or data.UnlockedBiomes)
-	data.CurrentBiome = normalizeBiomeId(loaded.CurrentIsland or loaded.CurrentBiome) or data.CurrentBiome
+	data.UnlockedBiomes = IslandConfig.normalizeUnlockedBiomes(loaded.UnlockedIslands or loaded.UnlockedBiomes or data.UnlockedBiomes)
+	data.CurrentBiome = IslandConfig.normalizeBiomeId(loaded.CurrentIsland or loaded.CurrentBiome) or data.CurrentBiome
 	data.AutoFishEnabled = loaded.AutoFishEnabled == true
 	data.Fishdex = type(loaded.Fishdex) == "table" and loaded.Fishdex or data.Fishdex
 	data.QuestState = type(loaded.QuestState) == "table" and loaded.QuestState or data.QuestState
@@ -1890,7 +1715,7 @@ local function sanitizeLoadedData(loaded)
 		data.UnlockedBiomes[DEFAULT_FISHING_ISLAND_ID] = true
 	end
 
-	if not ownsRod(data, data.EquippedRod) then
+	if not RodVisual.ownsRod(data, data.EquippedRod) then
 		data.EquippedRod = "WoodenRod"
 	end
 
@@ -1899,7 +1724,7 @@ local function sanitizeLoadedData(loaded)
 	Quest.ensureState(data)
 	LoginRewards.ensureState(data)
 
-	if not isBiomeUnlocked(data, data.CurrentBiome) then
+	if not IslandConfig.isBiomeUnlocked(data, data.CurrentBiome) then
 		data.CurrentBiome = DEFAULT_FISHING_ISLAND_ID
 	end
 
@@ -1921,7 +1746,7 @@ local function loadData(player)
 end
 
 local function applyOwnerGrants(player, data)
-	if not RunService:IsStudio() or player.Name ~= RuntimeConfig.ownerUsername then
+	if not Services.RunService:IsStudio() or player.Name ~= RuntimeConfig.ownerUsername then
 		return false
 	end
 
@@ -1934,7 +1759,7 @@ local function applyOwnerGrants(player, data)
 	return true
 end
 
-function fishyFishRunEconomyPhaseStudioTests()
+function RuntimeConfig.runEconomyPhaseStudioTests()
 	local freshData = makeDefaultData()
 	assert(freshData.Coins == 0, "Fresh Coins must be 0")
 	assert(freshData.XP == 0 and freshData.Level == 1, "Fresh progression must be Level 1 with 0 XP")
@@ -2014,11 +1839,11 @@ function fishyFishRunEconomyPhaseStudioTests()
 	print("[FishyFish Economy Test] PASS: clean defaults, XP cap, fish values, quest snapshots, products, bag tiers, and VIP sale bonus")
 end
 
-if RunService:IsStudio() then
-	fishyFishRunEconomyPhaseStudioTests()
+if Services.RunService:IsStudio() then
+	RuntimeConfig.runEconomyPhaseStudioTests()
 end
 
-function fishyFishRunEconomyPhase3StudioTests()
+function RuntimeConfig.runEconomyPhase3StudioTests()
 	local freshData = makeDefaultData()
 	assert(freshData.SeaStars == 0 and next(freshData.SeaStarUnlocks) == nil, "Sea Star defaults are incorrect")
 	assert(SeaStars.normalizeBalance(-100) == 0, "Sea Stars must never sanitize below zero")
@@ -2037,7 +1862,10 @@ function fishyFishRunEconomyPhase3StudioTests()
 	for productKey, expected in pairs(expectedSeaStarProducts) do
 		local product = Monetization.Config.DeveloperProducts[productKey]
 		assert(product and product.seaStarAmount == expected.amount and product.priceRobux == expected.price, productKey .. " configuration is incorrect")
-		assert((tonumber(product.id) or 0) <= 0, productKey .. " must remain unpromptable until a real ID is configured")
+		assert(product.catalogName == product.name, productKey .. " catalog discovery name is missing")
+		if tonumber(product.id) then
+			assert(product.id > 0 and Monetization.Config.DeveloperProductById[product.id] == productKey, productKey .. " resolved receipt mapping is missing")
+		end
 	end
 
 	local expectedThemePrices = {
@@ -2091,26 +1919,18 @@ function fishyFishRunEconomyPhase3StudioTests()
 	print("[FishyFish Economy Phase 3 Test] PASS: Sea Stars, products, free editor, theme ownership, UTC cycles, milestones, resource guarantees, and final decorations")
 end
 
-if RunService:IsStudio() then
-	fishyFishRunEconomyPhase3StudioTests()
+if Services.RunService:IsStudio() then
+	RuntimeConfig.runEconomyPhase3StudioTests()
 end
 
-local function saveData(player)
-	if RunService:IsStudio() then
-		return true
-	end
-
-	local data = playerData[player]
-	if not data then
-		return false
-	end
+function playerData.buildSavePayload(data)
 	recalcLevel(data)
 	Bait.ensureState(data)
 	Monetization.ensureState(data)
 	Quest.ensureState(data)
 	LoginRewards.ensureState(data)
 
-	local savePayload = {
+	return playerData.copyForSave({
 		Coins = data.Coins,
 		XP = data.XP,
 		Inventory = data.Inventory,
@@ -2139,16 +1959,59 @@ local function saveData(player)
 		AquariumDesign = data.AquariumDesign,
 		BestCatch = data.BestCatch,
 		TotalFishCaught = data.TotalFishCaught,
-	}
+	})
+end
 
-	local success, err = pcall(function()
-		saveStore:SetAsync(tostring(player.UserId), savePayload)
-	end)
+local function saveData(player)
+	if Services.RunService:IsStudio() then
+		return true
+	end
+
+	while playerData.SaveLocks[player] do
+		task.wait()
+	end
+	local data = playerData[player]
+	if not data then
+		return false
+	end
+	playerData.SaveLocks[player] = true
+	local success, err = xpcall(function()
+		local savePayload = playerData.buildSavePayload(data)
+		saveStore:UpdateAsync(tostring(player.UserId), function()
+			return savePayload
+		end)
+	end, debug.traceback)
+	playerData.SaveLocks[player] = nil
 
 	if not success then
 		warn("Fishy Fish save failed for", player.UserId, err)
 	end
 	return success
+end
+
+function playerData.queueSave(player)
+	if Services.RunService:IsStudio() or not playerData[player] then
+		return
+	end
+
+	playerData.SaveRevision[player] = (playerData.SaveRevision[player] or 0) + 1
+	if playerData.SaveScheduled[player] then
+		return
+	end
+
+	playerData.SaveScheduled[player] = true
+	task.delay(5, function()
+		playerData.SaveScheduled[player] = nil
+		if not playerData[player] then
+			return
+		end
+
+		local targetRevision = playerData.SaveRevision[player] or 0
+		local saved = saveData(player)
+		if playerData[player] and (not saved or (playerData.SaveRevision[player] or 0) > targetRevision) then
+			playerData.queueSave(player)
+		end
+	end)
 end
 
 local function updateLeaderstats(player)
@@ -2198,6 +2061,7 @@ local function sellAllFishForPlayer(player)
 
 	updateLeaderstats(player)
 	sendState(player)
+	playerData.queueSave(player)
 	notify(player, "Sold fish for " .. total .. " coins.")
 	return true
 end
@@ -2215,7 +2079,7 @@ local function connectSellFishPrompt(prompt)
 
 	prompt:SetAttribute("FishyFishSellConnected", true)
 	prompt.Triggered:Connect(function(player)
-		OpenSellFish:FireClient(player)
+		Remote.OpenSellFish:FireClient(player)
 	end)
 end
 
@@ -2242,7 +2106,7 @@ local function connectRodShopPrompt(prompt)
 
 	prompt:SetAttribute("FishyFishRodShopConnected", true)
 	prompt.Triggered:Connect(function(player)
-		OpenRodShop:FireClient(player)
+		Remote.OpenRodShop:FireClient(player)
 	end)
 end
 
@@ -2263,7 +2127,7 @@ local function openBiomeWarpForPlayer(player)
 	end
 
 	biomeWarpTouchCooldowns[player] = now
-	OpenBiomeWarp:FireClient(player, getPlayerFishingBiome and getPlayerFishingBiome(player) or nil)
+	Remote.OpenBiomeWarp:FireClient(player, getPlayerFishingBiome and getPlayerFishingBiome(player) or nil)
 end
 
 local function connectBiomeWarpTouch(part)
@@ -2292,7 +2156,7 @@ local function connectBiomeWarpTouch(part)
 	part.CanTouch = true
 	part.Touched:Connect(function(hit)
 		local character = hit:FindFirstAncestorOfClass("Model")
-		local player = character and Players:GetPlayerFromCharacter(character)
+		local player = character and Services.Players:GetPlayerFromCharacter(character)
 		if not player then
 			return
 		end
@@ -2379,11 +2243,11 @@ local function applyCharacterMonetizationVisuals(player)
 end
 
 local function getRodTemplateFolder()
-	local folder = ServerStorage:FindFirstChild(RodVisual.TemplateFolderName)
+	local folder = Services.ServerStorage:FindFirstChild(RodVisual.TemplateFolderName)
 	if not folder then
 		folder = Instance.new("Folder")
 		folder.Name = RodVisual.TemplateFolderName
-		folder.Parent = ServerStorage
+		folder.Parent = Services.ServerStorage
 	end
 
 	return folder
@@ -2442,13 +2306,9 @@ local function getRodTemplateCandidate(instance)
 	return nil
 end
 
-function fishyFishGetRodTemplatePriority(template)
-	if getImportedSplitRodTemplateName(template) then
-		return 100
-	end
-
+function RodVisual.getTemplatePriority(template)
 	local normalized = normalizeTemplateName(template.Name)
-	if string.find(normalized, "split") then
+	if string.find(normalized, "split") or normalized == "bluegillnew" or normalized == "bassnew" then
 		return 100
 	end
 
@@ -2458,7 +2318,7 @@ end
 local function storeRodTemplate(template, rodId, priority)
 	local folder = getRodTemplateFolder()
 	local stored = folder:FindFirstChild(rodId)
-	priority = tonumber(priority) or fishyFishGetRodTemplatePriority(template)
+	priority = tonumber(priority) or RodVisual.getTemplatePriority(template)
 	if stored and stored ~= template then
 		local storedPriority = tonumber(stored:GetAttribute("TemplatePriority")) or 0
 		if storedPriority > priority then
@@ -2484,10 +2344,10 @@ local function storeRodTemplate(template, rodId, priority)
 	return model
 end
 
-function fishyFishCloneRodTemplateIntoCache(template, rodId, priority)
+function RodVisual.cloneTemplateIntoCache(template, rodId, priority)
 	local folder = getRodTemplateFolder()
 	local stored = folder:FindFirstChild(rodId)
-	priority = tonumber(priority) or fishyFishGetRodTemplatePriority(template)
+	priority = tonumber(priority) or RodVisual.getTemplatePriority(template)
 	if stored then
 		local storedPriority = tonumber(stored:GetAttribute("TemplatePriority")) or 0
 		if storedPriority > priority then
@@ -2519,13 +2379,14 @@ end
 local function cacheRodTemplates()
 	local folder = getRodTemplateFolder()
 
-	for _, container in ipairs({ workspace, ReplicatedStorage }) do
+	for _, container in ipairs({ workspace, Services.ReplicatedStorage }) do
 		for _, descendant in ipairs(container:GetDescendants()) do
-			local splitTemplateName = getImportedSplitRodTemplateName(descendant)
+			local splitTemplateName = require(script.Parent:WaitForChild("EarlyModelMigrationService"))
+				.getImportedSplitRodTemplateName(descendant)
 			if splitTemplateName then
 				local rodId = getRodIdForTemplate({ Name = splitTemplateName })
 				if rodId then
-					fishyFishCloneRodTemplateIntoCache(descendant, rodId, 100)
+					RodVisual.cloneTemplateIntoCache(descendant, rodId, 100)
 				end
 			end
 		end
@@ -2553,6 +2414,15 @@ local function watchRodTemplateModels()
 			return
 		end
 
+		-- Keep the separate one-piece asset collection intact, but do not use it
+		-- for equipped tools. The restored v1636 split wrappers are the intended
+		-- in-hand rod visuals for all five rods.
+		local assets = Services.ReplicatedStorage:FindFirstChild("Assets")
+		local authoredRods = assets and assets:FindFirstChild("Rods")
+		if authoredRods and instance:IsDescendantOf(authoredRods) then
+			return
+		end
+
 		local template = getRodTemplateCandidate(instance)
 		if not template then
 			return
@@ -2560,16 +2430,17 @@ local function watchRodTemplateModels()
 
 		local rodId = getRodIdForTemplate(template) or getRodIdForTemplate(instance)
 		if rodId then
-			local splitTemplateName = getImportedSplitRodTemplateName(template)
+			local splitTemplateName = require(script.Parent:WaitForChild("EarlyModelMigrationService"))
+				.getImportedSplitRodTemplateName(template)
 			if splitTemplateName then
-				fishyFishCloneRodTemplateIntoCache(template, rodId, 100)
+				RodVisual.cloneTemplateIntoCache(template, rodId, 100)
 			else
 				storeRodTemplate(template, rodId)
 			end
 		end
 	end
 
-	for _, container in ipairs({ workspace, ReplicatedStorage }) do
+	for _, container in ipairs({ workspace, Services.ReplicatedStorage }) do
 		for _, descendant in ipairs(container:GetDescendants()) do
 			tryStore(descendant)
 		end
@@ -2582,50 +2453,63 @@ end
 
 local function findRodTemplate(rodId)
 	local folder = getRodTemplateFolder()
+	local stored = folder:FindFirstChild(rodId)
 
 	if rodId == "WoodenRod" then
-		for _, container in ipairs({ workspace, ReplicatedStorage, ServerStorage }) do
+		for _, container in ipairs({ workspace, Services.ReplicatedStorage, Services.ServerStorage }) do
 			for _, templateName in ipairs({ "WoodenRod_Split2", "WoodenRod_split", "woodenrodsplit2", "woodenrodsplit" }) do
 				local candidate = container:FindFirstChild(templateName, true)
 				local template = candidate and getRodTemplateCandidate(candidate)
 				if template then
-					return fishyFishCloneRodTemplateIntoCache(template, rodId, 1000)
+					return RodVisual.cloneTemplateIntoCache(template, rodId, 1000)
+				end
+			end
+		end
+	end
+
+	if rodId == "IronRod" then
+		for _, container in ipairs({ workspace, Services.ReplicatedStorage, Services.ServerStorage }) do
+			for _, templateName in ipairs({ "IronRod_Split", "IronRod_Split2", "ironrodsplit", "ironrodsplit2" }) do
+				local candidate = container:FindFirstChild(templateName, true)
+				local template = candidate and getRodTemplateCandidate(candidate)
+				if template then
+					return RodVisual.cloneTemplateIntoCache(template, rodId, 1000)
 				end
 			end
 		end
 	end
 
 	if rodId == "GoldenRod" then
-		for _, container in ipairs({ workspace, ReplicatedStorage, ServerStorage }) do
+		for _, container in ipairs({ workspace, Services.ReplicatedStorage, Services.ServerStorage }) do
 			for _, templateName in ipairs({ "GoldenRod_Split", "GoldenRod_Split2", "goldenrodsplit", "goldenrodsplit2" }) do
 				local candidate = container:FindFirstChild(templateName, true)
 				local template = candidate and getRodTemplateCandidate(candidate)
 				if template then
-					return fishyFishCloneRodTemplateIntoCache(template, rodId, 1000)
+					return RodVisual.cloneTemplateIntoCache(template, rodId, 1000)
 				end
 			end
 		end
 	end
 
 	if rodId == "EmeraldRod" then
-		for _, container in ipairs({ workspace, ReplicatedStorage, ServerStorage }) do
+		for _, container in ipairs({ workspace, Services.ReplicatedStorage, Services.ServerStorage }) do
 			for _, templateName in ipairs({ "EmeraldRod_Split", "EmeraldRod_Split2", "emeraldrodsplit", "emeraldrodsplit2" }) do
 				local candidate = container:FindFirstChild(templateName, true)
 				local template = candidate and getRodTemplateCandidate(candidate)
 				if template then
-					return fishyFishCloneRodTemplateIntoCache(template, rodId, 1000)
+					return RodVisual.cloneTemplateIntoCache(template, rodId, 1000)
 				end
 			end
 		end
 	end
 
 	if rodId == "OceanRod" then
-		for _, container in ipairs({ workspace, ReplicatedStorage, ServerStorage }) do
+		for _, container in ipairs({ workspace, Services.ReplicatedStorage, Services.ServerStorage }) do
 			for _, templateName in ipairs({ "OceanRod_Split", "OceanRod_Split2", "oceanrodsplit", "oceanrodsplit2" }) do
 				local candidate = container:FindFirstChild(templateName, true)
 				local template = candidate and getRodTemplateCandidate(candidate)
 				if template then
-					return fishyFishCloneRodTemplateIntoCache(template, rodId, 1000)
+					return RodVisual.cloneTemplateIntoCache(template, rodId, 1000)
 				end
 			end
 		end
@@ -2633,7 +2517,7 @@ local function findRodTemplate(rodId)
 
 	cacheRodTemplates()
 
-	for _, container in ipairs({ ServerStorage, ReplicatedStorage, workspace }) do
+	for _, container in ipairs({ Services.ServerStorage, Services.ReplicatedStorage, workspace }) do
 		for _, templateName in ipairs(ROD_TEMPLATE_NAMES_BY_ROD[rodId] or {}) do
 			local candidate = container:FindFirstChild(templateName, true)
 			local template = candidate and getRodTemplateCandidate(candidate)
@@ -2643,7 +2527,7 @@ local function findRodTemplate(rodId)
 		end
 	end
 
-	local stored = folder:FindFirstChild(rodId)
+	stored = folder:FindFirstChild(rodId)
 	if stored and stored:IsA("Model") then
 		return stored
 	end
@@ -3161,7 +3045,7 @@ local function applyFishingRodVisual(tool, rodId)
 end
 
 local function createFishingRodTool()
-	local existing = StarterPack:FindFirstChild("Fishing Rod")
+	local existing = Services.StarterPack:FindFirstChild("Fishing Rod")
 	if existing then
 		existing:Destroy()
 	end
@@ -3191,7 +3075,7 @@ local function createFishingRodTool()
 	handle.Parent = tool
 
 	applyFishingRodVisual(tool, "WoodenRod")
-	tool.Parent = StarterPack
+	tool.Parent = Services.StarterPack
 end
 
 local HUD_ACCESS_TOOL_DEFINITIONS = {
@@ -3229,11 +3113,11 @@ local function removeToolByName(container, toolName)
 end
 
 local function createHudAccessTools()
-	removeToolByName(StarterPack, "Aquarium Viewer")
+	removeToolByName(Services.StarterPack, "Aquarium Viewer")
 
 	for _, definition in ipairs(HUD_ACCESS_TOOL_DEFINITIONS) do
-		removeToolByName(StarterPack, definition.name)
-		makeHudAccessTool(definition).Parent = StarterPack
+		removeToolByName(Services.StarterPack, definition.name)
+		makeHudAccessTool(definition).Parent = Services.StarterPack
 	end
 end
 
@@ -3262,10 +3146,10 @@ local function ensureHudAccessToolsForPlayer(player)
 
 	for _, definition in ipairs(HUD_ACCESS_TOOL_DEFINITIONS) do
 		if not playerHasHudAccessTool(player, definition.name) then
-			local template = StarterPack:FindFirstChild(definition.name)
+			local template = Services.StarterPack:FindFirstChild(definition.name)
 			if not template or not template:IsA("Tool") then
 				createHudAccessTools()
-				template = StarterPack:FindFirstChild(definition.name)
+				template = Services.StarterPack:FindFirstChild(definition.name)
 			end
 
 			if template and template:IsA("Tool") then
@@ -3309,10 +3193,10 @@ local function refreshFishingRodForPlayer(player, data)
 	if not updatedTool then
 		local backpack = player:FindFirstChild("Backpack")
 		if backpack then
-			local template = StarterPack:FindFirstChild("Fishing Rod")
+			local template = Services.StarterPack:FindFirstChild("Fishing Rod")
 			if not template then
 				createFishingRodTool()
-				template = StarterPack:FindFirstChild("Fishing Rod")
+				template = Services.StarterPack:FindFirstChild("Fishing Rod")
 			end
 
 			if template and template:IsA("Tool") then
@@ -3322,6 +3206,28 @@ local function refreshFishingRodForPlayer(player, data)
 			end
 		end
 	end
+end
+
+function RodVisual.equipFishingRodToolForPlayer(player)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local backpack = player:FindFirstChild("Backpack")
+	if not character or not humanoid or not backpack then
+		return false
+	end
+
+	-- Re-equipping is intentional even when the rod was already held. Rebuilding
+	-- an equipped Tool's visual does not always refresh its grip immediately,
+	-- while the Bag access Tool also unequips everything when it opens.
+	humanoid:UnequipTools()
+
+	local tool = backpack:FindFirstChild("Fishing Rod")
+	if not tool or not tool:IsA("Tool") then
+		return false
+	end
+
+	humanoid:EquipTool(tool)
+	return tool.Parent == character
 end
 
 function RodVisual.getHeldFishingRodTool(player, data)
@@ -3588,7 +3494,10 @@ local function ensureLobbyInvisibleBoundaries()
 end
 
 local function getAquariumsFolder()
-	local world = workspace:FindFirstChild("FishyFishWorld")
+	-- The authored world is nested under 04_MiscMapObjects in the saved place.
+	-- Looking only at Workspace's direct children caused Play mode to create a
+	-- second FishyFishWorld and a second aquarium island.
+	local world = workspace:FindFirstChild("FishyFishWorld", true)
 	if not world then
 		return nil
 	end
@@ -3725,14 +3634,14 @@ function AquariumLayout.startFallSafety()
 	AquariumLayout.FallSafetyStarted = true
 	AquariumLayout.FallSafetyCooldowns = AquariumLayout.FallSafetyCooldowns or {}
 
-	RunService.Heartbeat:Connect(function()
+	Services.RunService.Heartbeat:Connect(function()
 		local bounds = AquariumLayout.FallSafetyBounds
 		if not bounds then
 			return
 		end
 
 		local now = os.clock()
-		for _, player in ipairs(Players:GetPlayers()) do
+		for _, player in ipairs(Services.Players:GetPlayers()) do
 			local character = player.Character
 			local root = character and character:FindFirstChild("HumanoidRootPart")
 			if root then
@@ -3746,7 +3655,7 @@ function AquariumLayout.startFallSafety()
 					local lastTeleport = AquariumLayout.FallSafetyCooldowns[player] or 0
 					if now - lastTeleport > 1.5 then
 						AquariumLayout.FallSafetyCooldowns[player] = now
-						teleportPlayer(player, "AquariumHub")
+						Travel.teleportPlayer(player, "AquariumHub")
 					end
 				end
 			end
@@ -3757,12 +3666,16 @@ end
 getAquariumVisitorsState = function(requestingPlayer)
 	local visitors = {}
 
-	for _, otherPlayer in ipairs(Players:GetPlayers()) do
+	for _, otherPlayer in ipairs(Services.Players:GetPlayers()) do
 		local otherData = playerData[otherPlayer]
 		if otherData and otherData.Aquarium then
 			local level = otherData.Aquarium.Level or 1
 			local capacity = GameConfig.AquariumCapacities[level] or GameConfig.AquariumCapacities[1]
 			local fish = otherData.Aquarium.Fish or {}
+			local totalValue = 0
+			for _, displayedFish in ipairs(fish) do
+				totalValue += math.max(0, tonumber(displayedFish.value) or 0)
+			end
 			table.insert(visitors, {
 				UserId = otherPlayer.UserId,
 				Name = otherPlayer.Name,
@@ -3772,7 +3685,10 @@ getAquariumVisitorsState = function(requestingPlayer)
 				FishCount = #fish,
 				UsedCapacity = GameConfig.getAquariumUsedSpace(fish),
 				Capacity = capacity,
+				TotalValue = totalValue,
 				BestCatch = otherData.BestCatch and {
+					id = otherData.BestCatch.id,
+					imageKey = otherData.BestCatch.imageKey,
 					name = otherData.BestCatch.name,
 					value = otherData.BestCatch.value,
 					rarity = otherData.BestCatch.rarity,
@@ -3812,6 +3728,14 @@ local function getAquariumDimensions(level)
 end
 
 local function ensureAquariumSharedLand(folder, minimumSlots)
+	-- SharedAquariumShowcase is a Studio-authored map model. Reuse it exactly as
+	-- saved instead of generating another showcase inside PersonalAquariums.
+	local authoredShowcase = workspace:FindFirstChild("SharedAquariumShowcase", true)
+	if authoredShowcase and not authoredShowcase:IsDescendantOf(folder) then
+		AquariumLayout.FallSafetyBounds = nil
+		return authoredShowcase
+	end
+
 	local center = AquariumLayout.AreaOrigin
 	local viewOrigin = getAquariumSlotOrigin(1)
 	local landWidth = 200
@@ -3952,7 +3876,7 @@ local function ensureAquariumSharedLand(folder, minimumSlots)
 	returnPortal.CanCollide = false
 	returnPortal:SetAttribute("TargetArea", "Lobby")
 	returnPortal:SetAttribute("PortalName", "Return to Seaside Island")
-	CollectionService:AddTag(returnPortal, "AreaPortal")
+	Services.CollectionService:AddTag(returnPortal, "AreaPortal")
 	local returnSign = makePart(showroom, "ReturnToSeasideIslandSign", Vector3.new(23, 4, 0.6), center + Vector3.new(50, 7.6, -48), Color3.fromRGB(12, 58, 86), Enum.Material.SmoothPlastic)
 	returnSign.CFrame = CFrame.new(returnSign.Position) * CFrame.Angles(0, math.rad(180), 0)
 	createLabel(returnSign, "Return to\nSeaside Island")
@@ -4451,7 +4375,7 @@ local function makeAquariumFish(parent, fish, origin, index, ownerUserId, dimens
 	local rarityGlow = nil
 	local fishVisualId = tostring(fish.id or fish.imageKey or "")
 	if fishVisualId == "SmallFish" then
-		local overrideFolder = ServerStorage:FindFirstChild("AquariumFishOverrides")
+		local overrideFolder = Services.ServerStorage:FindFirstChild("AquariumFishOverrides")
 		local smallFishTemplate = if overrideFolder then overrideFolder:FindFirstChild("SmallFish") else nil
 		if smallFishTemplate and smallFishTemplate:IsA("Model") then
 			local visual = smallFishTemplate:Clone()
@@ -4522,7 +4446,7 @@ local function makeAquariumFish(parent, fish, origin, index, ownerUserId, dimens
 		weldFishPart(root, body)
 		rarityGlow = getAquariumFishColor(fish)
 	elseif fishVisualId == "GoldenCarp" then
-		local overrideFolder = ServerStorage:FindFirstChild("AquariumFishOverrides")
+		local overrideFolder = Services.ServerStorage:FindFirstChild("AquariumFishOverrides")
 		local goldenCarpTemplate = if overrideFolder then overrideFolder:FindFirstChild("GoldenCarp") else nil
 		if goldenCarpTemplate and goldenCarpTemplate:IsA("Model") then
 			local visual = goldenCarpTemplate:Clone()
@@ -4561,7 +4485,7 @@ local function makeAquariumFish(parent, fish, origin, index, ownerUserId, dimens
 			end
 		end
 	elseif fishVisualId == "Koi" then
-		local overrideFolder = ServerStorage:FindFirstChild("AquariumFishOverrides")
+		local overrideFolder = Services.ServerStorage:FindFirstChild("AquariumFishOverrides")
 		local koiTemplate = if overrideFolder then overrideFolder:FindFirstChild("Koi") else nil
 		if koiTemplate and koiTemplate:IsA("Model") then
 			local visual = koiTemplate:Clone()
@@ -4600,7 +4524,7 @@ local function makeAquariumFish(parent, fish, origin, index, ownerUserId, dimens
 			end
 		end
 	elseif fishVisualId == "PondGuardian" then
-		local overrideFolder = ServerStorage:FindFirstChild("AquariumFishOverrides")
+		local overrideFolder = Services.ServerStorage:FindFirstChild("AquariumFishOverrides")
 		local pondGuardianTemplate = if overrideFolder then overrideFolder:FindFirstChild("PondGuardian") else nil
 		if not pondGuardianTemplate then
 			pondGuardianTemplate = workspace:FindFirstChild("PondGuardian_New")
@@ -4642,7 +4566,7 @@ local function makeAquariumFish(parent, fish, origin, index, ownerUserId, dimens
 			end
 		end
 	elseif fishVisualId == "Catfish" then
-		local overrideFolder = ServerStorage:FindFirstChild("AquariumFishOverrides")
+		local overrideFolder = Services.ServerStorage:FindFirstChild("AquariumFishOverrides")
 		local catfishTemplate = if overrideFolder then overrideFolder:FindFirstChild("Catfish") else nil
 		if catfishTemplate and catfishTemplate:IsA("Model") then
 			local visual = catfishTemplate:Clone()
@@ -4682,7 +4606,7 @@ local function makeAquariumFish(parent, fish, origin, index, ownerUserId, dimens
 		end
 	end
 
-	local templateRoot = ServerStorage:FindFirstChild(RodVisual.TemplateFolderName)
+	local templateRoot = Services.ServerStorage:FindFirstChild(RodVisual.TemplateFolderName)
 	local fishTemplate = if not rarityGlow and templateRoot then templateRoot:FindFirstChild(fishVisualId) else nil
 	if not rarityGlow and fishTemplate and fishTemplate:IsA("Model") then
 		local visual = fishTemplate:Clone()
@@ -4782,7 +4706,7 @@ local function buildAquariumSlotModel(slot, ownerPlayer, ownerData)
 
 	local baseDrop = 2.8
 	local base = makePart(model, "AquariumBase", Vector3.new(dimensions.baseWidth, 1, dimensions.baseDepth), origin + Vector3.new(0, 0.8 - baseDrop, 0), Color3.fromRGB(74, 82, 88), Enum.Material.Metal)
-	makePart(model, "AquariumBaseTopPlate", Vector3.new(dimensions.tankWidth + 1, 0.18, dimensions.tankDepth + 1), origin + Vector3.new(0, 1.39, 0), Color3.fromRGB(132, 142, 150), Enum.Material.Metal)
+	makePart(model, "AquariumBaseTopPlate", Vector3.new(dimensions.tankWidth + 1, 0.24, dimensions.tankDepth + 1), origin + Vector3.new(0, 1.36, 0), Color3.fromRGB(132, 142, 150), Enum.Material.Metal)
 
 	local halfWidth = dimensions.tankWidth / 2
 	local halfDepth = dimensions.tankDepth / 2
@@ -4882,7 +4806,7 @@ local function buildAquariumSlotModel(slot, ownerPlayer, ownerData)
 		end
 
 		local function cloneImportedDecoration()
-			local templateFolder = ServerStorage:FindFirstChild(AQUARIUM_DECOR_TEMPLATE_FOLDER_NAME)
+			local templateFolder = Services.ServerStorage:FindFirstChild(AQUARIUM_DECOR_TEMPLATE_FOLDER_NAME)
 			local template = templateFolder and templateFolder:FindFirstChild(decorationId)
 			if not template or not template:IsA("Model") then
 				return false
@@ -5835,7 +5759,7 @@ local function buildCleanLobby(world)
 	local function connectPortal(trigger, targetArea)
 		trigger.Touched:Connect(function(hit)
 			local character = hit:FindFirstAncestorOfClass("Model")
-			local player = character and Players:GetPlayerFromCharacter(character)
+			local player = character and Services.Players:GetPlayerFromCharacter(character)
 			if not player then
 				return
 			end
@@ -5853,21 +5777,21 @@ local function buildCleanLobby(world)
 
 			local root = character:FindFirstChild("HumanoidRootPart")
 			if targetArea == "BiomeWarp" then
-				OpenBiomeWarp:FireClient(player, getPlayerFishingBiome and getPlayerFishingBiome(player) or nil)
+				Remote.OpenBiomeWarp:FireClient(player, getPlayerFishingBiome and getPlayerFishingBiome(player) or nil)
 				return
 			end
 
 			if targetArea == "Home" then
-				teleportPlayer(player, "Home")
+				Travel.teleportPlayer(player, "Home")
 				return
 			end
 
 			if targetArea == "AquariumHub" then
-				teleportPlayer(player, "AquariumHub")
+				Travel.teleportPlayer(player, "AquariumHub")
 				return
 			end
 
-			if GameConfig.Biomes[targetArea] and not isBiomeUnlocked(data, targetArea) then
+			if GameConfig.Biomes[targetArea] and not IslandConfig.isBiomeUnlocked(data, targetArea) then
 				notify(player, "Unlock that island first.")
 				return
 			end
@@ -5889,7 +5813,7 @@ local function buildCleanLobby(world)
 		trigger:SetAttribute("TargetArea", targetArea)
 		trigger:SetAttribute("RequiredLevel", requiredLevel)
 		trigger:SetAttribute("PortalName", textValue)
-		CollectionService:AddTag(trigger, "AreaPortal")
+		Services.CollectionService:AddTag(trigger, "AreaPortal")
 		connectPortal(trigger, targetArea)
 
 		makeSign(aquariumWarpModel, name .. "_SmallSign", position + Vector3.new(0, 5.2, -7.3), Vector3.new(15, 3.6, 0.5), textValue .. "\nLv. " .. tostring(requiredLevel) .. "+", color, Enum.NormalId.Front)
@@ -5957,7 +5881,7 @@ local function buildCleanLobby(world)
 	fountainWarpTrigger:SetAttribute("TargetArea", "BiomeWarp")
 	fountainWarpTrigger:SetAttribute("PortalName", "Island Warp")
 	fountainWarpTrigger:SetAttribute("RequiredLevel", 1)
-	CollectionService:AddTag(fountainWarpTrigger, "AreaPortal")
+	Services.CollectionService:AddTag(fountainWarpTrigger, "AreaPortal")
 	connectPortal(fountainWarpTrigger, "BiomeWarp")
 
 	local lobbyZone = makeLobbyPart(
@@ -5971,7 +5895,7 @@ local function buildCleanLobby(world)
 		false
 	)
 	lobbyZone:SetAttribute("AreaName", "Lobby")
-	CollectionService:AddTag(lobbyZone, "LobbyZone")
+	Services.CollectionService:AddTag(lobbyZone, "LobbyZone")
 
 	for z = -28, -11 do
 		for x = -2, 2 do
@@ -6976,54 +6900,24 @@ local function removeAllGeneratedBiomePlaceholders()
 end
 
 local function buildWorld()
-	-- Keep the saved editor-authored aquarium island across the runtime world
-	-- refresh so changes made in Studio are the version used in Play mode.
-	local authoredAquariums = workspace:FindFirstChild("PersonalAquariums")
-
-	local existing = workspace:FindFirstChild("FishyFishWorld")
-	if existing then
-		existing:Destroy()
+	-- The entire visible map is authored in Studio. Runtime startup may attach
+	-- gameplay behavior, but it must never destroy, reparent, rebuild, mirror, or
+	-- restyle authored geometry. Find the nested authored world before creating
+	-- a bookkeeping folder for genuinely empty development places.
+	local world = workspace:FindFirstChild("FishyFishWorld", true)
+	if not world then
+		world = Instance.new("Folder")
+		world.Name = "FishyFishWorld"
+		world.Parent = workspace
 	end
-
-	local world = Instance.new("Folder")
-	world.Name = "FishyFishWorld"
-	world.Parent = workspace
-	if authoredAquariums then
-		authoredAquariums.Parent = world
-	end
-
-	EditorVisuals.removeLegacyFishingHotspots()
-	for _, legacyName in ipairs({
-		"WorldGroundPondToRiver",
-		"WorldGroundRiverToOcean",
-		"WorldGroundBeginnerNorth",
-		"WorldGroundBeginnerSouth",
-	}) do
-		local legacyGrass = workspace:FindFirstChild(legacyName, true)
-		if legacyGrass and legacyGrass:IsA("BasePart") then
-			legacyGrass:Destroy()
-		end
-	end
-
-	ensureLobbyInvisibleBoundaries()
-
-	-- Fishing-island geometry is authored in the saved Workspace map. Runtime
-	-- slabs here duplicate those islands and must not be generated in Play mode.
-	removeAllGeneratedBiomePlaceholders()
 
 	ensurePrebuiltAquariumSlots()
-	ensureFountainPlazaBrickStyle()
 	ensureFountainAnimations()
 	ensureFountainBiomeWarpTrigger()
 	connectBiomeWarpTouches()
-	ensureShopWoodPartSpacing()
-	ensureSeasideRodShopMirrored()
-	ensureSeasideRodShopKeeper()
-	ensureSeasideShopFishmonger()
-	ensureSeasideShopDisplayAquarium()
-	EditorVisuals.ensureSmallDecorCollision()
 	connectSellFishPrompts()
 	connectRodShopPrompts()
+	ensureLobbyInvisibleBoundaries()
 
 	do
 		local castleScript = game:GetService("ServerScriptService"):FindFirstChild("CastleShopService")
@@ -7037,47 +6931,7 @@ local function buildWorld()
 end
 
 local function ensureWorld()
-	local world = workspace:FindFirstChild("FishyFishWorld")
-	if not world then
-		buildWorld()
-	else
-		removeAllGeneratedBiomePlaceholders()
-		EditorVisuals.removeLegacyFishingHotspots()
-		for _, legacyName in ipairs({
-			"WorldGroundPondToRiver",
-			"WorldGroundRiverToOcean",
-			"WorldGroundBeginnerNorth",
-			"WorldGroundBeginnerSouth",
-		}) do
-			local legacyGrass = workspace:FindFirstChild(legacyName, true)
-			if legacyGrass and legacyGrass:IsA("BasePart") then
-				legacyGrass:Destroy()
-			end
-		end
-		ensureFountainPlazaBrickStyle()
-		ensureFountainAnimations()
-		ensureFountainBiomeWarpTrigger()
-		connectBiomeWarpTouches()
-		ensureShopWoodPartSpacing()
-		ensureSeasideRodShopMirrored()
-		ensureSeasideRodShopKeeper()
-		ensureSeasideShopFishmonger()
-		ensureSeasideShopDisplayAquarium()
-		EditorVisuals.ensureSmallDecorCollision()
-		connectSellFishPrompts()
-		connectRodShopPrompts()
-		ensureLobbyInvisibleBoundaries()
-
-		do
-			local castleScript = game:GetService("ServerScriptService"):FindFirstChild("CastleShopService")
-			if castleScript then
-				local ok, castleService = pcall(require, castleScript)
-				if ok and type(castleService) == "table" and type(castleService.ensure) == "function" then
-					castleService.ensure()
-				end
-			end
-		end
-	end
+	buildWorld()
 end
 
 local function safeEnsureWorld(context)
@@ -7114,11 +6968,14 @@ function Bait.calculateCatchXP(fish, baitId, isAutoFish)
 	return xp
 end
 
-local FishingRuntime = {}
+local FishingRuntime = {
+	MinigameValidationService = require(script.Parent:WaitForChild("MinigameValidationService")),
+	Water = require(Services.ReplicatedStorage:WaitForChild("Shared"):WaitForChild("FishingWater")),
+}
 
 function FishingRuntime.chooseFish(data, isAutoFish, baitId, extraRareChanceBonus)
-	local biome = getBiomeData(data)
-	local rod = getRodData(data)
+	local biome = IslandConfig.getBiomeData(data)
+	local rod = RodVisual.getRodData(data)
 	local bait = Bait.getData(baitId)
 	local luck = (rod.luck or 0) + (tonumber(bait.rareChanceBonus) or 0) + (tonumber(extraRareChanceBonus) or 0)
 
@@ -7203,6 +7060,7 @@ function FishingRuntime.awardCatch(player, fish, isAutoFish, baitId, castResult)
 	updateLeaderstats(player)
 	sendState(player)
 	FishCaughtLeaderboard.publish(player, data)
+	playerData.queueSave(player)
 
 	local prefix = isAutoFish and "Auto caught" or "Caught"
 	local baitText = bait and bait.displayName and bait.displayName ~= "Basic Bait" and (" using " .. bait.displayName) or ""
@@ -7214,7 +7072,7 @@ function FishingRuntime.awardCatch(player, fish, isAutoFish, baitId, castResult)
 	notify(player, message)
 end
 
-function FishingRuntime.makeMinigamePrompt(biomeId, biteDelay, fish, rodId, sessionId, isAutoFish, baitId, remainingBait, castResult)
+function FishingRuntime.makeMinigamePrompt(biomeId, biteDelay, fish, rodId, sessionId, isAutoFish, baitId, remainingBait, castResult, minigameSeed)
 	local bait = Bait.getData(baitId)
 	local xp = Bait.calculateCatchXP(fish, baitId, isAutoFish)
 	local value = Bait.calculateCatchValue(fish, baitId)
@@ -7229,6 +7087,7 @@ function FishingRuntime.makeMinigamePrompt(biomeId, biteDelay, fish, rodId, sess
 		biteDelay = biteDelay,
 		autoFish = isAutoFish == true,
 		sessionId = sessionId,
+		minigameSeed = minigameSeed,
 		fish = {
 			id = fish.id,
 			name = fish.name,
@@ -7254,7 +7113,7 @@ function FishingRuntime.makeMinigamePrompt(biomeId, biteDelay, fish, rodId, sess
 	}
 end
 
-local Travel = {}
+Travel = {}
 Travel.Lilyshore = require(script.Parent:WaitForChild("LilyshoreIslandService"))
 
 function Travel.getPlayerRoot(player)
@@ -7350,10 +7209,6 @@ function Travel.getBiomeAtPosition(position, ignoreInstances)
 	end
 
 	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
-		if biomeId == DEFAULT_FISHING_ISLAND_ID then
-			continue
-		end
-
 		local biome = GameConfig.Biomes[biomeId]
 		local center = biome.position
 		local dx = math.abs(position.X - center.X)
@@ -7461,7 +7316,14 @@ getPlayerFishingBiome = function(player)
 		return nil
 	end
 
-	return Travel.getBiomeAtPosition(root.Position, { player.Character })
+	local biomeId = Travel.getBiomeAtPosition(root.Position, { player.Character })
+	if not biomeId
+		or not FishingRuntime.Water.isNearWater(root.Position, { player.Character })
+	then
+		return nil
+	end
+
+	return biomeId
 end
 
 getPlayerTravelLocation = function(player)
@@ -7488,7 +7350,7 @@ getPlayerTravelLocation = function(player)
 	return "Lobby"
 end
 
-function startAutoFish(player)
+function FishingRuntime.startAutoFish(player)
 	local data = playerData[player]
 	if not data or data.AutoFishRunning then
 		return
@@ -7521,7 +7383,7 @@ function startAutoFish(player)
 				continue
 			end
 
-			local rod = getRodData(data)
+			local rod = RodVisual.getRodData(data)
 			local baitPreview = Bait.getData(Bait.getEquippedId(data))
 			local waitTime = Random.new():NextNumber(RuntimeConfig.autoFishMinWait, RuntimeConfig.autoFishMaxWait)
 				* math.max(0.85, rod.speed)
@@ -7551,11 +7413,11 @@ function startAutoFish(player)
 					data.AutoFishEnabled = false
 					data.AutoFishRunning = false
 					sendState(player)
-					notify(player, "AutoFish stopped. Move to Lilyshore Island, Riverbend Island, or Coral Coast Island to fish.")
+					notify(player, "AutoFish stopped. Move closer to the water to fish.")
 					return
 				end
 
-				if not isBiomeUnlocked(data, locationBiomeId) then
+				if not IslandConfig.isBiomeUnlocked(data, locationBiomeId) then
 					data.AutoFishEnabled = false
 					data.AutoFishRunning = false
 					sendState(player)
@@ -7580,7 +7442,7 @@ function startAutoFish(player)
 
 				local prompt = FishingRuntime.makeMinigamePrompt(locationBiomeId, biteDelay, fish, rodId, nil, true, baitId, Bait.getRemainingForClient(data, baitId))
 				prompt.visualTime = visualTime
-				FishingPrompt:FireClient(player, prompt)
+				Remote.FishingPrompt:FireClient(player, prompt)
 
 				task.wait(visualTime + 0.25)
 
@@ -7610,7 +7472,7 @@ function startAutoFish(player)
 	end)
 end
 
-RodPurchase = {
+local RodPurchase = {
 	Locks = {},
 }
 
@@ -7619,10 +7481,10 @@ function RodPurchase.validate(data, rodId)
 	if not rod then
 		return false, "Unknown rod."
 	end
-	if ownsRod(data, rodId) then
+	if RodVisual.ownsRod(data, rodId) then
 		return false, "Already owned."
 	end
-	if rod.previousRod and not ownsRod(data, rod.previousRod) then
+	if rod.previousRod and not RodVisual.ownsRod(data, rod.previousRod) then
 		return false, "Need " .. GameConfig.Rods[rod.previousRod].displayName .. "."
 	end
 	if data.Level < rod.unlockLevel then
@@ -7670,23 +7532,23 @@ function RodPurchase.deductAndGrant(data, rodId, rod)
 	data.EquippedRod = rodId
 end
 
-IslandPurchase = {
+local IslandPurchase = {
 	Locks = {},
 }
 
 function IslandPurchase.validate(data, biomeId)
-	biomeId = normalizeBiomeId(biomeId)
+	biomeId = IslandConfig.normalizeBiomeId(biomeId)
 	local biome = GameConfig.Biomes[biomeId]
 	if not biome then
 		return false, "Unknown island."
 	end
-	if isBiomeUnlocked(data, biomeId) then
+	if IslandConfig.isBiomeUnlocked(data, biomeId) then
 		return false, "Already unlocked."
 	end
 	if data.Level < biome.unlockLevel then
 		return false, "Need level " .. biome.unlockLevel .. "."
 	end
-	if biome.requiredRod and not ownsRod(data, biome.requiredRod) then
+	if biome.requiredRod and not RodVisual.ownsRod(data, biome.requiredRod) then
 		return false, "Need " .. GameConfig.Rods[biome.requiredRod].displayName .. "."
 	end
 	if data.Coins < biome.cost then
@@ -7699,8 +7561,8 @@ local function canUnlockBiome(data, biomeId)
 	return IslandPurchase.validate(data, biomeId)
 end
 
-function teleportPlayer(player, target)
-	target = normalizeTravelTarget(target)
+function Travel.teleportPlayer(player, target)
+	target = IslandConfig.normalizeTravelTarget(target)
 	if not target then
 		return false
 	end
@@ -7747,7 +7609,7 @@ function teleportPlayer(player, target)
 	return false
 end
 
-function teleportPlayerToAquariumOwner(player, ownerPlayer)
+function Travel.teleportPlayerToAquariumOwner(player, ownerPlayer)
 	if not ownerPlayer or not ownerPlayer.Parent then
 		notify(player, "That player is no longer online.")
 		return false
@@ -7774,26 +7636,26 @@ function teleportPlayerToAquariumOwner(player, ownerPlayer)
 	return true
 end
 
-function teleportPlayerToAquariumUserId(player, ownerUserId)
+function Travel.teleportPlayerToAquariumUserId(player, ownerUserId)
 	ownerUserId = tonumber(ownerUserId)
 	if not ownerUserId then
 		return false
 	end
 
-	local ownerPlayer = Players:GetPlayerByUserId(ownerUserId)
+	local ownerPlayer = Services.Players:GetPlayerByUserId(ownerUserId)
 	if ownerPlayer then
-		return teleportPlayerToAquariumOwner(player, ownerPlayer)
+		return Travel.teleportPlayerToAquariumOwner(player, ownerPlayer)
 	end
 
 	notify(player, "That player is not online.")
 	return false
 end
 
-areaPortalTouchCooldowns = {}
-remoteTravelRequests = {}
-REMOTE_TRAVEL_DEBOUNCE_SECONDS = 1
+local areaPortalTouchCooldowns = {}
+local remoteTravelRequests = {}
+local REMOTE_TRAVEL_DEBOUNCE_SECONDS = 1
 
-function tryBeginRemoteTravel(player)
+function Travel.tryBeginRemoteTravel(player)
 	local now = os.clock()
 	local request = remoteTravelRequests[player]
 	if request and (request.inFlight or now - request.lastStarted < REMOTE_TRAVEL_DEBOUNCE_SECONDS) then
@@ -7807,14 +7669,14 @@ function tryBeginRemoteTravel(player)
 	return true
 end
 
-function finishRemoteTravel(player)
+function Travel.finishRemoteTravel(player)
 	local request = remoteTravelRequests[player]
 	if request then
 		request.inFlight = false
 	end
 end
 
-function connectAreaPortalTrigger(part)
+function Travel.connectAreaPortalTrigger(part)
 	if not part:IsA("BasePart") then
 		return
 	end
@@ -7825,7 +7687,7 @@ function connectAreaPortalTrigger(part)
 		part:SetAttribute("TargetArea", targetArea)
 	end
 
-	if not targetArea and not CollectionService:HasTag(part, "AreaPortal") then
+	if not targetArea and not Services.CollectionService:HasTag(part, "AreaPortal") then
 		return
 	end
 
@@ -7842,7 +7704,7 @@ function connectAreaPortalTrigger(part)
 	part.CanTouch = true
 	part.Touched:Connect(function(hit)
 		local character = hit:FindFirstAncestorOfClass("Model")
-		local player = character and Players:GetPlayerFromCharacter(character)
+		local player = character and Services.Players:GetPlayerFromCharacter(character)
 		if not player then
 			return
 		end
@@ -7867,17 +7729,17 @@ function connectAreaPortalTrigger(part)
 			return
 		end
 
-		target = normalizeTravelTarget(target)
+		target = IslandConfig.normalizeTravelTarget(target)
 		if not target then
 			return
 		end
 
-		if GameConfig.Biomes[target] and not isBiomeUnlocked(data, target) then
+		if GameConfig.Biomes[target] and not IslandConfig.isBiomeUnlocked(data, target) then
 			notify(player, "Unlock that island first.")
 			return
 		end
 
-		local moved = teleportPlayer(player, target)
+		local moved = Travel.teleportPlayer(player, target)
 		if moved then
 			if GameConfig.Biomes[target] then
 				data.CurrentBiome = target
@@ -7887,17 +7749,21 @@ function connectAreaPortalTrigger(part)
 	end)
 end
 
-function connectAreaPortalTriggers()
+function Travel.connectAreaPortalTriggers()
 	for _, descendant in ipairs(workspace:GetDescendants()) do
-		connectAreaPortalTrigger(descendant)
+		Travel.connectAreaPortalTrigger(descendant)
 	end
 end
 
 workspace.DescendantAdded:Connect(function(descendant)
-	task.defer(connectAreaPortalTrigger, descendant)
+	task.defer(Travel.connectAreaPortalTrigger, descendant)
 end)
 
-function setupPlayer(player)
+function RuntimeConfig.setupPlayer(player)
+	if playerData[player] then
+		return
+	end
+
 	playerData[player] = loadData(player)
 	local appliedOwnerGrant = applyOwnerGrants(player, playerData[player])
 	Monetization.syncGamePassOwnership(player, playerData[player])
@@ -7908,7 +7774,7 @@ function setupPlayer(player)
 	if lobbySpawn then
 		player.RespawnLocation = lobbySpawn
 	end
-	connectAreaPortalTriggers()
+	Travel.connectAreaPortalTriggers()
 	ensureHudAccessToolsForPlayer(player)
 	setupLeaderstats(player)
 	updateLeaderstats(player)
@@ -7927,7 +7793,7 @@ function setupPlayer(player)
 			local respawnTarget = player:GetAttribute("FishyFishTravelTarget")
 			if respawnTarget and respawnTarget ~= IslandConfig.SeasideIslandId then
 				task.wait(0.2)
-				teleportPlayer(player, respawnTarget)
+				Travel.teleportPlayer(player, respawnTarget)
 			end
 		end)
 	end)
@@ -7952,7 +7818,7 @@ function setupPlayer(player)
 			notify(player, "Owner grant applied: 100000 coins.")
 		end
 		if data and data.AutoFishEnabled then
-			startAutoFish(player)
+			FishingRuntime.startAutoFish(player)
 		end
 		sendStateToAll()
 		FishCaughtLeaderboard.refresh(true)
@@ -7966,10 +7832,10 @@ CastConfigService.configure({
 	getPlayerFishingBiome = function(player)
 		return getPlayerFishingBiome and getPlayerFishingBiome(player) or nil
 	end,
-	isBiomeUnlocked = isBiomeUnlocked,
+	isBiomeUnlocked = IslandConfig.isBiomeUnlocked,
 })
 
-GetState.OnServerInvoke = function(player)
+Remote.GetState.OnServerInvoke = function(player)
 	local data = playerData[player]
 	if not data then
 		return nil
@@ -7984,7 +7850,30 @@ GetState.OnServerInvoke = function(player)
 	return clientState
 end
 
-StartFishing.OnServerEvent:Connect(function(player, requestedBiome)
+function FishingRuntime.awardPendingFishing(player, expectedSessionId, reason)
+	local data = playerData[player]
+	local pending = pendingFishing[player]
+	if not data
+		or not pending
+		or pending.autoFish
+		or pending.sessionId ~= expectedSessionId
+	then
+		return false
+	end
+
+	-- Clear the exact session before awarding so the client completion packet,
+	-- timeout watchdog, and recovery cast can never award the same fish twice.
+	pendingFishing[player] = nil
+	if reason then
+		warn("[FishingSession] Awarding guaranteed catch", player.Name, reason)
+	end
+
+	data.CurrentBiome = pending.biomeId
+	FishingRuntime.awardCatch(player, pending.fish, false, pending.baitId, pending.castResult)
+	return true
+end
+
+Remote.StartFishing.OnServerEvent:Connect(function(player, requestedBiome)
 	local data = playerData[player]
 	if not data then
 		return
@@ -7996,12 +7885,24 @@ StartFishing.OnServerEvent:Connect(function(player, requestedBiome)
 	end
 
 	local castRequest = type(requestedBiome) == "table" and requestedBiome or nil
-	local requestedBiomeId = normalizeBiomeId(castRequest and castRequest.biomeId or requestedBiome)
+	local requestedBiomeId = IslandConfig.normalizeBiomeId(castRequest and castRequest.biomeId or requestedBiome)
 	local biomeId = GameConfig.Biomes[requestedBiomeId] and requestedBiomeId or data.CurrentBiome
 	local locationBiomeId = getPlayerFishingBiome(player)
 
 	if not locationBiomeId then
-		notify(player, "Move to Lilyshore Island, Riverbend Island, or Coral Coast Island to fish.")
+		notify(player, "Move closer to the water before fishing.")
+		return
+	end
+
+	local rootPart = Travel.getPlayerRoot(player)
+	local castSurface = rootPart and FishingRuntime.Water.findCastSurface(
+		rootPart.Position,
+		rootPart.CFrame.LookVector,
+		rootPart.CFrame.RightVector,
+		{ player.Character }
+	)
+	if not castSurface then
+		notify(player, "Face the nearby water before casting.")
 		return
 	end
 
@@ -8012,12 +7913,40 @@ StartFishing.OnServerEvent:Connect(function(player, requestedBiome)
 
 	biomeId = locationBiomeId
 
+	local existingPending = pendingFishing[player]
+	if existingPending then
+		if existingPending.autoFish then
+			return
+		end
+
+		if os.clock() >= (existingPending.expiresAt or math.huge) then
+			FishingRuntime.awardPendingFishing(player, existingPending.sessionId, "stale session recovered on cast")
+		else
+			-- The client can lose its local UI during a respawn or script refresh while
+			-- the server still owns the hook. Re-open that exact catch instead of
+			-- trapping the player behind an "Already fishing" message.
+			local resumePrompt = FishingRuntime.makeMinigamePrompt(
+				existingPending.biomeId,
+				0,
+				existingPending.fish,
+				existingPending.rodId or data.EquippedRod or "WoodenRod",
+				existingPending.sessionId,
+				false,
+				existingPending.baitId,
+				Bait.getRemainingForClient(data, existingPending.baitId),
+				existingPending.castResult,
+				existingPending.minigameSeed
+			)
+			Remote.FishingPrompt:FireClient(player, resumePrompt)
+			return
+		end
+	end
+
 	if pendingFishing[player] then
-		notify(player, "Already fishing.")
 		return
 	end
 
-	if not isBiomeUnlocked(data, biomeId) then
+	if not IslandConfig.isBiomeUnlocked(data, biomeId) then
 		notify(player, "Unlock that island first.")
 		return
 	end
@@ -8028,7 +7957,7 @@ StartFishing.OnServerEvent:Connect(function(player, requestedBiome)
 	end
 
 	data.CurrentBiome = biomeId
-	local rod = getRodData(data)
+	local rod = RodVisual.getRodData(data)
 	local rodId = data.EquippedRod or "WoodenRod"
 	local baitId, bait = Bait.consumeForCast(data)
 	local castPower = castRequest and (castRequest.castPower or castRequest.power) or nil
@@ -8042,26 +7971,54 @@ StartFishing.OnServerEvent:Connect(function(player, requestedBiome)
 		* math.max(0.65, tonumber(bait.biteSpeedMultiplier) or 1)
 		* math.max(0.75, tonumber(castResult and castResult.biteSpeedMultiplier) or 1)
 	local fish = FishingRuntime.chooseFish(data, false, baitId)
-	local sessionId = tostring(math.floor(os.clock() * 1000)) .. ":" .. tostring(Random.new():NextInteger(100000, 999999))
+	local requestedAt = os.clock()
+	local sessionId = tostring(math.floor(requestedAt * 1000)) .. ":" .. tostring(Random.new():NextInteger(100000, 999999))
+	local minigameSeed = Random.new():NextInteger(1, 2147483646)
 	local minigameConfig = GameConfig.getFishingMinigameConfig(fish.rarity, rodId)
+	local minigameDifficulty = minigameConfig.difficulty or GameConfig.FishingMinigame.RarityDifficulty.Common
+	if fish.rarity == "Uncommon" then
+		minigameDifficulty = GameConfig.FishingMinigame.RarityDifficulty.Common
+	end
+	if castResult then
+		minigameConfig.progressGainPerSecond *= tonumber(castResult.progressGainMultiplier) or 1
+	end
 
 	pendingFishing[player] = {
 		biomeId = biomeId,
-		requestedAt = os.clock(),
+		requestedAt = requestedAt,
 		biteDelay = biteDelay,
 		fish = fish,
 		baitId = baitId,
 		castResult = castResult,
+		rodId = rodId,
 		sessionId = sessionId,
-		minSuccessDuration = minigameConfig.minSuccessDuration,
-		maxDuration = minigameConfig.maxDuration,
+		minigameSeed = minigameSeed,
+		expiresAt = requestedAt
+			+ biteDelay
+			+ (tonumber(minigameConfig.maxDuration) or 35)
+			+ 5,
+		validation = FishingRuntime.MinigameValidationService.newSession({
+			sessionId = sessionId,
+			requestedAt = requestedAt,
+			biteDelay = biteDelay,
+			seed = minigameSeed,
+			rarity = fish.rarity,
+			config = minigameConfig,
+			difficulty = minigameDifficulty,
+		}),
 	}
 
 	sendState(player)
-	FishingPrompt:FireClient(player, FishingRuntime.makeMinigamePrompt(biomeId, biteDelay, fish, rodId, sessionId, false, baitId, Bait.getRemainingForClient(data, baitId), castResult))
+	playerData.queueSave(player)
+	Remote.FishingPrompt:FireClient(player, FishingRuntime.makeMinigamePrompt(biomeId, biteDelay, fish, rodId, sessionId, false, baitId, Bait.getRemainingForClient(data, baitId), castResult, minigameSeed))
+
+	local completionDelay = math.max(0, pendingFishing[player].expiresAt - os.clock())
+	task.delay(completionDelay, function()
+		FishingRuntime.awardPendingFishing(player, sessionId, "client completion timeout")
+	end)
 end)
 
-FinishMinigame.OnServerEvent:Connect(function(player, result)
+Remote.FinishMinigame.OnServerEvent:Connect(function(player, result)
 	local data = playerData[player]
 	local pending = pendingFishing[player]
 	if not data or not pending then
@@ -8072,53 +8029,47 @@ FinishMinigame.OnServerEvent:Connect(function(player, result)
 		return
 	end
 
-	pendingFishing[player] = nil
+	local action = type(result) == "table" and result.action or nil
+	if type(result) == "table"
+		and action == nil
+		and result.sessionId == pending.sessionId
+		and (result.success == nil or type(result.success) == "boolean")
+	then
+		action = "Complete"
+	end
+
+	if type(result) == "table" and action == "Input" then
+		FishingRuntime.MinigameValidationService.recordInput(pending.validation, result, os.clock())
+		return
+	end
+
+	if type(result) ~= "table"
+		or action ~= "Complete"
+		or result.sessionId ~= pending.sessionId
+	then
+		return
+	end
 
 	if not RodVisual.getHeldFishingRodTool(player, data) then
-		notify(player, "The fish escaped because you stopped holding your fishing rod.")
-		sendState(player)
-		return
+		warn("[FishingValidation] Awarding catch after held-rod state changed", player.Name)
 	end
 
-	local elapsed = os.clock() - pending.requestedAt
-	if elapsed < pending.biteDelay - 0.75 then
-		notify(player, "Too early. Wait for the bite.")
-		return
+	local valid, validationReason = FishingRuntime.MinigameValidationService.evaluate(
+		pending.validation,
+		result,
+		os.clock()
+	)
+	if not valid then
+		warn("[FishingValidation] Awarding guaranteed catch", player.Name, validationReason)
 	end
 
-	local success = type(result) == "table" and result.success == true
-	local sessionId = type(result) == "table" and result.sessionId or nil
-
-	if pending.sessionId and sessionId ~= pending.sessionId then
-		notify(player, "The fish escaped.")
-		sendState(player)
-		return
-	end
-
-	if not success then
-		notify(player, "The fish escaped.")
-		sendState(player)
-		return
-	end
-
-	local minSuccessDuration = pending.minSuccessDuration or 1.5
-	if elapsed < pending.biteDelay + minSuccessDuration - 0.35 then
-		notify(player, "The fish escaped.")
-		sendState(player)
-		return
-	end
-
-	if elapsed > pending.biteDelay + (pending.maxDuration or 35) + 5 then
-		notify(player, "The fish escaped.")
-		sendState(player)
-		return
-	end
-
-	data.CurrentBiome = pending.biomeId
-	FishingRuntime.awardCatch(player, pending.fish, false, pending.baitId, pending.castResult)
+	-- A hooked fish is guaranteed. Validation remains useful for diagnostics,
+	-- but a late input packet, clock difference, or rod-state race must never
+	-- turn a completed minigame into an escaped fish.
+	FishingRuntime.awardPendingFishing(player, pending.sessionId)
 end)
 
-SellFish.OnServerEvent:Connect(function(player, action, fishSerialToSell, fishIndexToSell)
+Remote.SellFish.OnServerEvent:Connect(function(player, action, fishSerialToSell, fishIndexToSell)
 	local data = playerData[player]
 	if not data then
 		return
@@ -8139,6 +8090,7 @@ SellFish.OnServerEvent:Connect(function(player, action, fishSerialToSell, fishIn
 
 		updateLeaderstats(player)
 		sendState(player)
+		playerData.queueSave(player)
 		notify(player, "Sold " .. fish.name .. " for " .. value .. " coins.")
 		return
 	end
@@ -8146,7 +8098,7 @@ SellFish.OnServerEvent:Connect(function(player, action, fishSerialToSell, fishIn
 	sellAllFishForPlayer(player)
 end)
 
-BuyRod.OnServerEvent:Connect(function(player, rodId, action)
+Remote.BuyRod.OnServerEvent:Connect(function(player, rodId, action)
 	local data = playerData[player]
 	local rod = GameConfig.Rods[rodId]
 	if not data then
@@ -8158,13 +8110,21 @@ BuyRod.OnServerEvent:Connect(function(player, rodId, action)
 	end
 
 	if action == "Equip" then
-		if not ownsRod(data, rodId) then
+		if not RodVisual.ownsRod(data, rodId) then
 			notify(player, "You do not own " .. rod.displayName .. ".")
 			return
 		end
 		data.EquippedRod = rodId
 		refreshFishingRodForPlayer(player, data)
+		RodVisual.equipFishingRodToolForPlayer(player)
+		task.delay(0.15, function()
+			local latestData = playerData[player]
+			if latestData and latestData.EquippedRod == rodId then
+				RodVisual.equipFishingRodToolForPlayer(player)
+			end
+		end)
 		sendState(player)
+		playerData.queueSave(player)
 		notify(player, "Equipped " .. rod.displayName .. ".")
 		return
 	end
@@ -8192,7 +8152,7 @@ BuyRod.OnServerEvent:Connect(function(player, rodId, action)
 			canceledReason = budgetReason
 			return
 		end
-		if ownsRod(data, rodId) then
+		if RodVisual.ownsRod(data, rodId) then
 			canceledReason = "Already owned."
 			return
 		end
@@ -8218,10 +8178,11 @@ BuyRod.OnServerEvent:Connect(function(player, rodId, action)
 	updateLeaderstats(player)
 	refreshFishingRodForPlayer(player, data)
 	sendState(player)
+	playerData.queueSave(player)
 	notify(player, "Bought " .. rod.displayName .. ".")
 end)
 
-BaitAction.OnServerEvent:Connect(function(player, action, baitId)
+Remote.BaitAction.OnServerEvent:Connect(function(player, action, baitId)
 	local data = playerData[player]
 	if not data then
 		return
@@ -8247,6 +8208,7 @@ BaitAction.OnServerEvent:Connect(function(player, action, baitId)
 
 		data.EquippedBait = baitId
 		sendState(player)
+		playerData.queueSave(player)
 		notify(player, "Equipped " .. bait.displayName .. ".")
 		return
 	end
@@ -8258,6 +8220,7 @@ BaitAction.OnServerEvent:Connect(function(player, action, baitId)
 	if bait.unlimited or baitId == Bait.BasicId then
 		data.EquippedBait = Bait.BasicId
 		sendState(player)
+		playerData.queueSave(player)
 		notify(player, "Basic Bait is always free.")
 		return
 	end
@@ -8267,7 +8230,7 @@ BaitAction.OnServerEvent:Connect(function(player, action, baitId)
 		return
 	end
 
-	if bait.requiredBiome and not isBiomeUnlocked(data, bait.requiredBiome) then
+	if bait.requiredBiome and not IslandConfig.isBiomeUnlocked(data, bait.requiredBiome) then
 		local biome = GameConfig.Biomes[bait.requiredBiome]
 		notify(player, "Unlock " .. (biome and biome.displayName or "that island") .. " first.")
 		return
@@ -8293,11 +8256,12 @@ BaitAction.OnServerEvent:Connect(function(player, action, baitId)
 
 	updateLeaderstats(player)
 	sendState(player)
+	playerData.queueSave(player)
 	print("[BaitPurchase] sent inventory", player.Name, baitId, verifiedCount)
 	notify(player, "Bought " .. tostring(amount) .. " " .. bait.displayName .. ".")
 end)
 
-QuestAction.OnServerEvent:Connect(function(player, action, periodName, questId)
+Remote.QuestAction.OnServerEvent:Connect(function(player, action, periodName, questId)
 	local data = playerData[player]
 	if not data then
 		return
@@ -8325,7 +8289,7 @@ QuestAction.OnServerEvent:Connect(function(player, action, periodName, questId)
 	notify(player, message)
 end)
 
-getOrCreateRemoteEvent("ShopAction").OnServerEvent:Connect(function(player, action, category, itemKey, payload)
+Remote.getOrCreateEvent("ShopAction").OnServerEvent:Connect(function(player, action, category, itemKey, payload)
 	local data = playerData[player]
 	if not data then
 		return
@@ -8519,28 +8483,28 @@ getOrCreateRemoteEvent("ShopAction").OnServerEvent:Connect(function(player, acti
 	end
 end)
 
-LoginRewardAction.OnServerEvent:Connect(function(player, action)
+Remote.LoginRewardAction.OnServerEvent:Connect(function(player, action)
 	local data = playerData[player]
 	if not data or action ~= "Claim" then
 		return
 	end
 	if LoginRewards.ClaimLocks[player] then
-		LoginRewardAction:FireClient(player, { Success = false, Message = "A login reward claim is already in progress." })
+		Remote.LoginRewardAction:FireClient(player, { Success = false, Message = "A login reward claim is already in progress." })
 		return
 	end
 	if not SeaStars.tryAcquire(player) then
-		LoginRewardAction:FireClient(player, { Success = false, Message = "A Sea Star transaction is already in progress." })
+		Remote.LoginRewardAction:FireClient(player, { Success = false, Message = "A Sea Star transaction is already in progress." })
 		return
 	end
 	LoginRewards.ClaimLocks[player] = true
 
 	local snapshot = {
 		Coins = data.Coins,
-		BaitInventory = shallowCopyMap(data.BaitInventory),
-		ResourceInventory = shallowCopyMap(data.ResourceInventory),
+		BaitInventory = playerData.shallowCopyMap(data.BaitInventory),
+		ResourceInventory = playerData.shallowCopyMap(data.ResourceInventory),
 		SeaStars = data.SeaStars,
-		AquariumDecorations = shallowCopyMap(data.AquariumDecorations),
-		LoginRewards = shallowCopyMap(data.LoginRewards),
+		AquariumDecorations = playerData.shallowCopyMap(data.AquariumDecorations),
+		LoginRewards = playerData.shallowCopyMap(data.LoginRewards),
 	}
 	local function restoreSnapshot()
 		data.Coins = snapshot.Coins
@@ -8570,7 +8534,7 @@ LoginRewardAction.OnServerEvent:Connect(function(player, action)
 		updateLeaderstats(player)
 	end
 	sendState(player)
-	LoginRewardAction:FireClient(player, {
+	Remote.LoginRewardAction:FireClient(player, {
 		Success = claimed == true,
 		Message = message,
 		Reward = claimed and reward or nil,
@@ -8578,7 +8542,7 @@ LoginRewardAction.OnServerEvent:Connect(function(player, action)
 	notify(player, message or (claimed and "Login reward claimed." or "Login reward unavailable."))
 end)
 
-UnlockBiome.OnServerEvent:Connect(function(player, biomeId)
+Remote.UnlockBiome.OnServerEvent:Connect(function(player, biomeId)
 	local data = playerData[player]
 	if not data then
 		return
@@ -8628,10 +8592,11 @@ UnlockBiome.OnServerEvent:Connect(function(player, biomeId)
 
 	updateLeaderstats(player)
 	sendState(player)
+	playerData.queueSave(player)
 	notify(player, "Unlocked " .. biome.displayName .. ".")
 end)
 
-function fishyFishRunResourcePhaseStudioTests()
+function RuntimeConfig.runResourcePhaseStudioTests()
 	ResourceConfig.Validate(GameConfig)
 
 	local expectedResources = {
@@ -8760,11 +8725,11 @@ function fishyFishRunResourcePhaseStudioTests()
 	print("[FishyFish Resource Test] PASS: config, weights, odds, pity, Coral exclusion, persistence sanitizers, recipes, atomic deductions, and island gates")
 end
 
-if RunService:IsStudio() then
-	fishyFishRunResourcePhaseStudioTests()
+if Services.RunService:IsStudio() then
+	RuntimeConfig.runResourcePhaseStudioTests()
 end
 
-TeleportTo.OnServerEvent:Connect(function(player, target)
+Remote.TeleportTo.OnServerEvent:Connect(function(player, target)
 	local data = playerData[player]
 	if not data then
 		return
@@ -8785,13 +8750,13 @@ TeleportTo.OnServerEvent:Connect(function(player, target)
 			return
 		end
 	else
-		normalizedTarget = normalizeTravelTarget(target)
+		normalizedTarget = IslandConfig.normalizeTravelTarget(target)
 		if not normalizedTarget then
 			return
 		end
 	end
 
-	if normalizedTarget and GameConfig.Biomes[normalizedTarget] and not isBiomeUnlocked(data, normalizedTarget) then
+	if normalizedTarget and GameConfig.Biomes[normalizedTarget] and not IslandConfig.isBiomeUnlocked(data, normalizedTarget) then
 		notify(player, "Unlock that island first.")
 		return
 	end
@@ -8801,18 +8766,18 @@ TeleportTo.OnServerEvent:Connect(function(player, target)
 		return
 	end
 
-	if not tryBeginRemoteTravel(player) then
+	if not Travel.tryBeginRemoteTravel(player) then
 		return
 	end
 
 	local success, movedOrError = pcall(function()
 		if aquariumOwnerUserId then
-			return teleportPlayerToAquariumUserId(player, aquariumOwnerUserId)
+			return Travel.teleportPlayerToAquariumUserId(player, aquariumOwnerUserId)
 		end
 
-		return teleportPlayer(player, normalizedTarget)
+		return Travel.teleportPlayer(player, normalizedTarget)
 	end)
-	finishRemoteTravel(player)
+	Travel.finishRemoteTravel(player)
 
 	if not success then
 		warn("Travel failed for", player.Name, movedOrError)
@@ -8830,8 +8795,9 @@ TeleportTo.OnServerEvent:Connect(function(player, target)
 	sendState(player)
 end)
 
-AquariumAction.OnServerEvent:Connect(function(player, action, fishSerial, fishIndex)
+Remote.AquariumAction.OnServerEvent:Connect(function(player, action, fishSerial, fishIndex)
 	local data = playerData[player]
+	local changed = false
 	if not data then
 		return
 	end
@@ -8858,6 +8824,7 @@ AquariumAction.OnServerEvent:Connect(function(player, action, fishSerial, fishIn
 
 		fish = table.remove(data.Inventory, targetIndex)
 		table.insert(data.Aquarium.Fish, fish)
+		changed = true
 		refreshPlayerAquarium(player)
 		sendStateToAll()
 		notify(player, "Displayed " .. fish.name .. " in your aquarium.")
@@ -8895,6 +8862,7 @@ AquariumAction.OnServerEvent:Connect(function(player, action, fishSerial, fishIn
 
 		local fish = table.remove(data.Aquarium.Fish, targetIndex)
 		table.insert(data.Inventory, fish)
+		changed = true
 		refreshPlayerAquarium(player)
 		sendStateToAll()
 		notify(player, "Moved " .. fish.name .. " back to your Bag.")
@@ -8921,6 +8889,7 @@ AquariumAction.OnServerEvent:Connect(function(player, action, fishSerial, fishIn
 
 		fish = table.remove(data.Inventory, targetIndex)
 		table.insert(data.Aquarium.Fish, fish)
+		changed = true
 		refreshPlayerAquarium(player)
 		sendStateToAll()
 		notify(player, "Displayed " .. fish.name .. " in your aquarium.")
@@ -8940,11 +8909,16 @@ AquariumAction.OnServerEvent:Connect(function(player, action, fishSerial, fishIn
 
 		data.Coins -= cost
 		data.Aquarium.Level = nextLevel
+		changed = true
 
 		updateLeaderstats(player)
 		refreshPlayerAquarium(player)
 		sendStateToAll()
 		notify(player, "Aquarium upgraded to level " .. nextLevel .. ".")
+	end
+
+	if changed then
+		playerData.queueSave(player)
 	end
 end)
 
@@ -8971,7 +8945,7 @@ Monetization.MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(
 end)
 
 Monetization.MarketplaceService.ProcessReceipt = function(receiptInfo)
-	local player = Players:GetPlayerByUserId(receiptInfo.PlayerId)
+	local player = Services.Players:GetPlayerByUserId(receiptInfo.PlayerId)
 	if not player then
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
@@ -9070,7 +9044,7 @@ Monetization.MarketplaceService.ProcessReceipt = function(receiptInfo)
 	return Enum.ProductPurchaseDecision.PurchaseGranted
 end
 
-ToggleAutoFish.OnServerEvent:Connect(function(player)
+Remote.ToggleAutoFish.OnServerEvent:Connect(function(player)
 	local data = playerData[player]
 	if not data then
 		return
@@ -9097,12 +9071,15 @@ ToggleAutoFish.OnServerEvent:Connect(function(player)
 	data.AutoFishEnabled = true
 	sendState(player)
 	notify(player, "AutoFish turned on. It is slower and has lower rare-fish luck.")
-	startAutoFish(player)
+	FishingRuntime.startAutoFish(player)
 end)
 
-Players.PlayerAdded:Connect(setupPlayer)
+Services.Players.PlayerAdded:Connect(RuntimeConfig.setupPlayer)
+for _, player in ipairs(Services.Players:GetPlayers()) do
+	task.spawn(RuntimeConfig.setupPlayer, player)
+end
 
-Players.PlayerRemoving:Connect(function(player)
+Services.Players.PlayerRemoving:Connect(function(player)
 	saveData(player)
 	local data = playerData[player]
 	if data then
@@ -9118,6 +9095,9 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 
 	playerData[player] = nil
+	playerData.SaveLocks[player] = nil
+	playerData.SaveScheduled[player] = nil
+	playerData.SaveRevision[player] = nil
 	pendingFishing[player] = nil
 	RodPurchase.Locks[player] = nil
 	IslandPurchase.Locks[player] = nil
@@ -9134,8 +9114,19 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 game:BindToClose(function()
-	for _, player in ipairs(Players:GetPlayers()) do
-		saveData(player)
+	local players = Services.Players:GetPlayers()
+	local remaining = #players
+	for _, player in ipairs(players) do
+		task.spawn(function()
+			local success, err = pcall(saveData, player)
+			if not success then
+				warn("Fishy Fish shutdown save crashed for", player.UserId, err)
+			end
+			remaining -= 1
+		end)
+	end
+	while remaining > 0 do
+		task.wait()
 	end
 end)
 
@@ -9152,5 +9143,14 @@ task.spawn(function()
 	while true do
 		task.wait(60)
 		FishCaughtLeaderboard.refresh(true)
+	end
+end)
+
+task.spawn(function()
+	while true do
+		task.wait(60)
+		for _, player in ipairs(Services.Players:GetPlayers()) do
+			playerData.queueSave(player)
+		end
 	end
 end)

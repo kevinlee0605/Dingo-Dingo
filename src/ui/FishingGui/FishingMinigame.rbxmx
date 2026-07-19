@@ -1,0 +1,1746 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+	<Meta name="ExplicitAutoJoints">true</Meta>
+	<External>null</External>
+	<External>nil</External>
+	<Item class="Frame" referent="RBX00000001">
+		<Properties>
+			<string name="Name">FishingMinigame</string>
+			<Vector2 name="AnchorPoint">
+				<X>0.5</X>
+				<Y>0.5</Y>
+			</Vector2>
+			<Color3 name="BackgroundColor3">
+				<R>0.0392156862745098</R>
+				<G>0.26666666666666666</G>
+				<B>0.6078431372549019</B>
+			</Color3>
+			<float name="BackgroundTransparency">0</float>
+			<int name="BorderSizePixel">0</int>
+			<bool name="ClipsDescendants">false</bool>
+			<UDim2 name="Position">
+				<XS>0.5</XS>
+				<XO>0</XO>
+				<YS>0.48</YS>
+				<YO>0</YO>
+			</UDim2>
+			<UDim2 name="Size">
+				<XS>0</XS>
+				<XO>540</XO>
+				<YS>0</YS>
+				<YO>520</YO>
+			</UDim2>
+			<bool name="Visible">false</bool>
+			<int name="ZIndex">40</int>
+		</Properties>
+		<Item class="UICorner" referent="RBX00000002">
+			<Properties>
+				<string name="Name">PanelCorner</string>
+				<UDim name="CornerRadius">
+					<S>0</S>
+					<O>30</O>
+				</UDim>
+			</Properties>
+		</Item>
+		<Item class="UIStroke" referent="RBX00000003">
+			<Properties>
+				<string name="Name">OuterStroke</string>
+				<Color3 name="Color">
+					<R>0.0</R>
+					<G>0.3058823529411765</G>
+					<B>0.7450980392156863</B>
+				</Color3>
+				<float name="Thickness">7</float>
+				<float name="Transparency">0</float>
+			</Properties>
+		</Item>
+		<Item class="UIStroke" referent="RBX00000004">
+			<Properties>
+				<string name="Name">HighlightStroke</string>
+				<Color3 name="Color">
+					<R>0.38823529411764707</R>
+					<G>0.8235294117647058</G>
+					<B>1.0</B>
+				</Color3>
+				<float name="Thickness">2</float>
+				<float name="Transparency">0.08</float>
+			</Properties>
+		</Item>
+		<Item class="UIGradient" referent="RBX00000005">
+			<Properties>
+				<string name="Name">PanelGradient</string>
+				<ColorSequence name="Color">0 0.07058823529411765 0.3607843137254902 0.7764705882352941 0 1 0.027450980392156862 0.20392156862745098 0.5176470588235295 0</ColorSequence>
+				<float name="Rotation">90</float>
+			</Properties>
+		</Item>
+		<Item class="UISizeConstraint" referent="RBX00000006">
+			<Properties>
+				<string name="Name">MinigameSizeConstraint</string>
+				<Vector2 name="MaxSize">
+					<X>620</X>
+					<Y>560</Y>
+				</Vector2>
+				<Vector2 name="MinSize">
+					<X>500</X>
+					<Y>450</Y>
+				</Vector2>
+			</Properties>
+		</Item>
+		<Item class="Frame" referent="RBX00000007">
+			<Properties>
+				<string name="Name">InnerStroke</string>
+				<Vector2 name="AnchorPoint">
+					<X>0</X>
+					<Y>0</Y>
+				</Vector2>
+				<Color3 name="BackgroundColor3">
+					<R>1.0</R>
+					<G>1.0</G>
+					<B>1.0</B>
+				</Color3>
+				<float name="BackgroundTransparency">1</float>
+				<int name="BorderSizePixel">0</int>
+				<bool name="ClipsDescendants">false</bool>
+				<UDim2 name="Position">
+					<XS>0</XS>
+					<XO>14</XO>
+					<YS>0</YS>
+					<YO>14</YO>
+				</UDim2>
+				<UDim2 name="Size">
+					<XS>1</XS>
+					<XO>-28</XO>
+					<YS>1</YS>
+					<YO>-28</YO>
+				</UDim2>
+				<bool name="Visible">true</bool>
+				<int name="ZIndex">41</int>
+			</Properties>
+			<Item class="UICorner" referent="RBX00000008">
+				<Properties>
+					<string name="Name">InnerCorner</string>
+					<UDim name="CornerRadius">
+						<S>0</S>
+						<O>26</O>
+					</UDim>
+				</Properties>
+			</Item>
+			<Item class="UIStroke" referent="RBX00000009">
+				<Properties>
+					<string name="Name">InnerOutline</string>
+					<Color3 name="Color">
+						<R>0.3568627450980392</R>
+						<G>0.7568627450980392</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="Thickness">2</float>
+					<float name="Transparency">0.38</float>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Frame" referent="RBX0000000A">
+			<Properties>
+				<string name="Name">PanelGloss</string>
+				<Vector2 name="AnchorPoint">
+					<X>0</X>
+					<Y>0</Y>
+				</Vector2>
+				<Color3 name="BackgroundColor3">
+					<R>1.0</R>
+					<G>1.0</G>
+					<B>1.0</B>
+				</Color3>
+				<float name="BackgroundTransparency">0.72</float>
+				<int name="BorderSizePixel">0</int>
+				<bool name="ClipsDescendants">false</bool>
+				<UDim2 name="Position">
+					<XS>0</XS>
+					<XO>22</XO>
+					<YS>0</YS>
+					<YO>18</YO>
+				</UDim2>
+				<UDim2 name="Size">
+					<XS>0</XS>
+					<XO>90</XO>
+					<YS>0</YS>
+					<YO>12</YO>
+				</UDim2>
+				<bool name="Visible">true</bool>
+				<int name="ZIndex">41</int>
+			</Properties>
+			<Item class="UICorner" referent="RBX0000000B">
+				<Properties>
+					<string name="Name">GlossCorner</string>
+					<UDim name="CornerRadius">
+						<S>0</S>
+						<O>24</O>
+					</UDim>
+				</Properties>
+			</Item>
+			<Item class="UIGradient" referent="RBX0000000C">
+				<Properties>
+					<string name="Name">GlossGradient</string>
+					<float name="Rotation">18</float>
+					<NumberSequence name="Transparency">0 0.05 0 0.45 0.6 0 1 1 0</NumberSequence>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="TextLabel" referent="RBX0000000D">
+			<Properties>
+				<string name="Name">MinigameText</string>
+				<Vector2 name="AnchorPoint">
+					<X>0</X>
+					<Y>0</Y>
+				</Vector2>
+				<Color3 name="BackgroundColor3">
+					<R>1.0</R>
+					<G>1.0</G>
+					<B>1.0</B>
+				</Color3>
+				<float name="BackgroundTransparency">1</float>
+				<int name="BorderSizePixel">0</int>
+				<bool name="ClipsDescendants">false</bool>
+				<token name="Font">26</token>
+				<UDim2 name="Position">
+					<XS>0</XS>
+					<XO>40</XO>
+					<YS>0</YS>
+					<YO>24</YO>
+				</UDim2>
+				<bool name="RichText">false</bool>
+				<UDim2 name="Size">
+					<XS>1</XS>
+					<XO>-80</XO>
+					<YS>0</YS>
+					<YO>44</YO>
+				</UDim2>
+				<string name="Text">Wait for a bite...</string>
+				<Color3 name="TextColor3">
+					<R>1.0</R>
+					<G>1.0</G>
+					<B>1.0</B>
+				</Color3>
+				<bool name="TextScaled">true</bool>
+				<float name="TextSize">36</float>
+				<Color3 name="TextStrokeColor3">
+					<R>1.0</R>
+					<G>1.0</G>
+					<B>1.0</B>
+				</Color3>
+				<float name="TextStrokeTransparency">1</float>
+				<float name="TextTransparency">0</float>
+				<bool name="TextWrapped">false</bool>
+				<token name="TextXAlignment">0</token>
+				<token name="TextYAlignment">1</token>
+				<bool name="Visible">true</bool>
+				<int name="ZIndex">44</int>
+			</Properties>
+			<Item class="UITextSizeConstraint" referent="RBX0000000E">
+				<Properties>
+					<string name="Name">UITextSizeConstraint</string>
+					<int name="MaxTextSize">24</int>
+					<int name="MinTextSize">16</int>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Frame" referent="RBX0000000F">
+			<Properties>
+				<string name="Name">Bar</string>
+				<Vector2 name="AnchorPoint">
+					<X>0</X>
+					<Y>0</Y>
+				</Vector2>
+				<Color3 name="BackgroundColor3">
+					<R>0.2235294117647059</R>
+					<G>0.38823529411764707</G>
+					<B>0.5882352941176471</B>
+				</Color3>
+				<float name="BackgroundTransparency">0</float>
+				<int name="BorderSizePixel">0</int>
+				<bool name="ClipsDescendants">false</bool>
+				<UDim2 name="Position">
+					<XS>0</XS>
+					<XO>40</XO>
+					<YS>0</YS>
+					<YO>86</YO>
+				</UDim2>
+				<UDim2 name="Size">
+					<XS>1</XS>
+					<XO>-80</XO>
+					<YS>0</YS>
+					<YO>44</YO>
+				</UDim2>
+				<bool name="Visible">false</bool>
+				<int name="ZIndex">43</int>
+			</Properties>
+			<Item class="UICorner" referent="RBX00000010">
+				<Properties>
+					<string name="Name">BarCorner</string>
+					<UDim name="CornerRadius">
+						<S>0</S>
+						<O>24</O>
+					</UDim>
+				</Properties>
+			</Item>
+			<Item class="UIStroke" referent="RBX00000011">
+				<Properties>
+					<string name="Name">BarOuterStroke</string>
+					<Color3 name="Color">
+						<R>0.027450980392156862</R>
+						<G>0.20392156862745098</G>
+						<B>0.4745098039215686</B>
+					</Color3>
+					<float name="Thickness">5</float>
+					<float name="Transparency">0</float>
+				</Properties>
+			</Item>
+			<Item class="UIStroke" referent="RBX00000012">
+				<Properties>
+					<string name="Name">BarHighlightStroke</string>
+					<Color3 name="Color">
+						<R>0.5764705882352941</R>
+						<G>0.6980392156862745</G>
+						<B>0.8313725490196079</B>
+					</Color3>
+					<float name="Thickness">2</float>
+					<float name="Transparency">0.22</float>
+				</Properties>
+			</Item>
+			<Item class="UIGradient" referent="RBX00000013">
+				<Properties>
+					<string name="Name">BarGradient</string>
+					<ColorSequence name="Color">0 0.3607843137254902 0.5176470588235295 0.7098039215686275 0 1 0.18823529411764706 0.34509803921568627 0.5607843137254902 0</ColorSequence>
+					<float name="Rotation">90</float>
+				</Properties>
+			</Item>
+			<Item class="Frame" referent="RBX00000014">
+				<Properties>
+					<string name="Name">Zone</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>0.11764705882352941</R>
+						<G>0.9058823529411765</G>
+						<B>0.20784313725490197</B>
+					</Color3>
+					<float name="BackgroundTransparency">0</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<UDim2 name="Position">
+						<XS>0.39</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>0</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>0.22</XS>
+						<XO>0</XO>
+						<YS>1</YS>
+						<YO>0</YO>
+					</UDim2>
+					<bool name="Visible">false</bool>
+					<int name="ZIndex">44</int>
+				</Properties>
+				<Item class="UICorner" referent="RBX00000015">
+					<Properties>
+						<string name="Name">ZoneCorner</string>
+						<UDim name="CornerRadius">
+							<S>0</S>
+							<O>16</O>
+						</UDim>
+					</Properties>
+				</Item>
+				<Item class="UIStroke" referent="RBX00000016">
+					<Properties>
+						<string name="Name">ZoneStroke</string>
+						<Color3 name="Color">
+							<R>0.011764705882352941</R>
+							<G>0.3764705882352941</G>
+							<B>0.07450980392156863</B>
+						</Color3>
+						<float name="Thickness">4</float>
+						<float name="Transparency">0</float>
+					</Properties>
+				</Item>
+				<Item class="UIGradient" referent="RBX00000017">
+					<Properties>
+						<string name="Name">ZoneGradient</string>
+						<ColorSequence name="Color">0 0.40784313725490196 1.0 0.3176470588235294 0 1 0.06274509803921569 0.7607843137254902 0.14901960784313725 0</ColorSequence>
+						<float name="Rotation">90</float>
+					</Properties>
+				</Item>
+				<Item class="Frame" referent="RBX00000018">
+					<Properties>
+						<string name="Name">ZoneGloss</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>1.0</R>
+							<G>1.0</G>
+							<B>1.0</B>
+						</Color3>
+						<float name="BackgroundTransparency">0.72</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>14</XO>
+							<YS>0</YS>
+							<YO>8</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>66</XO>
+							<YS>0</YS>
+							<YO>9</YO>
+						</UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">45</int>
+					</Properties>
+					<Item class="UICorner" referent="RBX00000019">
+						<Properties>
+							<string name="Name">GlossCorner</string>
+							<UDim name="CornerRadius">
+								<S>0</S>
+								<O>24</O>
+							</UDim>
+						</Properties>
+					</Item>
+					<Item class="UIGradient" referent="RBX0000001A">
+						<Properties>
+							<string name="Name">GlossGradient</string>
+							<float name="Rotation">18</float>
+							<NumberSequence name="Transparency">0 0.05 0 0.45 0.6 0 1 1 0</NumberSequence>
+						</Properties>
+					</Item>
+				</Item>
+			</Item>
+			<Item class="Frame" referent="RBX0000001B">
+				<Properties>
+					<string name="Name">Marker</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="BackgroundTransparency">0</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>-14</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>16</XO>
+						<YS>1</YS>
+						<YO>28</YO>
+					</UDim2>
+					<bool name="Visible">false</bool>
+					<int name="ZIndex">45</int>
+				</Properties>
+				<Item class="UICorner" referent="RBX0000001C">
+					<Properties>
+						<string name="Name">MarkerCorner</string>
+						<UDim name="CornerRadius">
+							<S>0</S>
+							<O>9</O>
+						</UDim>
+					</Properties>
+				</Item>
+				<Item class="UIStroke" referent="RBX0000001D">
+					<Properties>
+						<string name="Name">MarkerStroke</string>
+						<Color3 name="Color">
+							<R>0.027450980392156862</R>
+							<G>0.21568627450980393</G>
+							<B>0.5019607843137255</B>
+						</Color3>
+						<float name="Thickness">3</float>
+						<float name="Transparency">0</float>
+					</Properties>
+				</Item>
+			</Item>
+		</Item>
+		<Item class="TextButton" referent="RBX0000001E">
+			<Properties>
+				<string name="Name">CatchButton</string>
+				<bool name="Active">false</bool>
+				<Vector2 name="AnchorPoint">
+					<X>0.5</X>
+					<Y>1</Y>
+				</Vector2>
+				<bool name="AutoButtonColor">false</bool>
+				<Color3 name="BackgroundColor3">
+					<R>0.10980392156862745</R>
+					<G>0.6274509803921569</G>
+					<B>0.3607843137254902</B>
+				</Color3>
+				<float name="BackgroundTransparency">0</float>
+				<int name="BorderSizePixel">0</int>
+				<bool name="ClipsDescendants">false</bool>
+				<token name="Font">26</token>
+				<UDim2 name="Position">
+					<XS>0.5</XS>
+					<XO>0</XO>
+					<YS>1</YS>
+					<YO>-18</YO>
+				</UDim2>
+				<UDim2 name="Size">
+					<XS>0.29</XS>
+					<XO>0</XO>
+					<YS>0</YS>
+					<YO>52</YO>
+				</UDim2>
+				<string name="Text" />
+				<Color3 name="TextColor3">
+					<R>1.0</R>
+					<G>1.0</G>
+					<B>1.0</B>
+				</Color3>
+				<bool name="TextScaled">true</bool>
+				<float name="TextSize">34</float>
+				<Color3 name="TextStrokeColor3">
+					<R>1.0</R>
+					<G>1.0</G>
+					<B>1.0</B>
+				</Color3>
+				<float name="TextStrokeTransparency">1</float>
+				<float name="TextTransparency">0</float>
+				<bool name="Visible">false</bool>
+				<int name="ZIndex">44</int>
+			</Properties>
+			<Item class="UICorner" referent="RBX0000001F">
+				<Properties>
+					<string name="Name">ButtonCorner</string>
+					<UDim name="CornerRadius">
+						<S>0</S>
+						<O>24</O>
+					</UDim>
+				</Properties>
+			</Item>
+			<Item class="UIStroke" referent="RBX00000020">
+				<Properties>
+					<string name="Name">ButtonBaseStroke</string>
+					<Color3 name="Color">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="Thickness">1</float>
+					<float name="Transparency">0.85</float>
+				</Properties>
+			</Item>
+			<Item class="UITextSizeConstraint" referent="RBX00000021">
+				<Properties>
+					<string name="Name">UITextSizeConstraint</string>
+					<int name="MaxTextSize">24</int>
+					<int name="MinTextSize">15</int>
+				</Properties>
+			</Item>
+			<Item class="UIStroke" referent="RBX00000022">
+				<Properties>
+					<string name="Name">CatchOutline</string>
+					<Color3 name="Color">
+						<R>0.0</R>
+						<G>0.3607843137254902</G>
+						<B>0.07058823529411765</B>
+					</Color3>
+					<float name="Thickness">7</float>
+					<float name="Transparency">0</float>
+				</Properties>
+			</Item>
+			<Item class="UIGradient" referent="RBX00000023">
+				<Properties>
+					<string name="Name">ButtonGradient</string>
+					<ColorSequence name="Color">0 0.40784313725490196 1.0 0.3568627450980392 0 1 0.06666666666666667 0.7686274509803922 0.14901960784313725 0</ColorSequence>
+					<float name="Rotation">90</float>
+				</Properties>
+			</Item>
+			<Item class="Frame" referent="RBX00000024">
+				<Properties>
+					<string name="Name">ButtonGloss</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="BackgroundTransparency">0.72</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>22</XO>
+						<YS>0</YS>
+						<YO>13</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>90</XO>
+						<YS>0</YS>
+						<YO>12</YO>
+					</UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">45</int>
+				</Properties>
+				<Item class="UICorner" referent="RBX00000025">
+					<Properties>
+						<string name="Name">GlossCorner</string>
+						<UDim name="CornerRadius">
+							<S>0</S>
+							<O>24</O>
+						</UDim>
+					</Properties>
+				</Item>
+				<Item class="UIGradient" referent="RBX00000026">
+					<Properties>
+						<string name="Name">GlossGradient</string>
+						<float name="Rotation">18</float>
+						<NumberSequence name="Transparency">0 0.05 0 0.45 0.6 0 1 1 0</NumberSequence>
+					</Properties>
+				</Item>
+			</Item>
+		</Item>
+		<Item class="Frame" referent="RBX00000027">
+			<Properties>
+				<string name="Name">FishingGameContent</string>
+				<Vector2 name="AnchorPoint">
+					<X>0</X>
+					<Y>0</Y>
+				</Vector2>
+				<Color3 name="BackgroundColor3">
+					<R>1.0</R>
+					<G>1.0</G>
+					<B>1.0</B>
+				</Color3>
+				<float name="BackgroundTransparency">1</float>
+				<int name="BorderSizePixel">0</int>
+				<bool name="ClipsDescendants">false</bool>
+				<UDim2 name="Position">
+					<XS>0</XS>
+					<XO>34</XO>
+					<YS>0</YS>
+					<YO>82</YO>
+				</UDim2>
+				<UDim2 name="Size">
+					<XS>1</XS>
+					<XO>-68</XO>
+					<YS>1</YS>
+					<YO>-106</YO>
+				</UDim2>
+				<bool name="Visible">true</bool>
+				<int name="ZIndex">44</int>
+			</Properties>
+			<Item class="Frame" referent="RBX00000028">
+				<Properties>
+					<string name="Name">VerticalFishingPanel</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>0.12156862745098039</R>
+						<G>0.37254901960784315</G>
+						<B>0.611764705882353</B>
+					</Color3>
+					<float name="BackgroundTransparency">0</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>18</XO>
+						<YS>0</YS>
+						<YO>0</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>180</XO>
+						<YS>1</YS>
+						<YO>-58</YO>
+					</UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">45</int>
+				</Properties>
+				<Item class="UICorner" referent="RBX00000029">
+					<Properties>
+						<string name="Name">PanelCorner</string>
+						<UDim name="CornerRadius">
+							<S>0</S>
+							<O>20</O>
+						</UDim>
+					</Properties>
+				</Item>
+				<Item class="UIStroke" referent="RBX0000002A">
+					<Properties>
+						<string name="Name">PanelOuterStroke</string>
+						<Color3 name="Color">
+							<R>0.027450980392156862</R>
+							<G>0.18823529411764706</G>
+							<B>0.41568627450980394</B>
+						</Color3>
+						<float name="Thickness">5</float>
+						<float name="Transparency">0</float>
+					</Properties>
+				</Item>
+				<Item class="UIStroke" referent="RBX0000002B">
+					<Properties>
+						<string name="Name">PanelHighlightStroke</string>
+						<Color3 name="Color">
+							<R>0.49411764705882355</R>
+							<G>0.8588235294117647</G>
+							<B>1.0</B>
+						</Color3>
+						<float name="Thickness">2</float>
+						<float name="Transparency">0.18</float>
+					</Properties>
+				</Item>
+				<Item class="UIGradient" referent="RBX0000002C">
+					<Properties>
+						<string name="Name">PanelGradient</string>
+						<ColorSequence name="Color">0 0.21568627450980393 0.6039215686274509 0.8235294117647058 0 1 0.07058823529411765 0.2784313725490196 0.5490196078431373 0</ColorSequence>
+						<float name="Rotation">90</float>
+					</Properties>
+				</Item>
+				<Item class="Frame" referent="RBX0000002D">
+					<Properties>
+						<string name="Name">Water</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.10980392156862745</R>
+							<G>0.5294117647058824</G>
+							<B>0.8</B>
+						</Color3>
+						<float name="BackgroundTransparency">0</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>14</XO>
+							<YS>0</YS>
+							<YO>14</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>-28</XO>
+							<YS>1</YS>
+							<YO>-28</YO>
+						</UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">46</int>
+					</Properties>
+					<Item class="UICorner" referent="RBX0000002E">
+						<Properties>
+							<string name="Name">WaterCorner</string>
+							<UDim name="CornerRadius">
+								<S>0</S>
+								<O>16</O>
+							</UDim>
+						</Properties>
+					</Item>
+					<Item class="UIStroke" referent="RBX0000002F">
+						<Properties>
+							<string name="Name">WaterStroke</string>
+							<Color3 name="Color">
+								<R>0.047058823529411764</R>
+								<G>0.26666666666666666</G>
+								<B>0.5019607843137255</B>
+							</Color3>
+							<float name="Thickness">2</float>
+							<float name="Transparency">0.2</float>
+						</Properties>
+					</Item>
+					<Item class="UIGradient" referent="RBX00000030">
+						<Properties>
+							<string name="Name">WaterGradient</string>
+							<ColorSequence name="Color">0 0.27450980392156865 0.7450980392156863 0.9019607843137255 0 1 0.06666666666666667 0.3843137254901961 0.6941176470588235 0</ColorSequence>
+							<float name="Rotation">90</float>
+						</Properties>
+					</Item>
+					<Item class="Frame" referent="RBX00000031">
+						<Properties>
+							<string name="Name">CatchBar</string>
+							<Vector2 name="AnchorPoint">
+								<X>0.5</X>
+								<Y>0</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.16862745098039217</R>
+								<G>0.8823529411764706</G>
+								<B>0.27450980392156865</B>
+							</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<UDim2 name="Position">
+								<XS>0.5</XS>
+								<XO>0</XO>
+								<YS>0.68</YS>
+								<YO>0</YO>
+							</UDim2>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>-32</XO>
+								<YS>0.24</YS>
+								<YO>0</YO>
+							</UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">48</int>
+						</Properties>
+						<Item class="UICorner" referent="RBX00000032">
+							<Properties>
+								<string name="Name">CatchBarCorner</string>
+								<UDim name="CornerRadius">
+									<S>0</S>
+									<O>14</O>
+								</UDim>
+							</Properties>
+						</Item>
+						<Item class="UIStroke" referent="RBX00000033">
+							<Properties>
+								<string name="Name">CatchBarStroke</string>
+								<Color3 name="Color">
+									<R>0.03137254901960784</R>
+									<G>0.3686274509803922</G>
+									<B>0.09411764705882353</B>
+								</Color3>
+								<float name="Thickness">3</float>
+								<float name="Transparency">0</float>
+							</Properties>
+						</Item>
+						<Item class="UIGradient" referent="RBX00000034">
+							<Properties>
+								<string name="Name">CatchBarGradient</string>
+								<ColorSequence name="Color">0 0.43529411764705883 1.0 0.3686274509803922 0 1 0.0784313725490196 0.6941176470588235 0.1803921568627451 0</ColorSequence>
+								<float name="Rotation">90</float>
+							</Properties>
+						</Item>
+						<Item class="Frame" referent="RBX00000035">
+							<Properties>
+								<string name="Name">CatchBarGloss</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>1.0</R>
+									<G>1.0</G>
+									<B>1.0</B>
+								</Color3>
+								<float name="BackgroundTransparency">0.72</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>12</XO>
+									<YS>0</YS>
+									<YO>7</YO>
+								</UDim2>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>54</XO>
+									<YS>0</YS>
+									<YO>8</YO>
+								</UDim2>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">49</int>
+							</Properties>
+							<Item class="UICorner" referent="RBX00000036">
+								<Properties>
+									<string name="Name">GlossCorner</string>
+									<UDim name="CornerRadius">
+										<S>0</S>
+										<O>24</O>
+									</UDim>
+								</Properties>
+							</Item>
+							<Item class="UIGradient" referent="RBX00000037">
+								<Properties>
+									<string name="Name">GlossGradient</string>
+									<float name="Rotation">18</float>
+									<NumberSequence name="Transparency">0 0.05 0 0.45 0.6 0 1 1 0</NumberSequence>
+								</Properties>
+							</Item>
+						</Item>
+					</Item>
+					<Item class="Frame" referent="RBX00000038">
+						<Properties>
+							<string name="Name">FishMarker</string>
+							<Vector2 name="AnchorPoint">
+								<X>0.5</X>
+								<Y>0.5</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.06666666666666667</R>
+								<G>0.10980392156862745</G>
+								<B>0.16862745098039217</B>
+							</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<UDim2 name="Position">
+								<XS>0.5</XS>
+								<XO>0</XO>
+								<YS>0.5</YS>
+								<YO>0</YO>
+							</UDim2>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>46</XO>
+								<YS>0</YS>
+								<YO>46</YO>
+							</UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">50</int>
+						</Properties>
+						<Item class="UICorner" referent="RBX00000039">
+							<Properties>
+								<string name="Name">FishMarkerCorner</string>
+								<UDim name="CornerRadius">
+									<S>0</S>
+									<O>23</O>
+								</UDim>
+							</Properties>
+						</Item>
+						<Item class="UIStroke" referent="RBX0000003A">
+							<Properties>
+								<string name="Name">FishMarkerStroke</string>
+								<Color3 name="Color">
+									<R>1.0</R>
+									<G>1.0</G>
+									<B>1.0</B>
+								</Color3>
+								<float name="Thickness">2</float>
+								<float name="Transparency">0.08</float>
+							</Properties>
+						</Item>
+						<Item class="ImageLabel" referent="RBX0000003B">
+							<Properties>
+								<string name="Name">FishImage</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>1.0</R>
+									<G>1.0</G>
+									<B>1.0</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<Content name="Image">
+									<url />
+								</Content>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>5</XO>
+									<YS>0</YS>
+									<YO>5</YO>
+								</UDim2>
+								<token name="ScaleType">1</token>
+								<UDim2 name="Size">
+									<XS>1</XS>
+									<XO>-10</XO>
+									<YS>1</YS>
+									<YO>-10</YO>
+								</UDim2>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">51</int>
+							</Properties>
+						</Item>
+						<Item class="TextLabel" referent="RBX0000003C">
+							<Properties>
+								<string name="Name">FishMarkerLabel</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>1.0</R>
+									<G>1.0</G>
+									<B>1.0</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<token name="Font">26</token>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>0</YO>
+								</UDim2>
+								<bool name="RichText">false</bool>
+								<UDim2 name="Size">
+									<XS>1</XS>
+									<XO>0</XO>
+									<YS>1</YS>
+									<YO>0</YO>
+								</UDim2>
+								<string name="Text">FISH</string>
+								<Color3 name="TextColor3">
+									<R>1.0</R>
+									<G>1.0</G>
+									<B>1.0</B>
+								</Color3>
+								<bool name="TextScaled">false</bool>
+								<float name="TextSize">11</float>
+								<Color3 name="TextStrokeColor3">
+									<R>1.0</R>
+									<G>1.0</G>
+									<B>1.0</B>
+								</Color3>
+								<float name="TextStrokeTransparency">1</float>
+								<float name="TextTransparency">0</float>
+								<bool name="TextWrapped">false</bool>
+								<token name="TextXAlignment">1</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">52</int>
+							</Properties>
+						</Item>
+					</Item>
+				</Item>
+			</Item>
+			<Item class="Frame" referent="RBX0000003D">
+				<Properties>
+					<string name="Name">ProgressTrack</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>0.11372549019607843</R>
+						<G>0.13725490196078433</G>
+						<B>0.1803921568627451</B>
+					</Color3>
+					<float name="BackgroundTransparency">0</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>226</XO>
+						<YS>0</YS>
+						<YO>0</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>42</XO>
+						<YS>1</YS>
+						<YO>-58</YO>
+					</UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">45</int>
+				</Properties>
+				<Item class="UICorner" referent="RBX0000003E">
+					<Properties>
+						<string name="Name">ProgressCorner</string>
+						<UDim name="CornerRadius">
+							<S>0</S>
+							<O>16</O>
+						</UDim>
+					</Properties>
+				</Item>
+				<Item class="UIStroke" referent="RBX0000003F">
+					<Properties>
+						<string name="Name">ProgressStroke</string>
+						<Color3 name="Color">
+							<R>0.3607843137254902</R>
+							<G>0.43529411764705883</G>
+							<B>0.5411764705882353</B>
+						</Color3>
+						<float name="Thickness">2</float>
+						<float name="Transparency">0</float>
+					</Properties>
+				</Item>
+				<Item class="Frame" referent="RBX00000040">
+					<Properties>
+						<string name="Name">ProgressFill</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>1</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.24313725490196078</R>
+							<G>0.7450980392156863</G>
+							<B>1.0</B>
+						</Color3>
+						<float name="BackgroundTransparency">0</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>1</YS>
+							<YO>0</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>0</XO>
+							<YS>0.34</YS>
+							<YO>0</YO>
+						</UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">46</int>
+					</Properties>
+					<Item class="UICorner" referent="RBX00000041">
+						<Properties>
+							<string name="Name">ProgressFillCorner</string>
+							<UDim name="CornerRadius">
+								<S>0</S>
+								<O>16</O>
+							</UDim>
+						</Properties>
+					</Item>
+					<Item class="UIGradient" referent="RBX00000042">
+						<Properties>
+							<string name="Name">ProgressFillGradient</string>
+							<ColorSequence name="Color">0 0.5098039215686274 0.9215686274509803 1.0 0 1 0.10196078431372549 0.5176470588235295 1.0 0</ColorSequence>
+							<float name="Rotation">90</float>
+						</Properties>
+					</Item>
+				</Item>
+			</Item>
+			<Item class="TextLabel" referent="RBX00000043">
+				<Properties>
+					<string name="Name">MinigameFishInfo</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<token name="Font">26</token>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>296</XO>
+						<YS>0</YS>
+						<YO>18</YO>
+					</UDim2>
+					<bool name="RichText">false</bool>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>-306</XO>
+						<YS>0</YS>
+						<YO>46</YO>
+					</UDim2>
+					<string name="Text">Fish</string>
+					<Color3 name="TextColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<bool name="TextScaled">false</bool>
+					<float name="TextSize">18</float>
+					<Color3 name="TextStrokeColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="TextStrokeTransparency">1</float>
+					<float name="TextTransparency">0</float>
+					<bool name="TextWrapped">true</bool>
+					<token name="TextXAlignment">0</token>
+					<token name="TextYAlignment">1</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">45</int>
+				</Properties>
+			</Item>
+			<Item class="TextLabel" referent="RBX00000044">
+				<Properties>
+					<string name="Name">MinigameProgressText</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<token name="Font">19</token>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>296</XO>
+						<YS>0</YS>
+						<YO>76</YO>
+					</UDim2>
+					<bool name="RichText">false</bool>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>-306</XO>
+						<YS>0</YS>
+						<YO>30</YO>
+					</UDim2>
+					<string name="Text">Progress 34%</string>
+					<Color3 name="TextColor3">
+						<R>0.8235294117647058</R>
+						<G>0.9019607843137255</G>
+						<B>1.0</B>
+					</Color3>
+					<bool name="TextScaled">false</bool>
+					<float name="TextSize">15</float>
+					<Color3 name="TextStrokeColor3">
+						<R>0.0</R>
+						<G>0.0</G>
+						<B>0.0</B>
+					</Color3>
+					<float name="TextStrokeTransparency">1</float>
+					<float name="TextTransparency">0</float>
+					<bool name="TextWrapped">false</bool>
+					<token name="TextXAlignment">0</token>
+					<token name="TextYAlignment">1</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">45</int>
+				</Properties>
+			</Item>
+			<Item class="TextLabel" referent="RBX00000045">
+				<Properties>
+					<string name="Name">MinigameInstruction</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<token name="Font">17</token>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>296</XO>
+						<YS>0</YS>
+						<YO>116</YO>
+					</UDim2>
+					<bool name="RichText">false</bool>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>-306</XO>
+						<YS>0</YS>
+						<YO>70</YO>
+					</UDim2>
+					<string name="Text">Hold mouse, tap, or Space to lift the green bar.</string>
+					<Color3 name="TextColor3">
+						<R>0.8235294117647058</R>
+						<G>0.9019607843137255</G>
+						<B>1.0</B>
+					</Color3>
+					<bool name="TextScaled">false</bool>
+					<float name="TextSize">14</float>
+					<Color3 name="TextStrokeColor3">
+						<R>0.0</R>
+						<G>0.0</G>
+						<B>0.0</B>
+					</Color3>
+					<float name="TextStrokeTransparency">1</float>
+					<float name="TextTransparency">0</float>
+					<bool name="TextWrapped">true</bool>
+					<token name="TextXAlignment">0</token>
+					<token name="TextYAlignment">1</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">45</int>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Frame" referent="RBX00000046">
+			<Properties>
+				<string name="Name">CastPowerContent</string>
+				<Vector2 name="AnchorPoint">
+					<X>0</X>
+					<Y>0</Y>
+				</Vector2>
+				<Color3 name="BackgroundColor3">
+					<R>1.0</R>
+					<G>1.0</G>
+					<B>1.0</B>
+				</Color3>
+				<float name="BackgroundTransparency">1</float>
+				<int name="BorderSizePixel">0</int>
+				<bool name="ClipsDescendants">false</bool>
+				<UDim2 name="Position">
+					<XS>0</XS>
+					<XO>40</XO>
+					<YS>0</YS>
+					<YO>92</YO>
+				</UDim2>
+				<UDim2 name="Size">
+					<XS>1</XS>
+					<XO>-80</XO>
+					<YS>1</YS>
+					<YO>-126</YO>
+				</UDim2>
+				<bool name="Visible">false</bool>
+				<int name="ZIndex">44</int>
+			</Properties>
+			<Item class="TextLabel" referent="RBX00000047">
+				<Properties>
+					<string name="Name">CastPowerTitle</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<token name="Font">26</token>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>8</YO>
+					</UDim2>
+					<bool name="RichText">false</bool>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>36</YO>
+					</UDim2>
+					<string name="Text">Hold to charge. Release to cast.</string>
+					<Color3 name="TextColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<bool name="TextScaled">true</bool>
+					<float name="TextSize">20</float>
+					<Color3 name="TextStrokeColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="TextStrokeTransparency">1</float>
+					<float name="TextTransparency">0</float>
+					<bool name="TextWrapped">false</bool>
+					<token name="TextXAlignment">1</token>
+					<token name="TextYAlignment">1</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">45</int>
+				</Properties>
+				<Item class="UITextSizeConstraint" referent="RBX00000048">
+					<Properties>
+						<string name="Name">UITextSizeConstraint</string>
+						<int name="MaxTextSize">22</int>
+						<int name="MinTextSize">16</int>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Frame" referent="RBX00000049">
+				<Properties>
+					<string name="Name">CastPowerTrack</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>0.10588235294117647</R>
+						<G>0.28627450980392155</G>
+						<B>0.5176470588235295</B>
+					</Color3>
+					<float name="BackgroundTransparency">0</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>14</XO>
+						<YS>0</YS>
+						<YO>96</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>-28</XO>
+						<YS>0</YS>
+						<YO>58</YO>
+					</UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">45</int>
+				</Properties>
+				<Item class="UICorner" referent="RBX0000004A">
+					<Properties>
+						<string name="Name">CastTrackCorner</string>
+						<UDim name="CornerRadius">
+							<S>0</S>
+							<O>22</O>
+						</UDim>
+					</Properties>
+				</Item>
+				<Item class="UIStroke" referent="RBX0000004B">
+					<Properties>
+						<string name="Name">CastTrackOuterStroke</string>
+						<Color3 name="Color">
+							<R>0.027450980392156862</R>
+							<G>0.18823529411764706</G>
+							<B>0.41568627450980394</B>
+						</Color3>
+						<float name="Thickness">5</float>
+						<float name="Transparency">0</float>
+					</Properties>
+				</Item>
+				<Item class="UIStroke" referent="RBX0000004C">
+					<Properties>
+						<string name="Name">CastTrackHighlightStroke</string>
+						<Color3 name="Color">
+							<R>0.49411764705882355</R>
+							<G>0.8588235294117647</G>
+							<B>1.0</B>
+						</Color3>
+						<float name="Thickness">2</float>
+						<float name="Transparency">0.18</float>
+					</Properties>
+				</Item>
+				<Item class="UIGradient" referent="RBX0000004D">
+					<Properties>
+						<string name="Name">CastTrackGradient</string>
+						<ColorSequence name="Color">0 0.24313725490196078 0.6 0.8352941176470589 0 1 0.06274509803921569 0.27058823529411763 0.5372549019607843 0</ColorSequence>
+						<float name="Rotation">90</float>
+					</Properties>
+				</Item>
+				<Item class="Frame" referent="RBX0000004E">
+					<Properties>
+						<string name="Name">PerfectTimingZone</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.23921568627450981</R>
+							<G>1.0</G>
+							<B>0.5176470588235295</B>
+						</Color3>
+						<float name="BackgroundTransparency">0.12</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<UDim2 name="Position">
+							<XS>0.675</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>0.09</XS>
+							<XO>0</XO>
+							<YS>1</YS>
+							<YO>0</YO>
+						</UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">46</int>
+					</Properties>
+					<Item class="UICorner" referent="RBX0000004F">
+						<Properties>
+							<string name="Name">PerfectZoneCorner</string>
+							<UDim name="CornerRadius">
+								<S>0</S>
+								<O>18</O>
+							</UDim>
+						</Properties>
+					</Item>
+					<Item class="UIStroke" referent="RBX00000050">
+						<Properties>
+							<string name="Name">PerfectZoneStroke</string>
+							<Color3 name="Color">
+								<R>0.0392156862745098</R>
+								<G>0.47058823529411764</G>
+								<B>0.16470588235294117</B>
+							</Color3>
+							<float name="Thickness">3</float>
+							<float name="Transparency">0.1</float>
+						</Properties>
+					</Item>
+					<Item class="UIGradient" referent="RBX00000051">
+						<Properties>
+							<string name="Name">PerfectZoneGradient</string>
+							<ColorSequence name="Color">0 0.4588235294117647 1.0 0.5058823529411764 0 1 0.09019607843137255 0.7450980392156863 0.2823529411764706 0</ColorSequence>
+							<float name="Rotation">90</float>
+						</Properties>
+					</Item>
+				</Item>
+				<Item class="Frame" referent="RBX00000052">
+					<Properties>
+						<string name="Name">PowerFill</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>1.0</R>
+							<G>0.8</G>
+							<B>0.2549019607843137</B>
+						</Color3>
+						<float name="BackgroundTransparency">0</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>1</YS>
+							<YO>0</YO>
+						</UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">47</int>
+					</Properties>
+					<Item class="UICorner" referent="RBX00000053">
+						<Properties>
+							<string name="Name">PowerFillCorner</string>
+							<UDim name="CornerRadius">
+								<S>0</S>
+								<O>18</O>
+							</UDim>
+						</Properties>
+					</Item>
+					<Item class="UIGradient" referent="RBX00000054">
+						<Properties>
+							<string name="Name">PowerFillGradient</string>
+							<ColorSequence name="Color">0 1.0 0.9215686274509803 0.4745098039215686 0 1 1.0 0.49411764705882355 0.1568627450980392 0</ColorSequence>
+							<float name="Rotation">90</float>
+						</Properties>
+					</Item>
+				</Item>
+				<Item class="Frame" referent="RBX00000055">
+					<Properties>
+						<string name="Name">BobberMarker</string>
+						<Vector2 name="AnchorPoint">
+							<X>0.5</X>
+							<Y>0.5</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>1.0</R>
+							<G>1.0</G>
+							<B>1.0</B>
+						</Color3>
+						<float name="BackgroundTransparency">0</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>0.5</YS>
+							<YO>0</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>18</XO>
+							<YS>1</YS>
+							<YO>28</YO>
+						</UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">49</int>
+					</Properties>
+					<Item class="UICorner" referent="RBX00000056">
+						<Properties>
+							<string name="Name">BobberCorner</string>
+							<UDim name="CornerRadius">
+								<S>0</S>
+								<O>9</O>
+							</UDim>
+						</Properties>
+					</Item>
+					<Item class="UIStroke" referent="RBX00000057">
+						<Properties>
+							<string name="Name">BobberStroke</string>
+							<Color3 name="Color">
+								<R>0.027450980392156862</R>
+								<G>0.21568627450980393</G>
+								<B>0.5019607843137255</B>
+							</Color3>
+							<float name="Thickness">3</float>
+							<float name="Transparency">0</float>
+						</Properties>
+					</Item>
+				</Item>
+			</Item>
+			<Item class="TextLabel" referent="RBX00000058">
+				<Properties>
+					<string name="Name">CastPowerValue</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<token name="Font">19</token>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>168</YO>
+					</UDim2>
+					<bool name="RichText">false</bool>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>30</YO>
+					</UDim2>
+					<string name="Text">Power 0%</string>
+					<Color3 name="TextColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<bool name="TextScaled">false</bool>
+					<float name="TextSize">16</float>
+					<Color3 name="TextStrokeColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="TextStrokeTransparency">1</float>
+					<float name="TextTransparency">0</float>
+					<bool name="TextWrapped">false</bool>
+					<token name="TextXAlignment">1</token>
+					<token name="TextYAlignment">1</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">45</int>
+				</Properties>
+			</Item>
+			<Item class="TextLabel" referent="RBX00000059">
+				<Properties>
+					<string name="Name">CastPowerStatus</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<token name="Font">17</token>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>206</YO>
+					</UDim2>
+					<bool name="RichText">false</bool>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>46</YO>
+					</UDim2>
+					<string name="Text">Release in the green zone for a Perfect cast.</string>
+					<Color3 name="TextColor3">
+						<R>0.8549019607843137</R>
+						<G>0.9372549019607843</G>
+						<B>1.0</B>
+					</Color3>
+					<bool name="TextScaled">false</bool>
+					<float name="TextSize">15</float>
+					<Color3 name="TextStrokeColor3">
+						<R>0.0</R>
+						<G>0.0</G>
+						<B>0.0</B>
+					</Color3>
+					<float name="TextStrokeTransparency">1</float>
+					<float name="TextTransparency">0</float>
+					<bool name="TextWrapped">true</bool>
+					<token name="TextXAlignment">1</token>
+					<token name="TextYAlignment">1</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">45</int>
+				</Properties>
+			</Item>
+			<Item class="TextLabel" referent="RBX0000005A">
+				<Properties>
+					<string name="Name">CastPowerHint</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<token name="Font">17</token>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>0</XO>
+						<YS>1</YS>
+						<YO>-64</YO>
+					</UDim2>
+					<bool name="RichText">false</bool>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>28</YO>
+					</UDim2>
+					<string name="Text">Mouse, tap, or Space</string>
+					<Color3 name="TextColor3">
+						<R>0.7215686274509804</R>
+						<G>0.8588235294117647</G>
+						<B>1.0</B>
+					</Color3>
+					<bool name="TextScaled">false</bool>
+					<float name="TextSize">14</float>
+					<Color3 name="TextStrokeColor3">
+						<R>0.0</R>
+						<G>0.0</G>
+						<B>0.0</B>
+					</Color3>
+					<float name="TextStrokeTransparency">1</float>
+					<float name="TextTransparency">0</float>
+					<bool name="TextWrapped">false</bool>
+					<token name="TextXAlignment">1</token>
+					<token name="TextYAlignment">1</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">45</int>
+				</Properties>
+			</Item>
+		</Item>
+	</Item>
+</roblox>

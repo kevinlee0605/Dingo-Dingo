@@ -1,0 +1,16 @@
+{
+  "className": "ScreenGui",
+  "properties": {
+    "Attributes": {
+      "AuthoredUiV2": { "Bool": true }
+    },
+    "ClipToDeviceSafeArea": true,
+    "DisplayOrder": 100,
+    "Enabled": true,
+    "IgnoreGuiInset": false,
+    "ResetOnSpawn": false,
+    "SafeAreaCompatibility": "FullscreenExtension",
+    "ScreenInsets": "CoreUISafeInsets",
+    "ZIndexBehavior": "Sibling"
+  }
+}

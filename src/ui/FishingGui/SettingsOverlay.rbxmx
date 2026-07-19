@@ -1,0 +1,2121 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+	<Meta name="ExplicitAutoJoints">true</Meta>
+	<External>null</External>
+	<External>nil</External>
+	<Item class="Frame" referent="RBX00000001">
+		<Properties>
+			<string name="Name">SettingsOverlay</string>
+			<bool name="Active">true</bool>
+			<Vector2 name="AnchorPoint">
+				<X>0</X>
+				<Y>0</Y>
+			</Vector2>
+			<Color3 name="BackgroundColor3">
+				<R>0.0</R>
+				<G>0.0</G>
+				<B>0.0</B>
+			</Color3>
+			<float name="BackgroundTransparency">1</float>
+			<int name="BorderSizePixel">0</int>
+			<bool name="ClipsDescendants">false</bool>
+			<int name="LayoutOrder">0</int>
+			<UDim2 name="Position">
+				<XS>0</XS>
+				<XO>0</XO>
+				<YS>0</YS>
+				<YO>0</YO>
+			</UDim2>
+			<UDim2 name="Size">
+				<XS>1</XS>
+				<XO>0</XO>
+				<YS>1</YS>
+				<YO>0</YO>
+			</UDim2>
+			<bool name="Visible">false</bool>
+			<int name="ZIndex">200</int>
+		</Properties>
+		<Item class="Frame" referent="RBX00000002">
+			<Properties>
+				<string name="Name">SettingsCanvas</string>
+				<Vector2 name="AnchorPoint">
+					<X>0.5</X>
+					<Y>0.5</Y>
+				</Vector2>
+				<Color3 name="BackgroundColor3">
+					<R>0.03137254901960784</R>
+					<G>0.10980392156862745</G>
+					<B>0.23921568627450981</B>
+				</Color3>
+				<float name="BackgroundTransparency">1</float>
+				<int name="BorderSizePixel">0</int>
+				<bool name="ClipsDescendants">false</bool>
+				<int name="LayoutOrder">0</int>
+				<UDim2 name="Position">
+					<XS>0.5</XS>
+					<XO>0</XO>
+					<YS>0.5</YS>
+					<YO>-60</YO>
+				</UDim2>
+				<UDim2 name="Size">
+					<XS>0</XS>
+					<XO>1448</XO>
+					<YS>0</YS>
+					<YO>1086</YO>
+				</UDim2>
+				<bool name="Visible">true</bool>
+				<int name="ZIndex">201</int>
+			</Properties>
+			<Item class="UIScale" referent="RBX00000003">
+				<Properties>
+					<string name="Name">UIScale</string>
+					<float name="Scale">0.34</float>
+				</Properties>
+			</Item>
+			<Item class="Frame" referent="RBX00000004">
+				<Properties>
+					<string name="Name">BackboneTop</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>0.03137254901960784</R>
+						<G>0.10980392156862745</G>
+						<B>0.23921568627450981</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">true</bool>
+					<int name="LayoutOrder">0</int>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>0</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>1448</XO>
+						<YS>0</YS>
+						<YO>160</YO>
+					</UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">201</int>
+				</Properties>
+				<Item class="ImageLabel" referent="RBX00000005">
+					<Properties>
+						<string name="Name">Image</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<Content name="Image">
+							<url>rbxassetid://81766141914014</url>
+						</Content>
+						<Color3 name="ImageColor3">
+							<R>1.0</R>
+							<G>1.0</G>
+							<B>1.0</B>
+						</Color3>
+						<float name="ImageTransparency">0</float>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<token name="ScaleType">0</token>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>1448</XO>
+							<YS>0</YS>
+							<YO>1086</YO>
+						</UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">201</int>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Frame" referent="RBX00000006">
+				<Properties>
+					<string name="Name">BackboneMiddle</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>0.03137254901960784</R>
+						<G>0.10980392156862745</G>
+						<B>0.23921568627450981</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">true</bool>
+					<int name="LayoutOrder">0</int>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>160</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>1448</XO>
+						<YS>0</YS>
+						<YO>766</YO>
+					</UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">201</int>
+				</Properties>
+				<Item class="ImageLabel" referent="RBX00000007">
+					<Properties>
+						<string name="Name">Image</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<Content name="Image">
+							<url>rbxassetid://81766141914014</url>
+						</Content>
+						<Color3 name="ImageColor3">
+							<R>1.0</R>
+							<G>1.0</G>
+							<B>1.0</B>
+						</Color3>
+						<float name="ImageTransparency">0</float>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>-160</YO>
+						</UDim2>
+						<token name="ScaleType">0</token>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>1448</XO>
+							<YS>0</YS>
+							<YO>1086</YO>
+						</UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">201</int>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Frame" referent="RBX00000008">
+				<Properties>
+					<string name="Name">BackboneBottom</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>0.03137254901960784</R>
+						<G>0.10980392156862745</G>
+						<B>0.23921568627450981</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">true</bool>
+					<int name="LayoutOrder">0</int>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>926</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>1448</XO>
+						<YS>0</YS>
+						<YO>160</YO>
+					</UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">201</int>
+				</Properties>
+				<Item class="ImageLabel" referent="RBX00000009">
+					<Properties>
+						<string name="Name">Image</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<Content name="Image">
+							<url>rbxassetid://81766141914014</url>
+						</Content>
+						<Color3 name="ImageColor3">
+							<R>1.0</R>
+							<G>1.0</G>
+							<B>1.0</B>
+						</Color3>
+						<float name="ImageTransparency">0</float>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>-926</YO>
+						</UDim2>
+						<token name="ScaleType">0</token>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>1448</XO>
+							<YS>0</YS>
+							<YO>1086</YO>
+						</UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">201</int>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="ImageLabel" referent="RBX0000000A">
+				<Properties>
+					<string name="Name">SettingsIcon</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>0.03137254901960784</R>
+						<G>0.10980392156862745</G>
+						<B>0.23921568627450981</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<Content name="Image">
+						<url>rbxassetid://94678436497650</url>
+					</Content>
+					<Color3 name="ImageColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="ImageTransparency">0</float>
+					<int name="LayoutOrder">0</int>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>72</XO>
+						<YS>0</YS>
+						<YO>56</YO>
+					</UDim2>
+					<token name="ScaleType">3</token>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>120</XO>
+						<YS>0</YS>
+						<YO>120</YO>
+					</UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">204</int>
+				</Properties>
+			</Item>
+			<Item class="TextLabel" referent="RBX0000000B">
+				<Properties>
+					<string name="Name">Title</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>0.03137254901960784</R>
+						<G>0.10980392156862745</G>
+						<B>0.23921568627450981</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<token name="Font">26</token>
+					<int name="LayoutOrder">0</int>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>205</XO>
+						<YS>0</YS>
+						<YO>48</YO>
+					</UDim2>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>510</XO>
+						<YS>0</YS>
+						<YO>120</YO>
+					</UDim2>
+					<string name="Text">Settings</string>
+					<Color3 name="TextColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<bool name="TextScaled">false</bool>
+					<float name="TextSize">72</float>
+					<Color3 name="TextStrokeColor3">
+						<R>0.0</R>
+						<G>0.0</G>
+						<B>0.0</B>
+					</Color3>
+					<float name="TextStrokeTransparency">0.25</float>
+					<float name="TextTransparency">0</float>
+					<token name="TextTruncate">1</token>
+					<bool name="TextWrapped">false</bool>
+					<token name="TextXAlignment">0</token>
+					<token name="TextYAlignment">1</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">205</int>
+				</Properties>
+			</Item>
+			<Item class="ImageButton" referent="RBX0000000C">
+				<Properties>
+					<string name="Name">CloseButton</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<bool name="AutoButtonColor">false</bool>
+					<Color3 name="BackgroundColor3">
+						<R>0.03137254901960784</R>
+						<G>0.10980392156862745</G>
+						<B>0.23921568627450981</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<Content name="Image">
+						<url>rbxassetid://74437026548245</url>
+					</Content>
+					<Color3 name="ImageColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="ImageTransparency">0</float>
+					<int name="LayoutOrder">0</int>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>1270</XO>
+						<YS>0</YS>
+						<YO>60</YO>
+					</UDim2>
+					<token name="ScaleType">3</token>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>100</XO>
+						<YS>0</YS>
+						<YO>100</YO>
+					</UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">210</int>
+				</Properties>
+			</Item>
+			<Item class="ImageLabel" referent="RBX0000000D">
+				<Properties>
+					<string name="Name">MusicRow</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>0.03137254901960784</R>
+						<G>0.10980392156862745</G>
+						<B>0.23921568627450981</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<Content name="Image">
+						<url>rbxassetid://130386889052542</url>
+					</Content>
+					<Color3 name="ImageColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="ImageTransparency">0</float>
+					<int name="LayoutOrder">0</int>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>86</XO>
+						<YS>0</YS>
+						<YO>160</YO>
+					</UDim2>
+					<token name="ScaleType">0</token>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>1278</XO>
+						<YS>0</YS>
+						<YO>226</YO>
+					</UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">203</int>
+				</Properties>
+				<Item class="ImageLabel" referent="RBX0000000E">
+					<Properties>
+						<string name="Name">MusicIcon</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<Content name="Image">
+							<url>rbxassetid://70574718515061</url>
+						</Content>
+						<Color3 name="ImageColor3">
+							<R>1.0</R>
+							<G>1.0</G>
+							<B>1.0</B>
+						</Color3>
+						<float name="ImageTransparency">0</float>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>60</XO>
+							<YS>0</YS>
+							<YO>30</YO>
+						</UDim2>
+						<token name="ScaleType">3</token>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>160</XO>
+							<YS>0</YS>
+							<YO>160</YO>
+						</UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">205</int>
+					</Properties>
+				</Item>
+				<Item class="TextLabel" referent="RBX0000000F">
+					<Properties>
+						<string name="Name">MusicPrefix</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<token name="Font">26</token>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>460</XO>
+							<YS>0</YS>
+							<YO>55</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>230</XO>
+							<YS>0</YS>
+							<YO>110</YO>
+						</UDim2>
+						<string name="Text">Music:</string>
+						<Color3 name="TextColor3">
+							<R>1.0</R>
+							<G>1.0</G>
+							<B>1.0</B>
+						</Color3>
+						<bool name="TextScaled">false</bool>
+						<float name="TextSize">52</float>
+						<Color3 name="TextStrokeColor3">
+							<R>0.0</R>
+							<G>0.0</G>
+							<B>0.0</B>
+						</Color3>
+						<float name="TextStrokeTransparency">0.25</float>
+						<float name="TextTransparency">0</float>
+						<token name="TextTruncate">1</token>
+						<bool name="TextWrapped">false</bool>
+						<token name="TextXAlignment">1</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">206</int>
+					</Properties>
+				</Item>
+				<Item class="TextLabel" referent="RBX00000010">
+					<Properties>
+						<string name="Name">MusicStatus</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<token name="Font">26</token>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>700</XO>
+							<YS>0</YS>
+							<YO>55</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>180</XO>
+							<YS>0</YS>
+							<YO>110</YO>
+						</UDim2>
+						<string name="Text">ON</string>
+						<Color3 name="TextColor3">
+							<R>0.2549019607843137</R>
+							<G>0.8431372549019608</G>
+							<B>1.0</B>
+						</Color3>
+						<bool name="TextScaled">false</bool>
+						<float name="TextSize">52</float>
+						<Color3 name="TextStrokeColor3">
+							<R>0.0</R>
+							<G>0.0</G>
+							<B>0.0</B>
+						</Color3>
+						<float name="TextStrokeTransparency">0.25</float>
+						<float name="TextTransparency">0</float>
+						<token name="TextTruncate">1</token>
+						<bool name="TextWrapped">false</bool>
+						<token name="TextXAlignment">0</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">206</int>
+					</Properties>
+				</Item>
+				<Item class="TextButton" referent="RBX00000011">
+					<Properties>
+						<string name="Name">MusicToggle</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<bool name="AutoButtonColor">false</bool>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">true</bool>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>955</XO>
+							<YS>0</YS>
+							<YO>64</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>230</XO>
+							<YS>0</YS>
+							<YO>96</YO>
+						</UDim2>
+						<string name="Text" />
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">207</int>
+					</Properties>
+					<Item class="UIScale" referent="RBX00000012">
+						<Properties>
+							<string name="Name">PressScale</string>
+							<float name="Scale">1</float>
+						</Properties>
+					</Item>
+					<Item class="ImageLabel" referent="RBX00000013">
+						<Properties>
+							<string name="Name">OnBackground</string>
+							<Vector2 name="AnchorPoint">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.03137254901960784</R>
+								<G>0.10980392156862745</G>
+								<B>0.23921568627450981</B>
+							</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<Content name="Image">
+								<url>rbxassetid://110978225407848</url>
+							</Content>
+							<Color3 name="ImageColor3">
+								<R>1.0</R>
+								<G>1.0</G>
+								<B>1.0</B>
+							</Color3>
+							<float name="ImageTransparency">0</float>
+							<int name="LayoutOrder">0</int>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>-83</XO>
+								<YS>0</YS>
+								<YO>-82</YO>
+							</UDim2>
+							<token name="ScaleType">0</token>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>396</XO>
+								<YS>0</YS>
+								<YO>264</YO>
+							</UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">207</int>
+						</Properties>
+					</Item>
+					<Item class="ImageLabel" referent="RBX00000014">
+						<Properties>
+							<string name="Name">OffBackground</string>
+							<Vector2 name="AnchorPoint">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.03137254901960784</R>
+								<G>0.10980392156862745</G>
+								<B>0.23921568627450981</B>
+							</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<Content name="Image">
+								<url>rbxassetid://131550730293382</url>
+							</Content>
+							<Color3 name="ImageColor3">
+								<R>1.0</R>
+								<G>1.0</G>
+								<B>1.0</B>
+							</Color3>
+							<float name="ImageTransparency">1</float>
+							<int name="LayoutOrder">0</int>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>-39</XO>
+								<YS>0</YS>
+								<YO>-55</YO>
+							</UDim2>
+							<token name="ScaleType">0</token>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>307</XO>
+								<YS>0</YS>
+								<YO>213</YO>
+							</UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">207</int>
+						</Properties>
+					</Item>
+					<Item class="TextLabel" referent="RBX00000015">
+						<Properties>
+							<string name="Name">MusicToggleText</string>
+							<Vector2 name="AnchorPoint">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.03137254901960784</R>
+								<G>0.10980392156862745</G>
+								<B>0.23921568627450981</B>
+							</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<token name="Font">26</token>
+							<int name="LayoutOrder">0</int>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>22</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>108</XO>
+								<YS>0</YS>
+								<YO>96</YO>
+							</UDim2>
+							<string name="Text">ON</string>
+							<Color3 name="TextColor3">
+								<R>1.0</R>
+								<G>1.0</G>
+								<B>1.0</B>
+							</Color3>
+							<bool name="TextScaled">false</bool>
+							<float name="TextSize">38</float>
+							<Color3 name="TextStrokeColor3">
+								<R>0.0</R>
+								<G>0.0</G>
+								<B>0.0</B>
+							</Color3>
+							<float name="TextStrokeTransparency">0.25</float>
+							<float name="TextTransparency">0</float>
+							<token name="TextTruncate">0</token>
+							<bool name="TextWrapped">false</bool>
+							<token name="TextXAlignment">0</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">209</int>
+						</Properties>
+					</Item>
+					<Item class="Frame" referent="RBX00000016">
+						<Properties>
+							<string name="Name">MusicKnob</string>
+							<Vector2 name="AnchorPoint">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.03137254901960784</R>
+								<G>0.10980392156862745</G>
+								<B>0.23921568627450981</B>
+							</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">true</bool>
+							<int name="LayoutOrder">0</int>
+							<UDim2 name="Position">
+								<XS>1</XS>
+								<XO>-78</XO>
+								<YS>0.5</YS>
+								<YO>-39</YO>
+							</UDim2>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>78</XO>
+								<YS>0</YS>
+								<YO>78</YO>
+							</UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">210</int>
+						</Properties>
+						<Item class="ImageLabel" referent="RBX00000017">
+							<Properties>
+								<string name="Name">Image</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>0.03137254901960784</R>
+									<G>0.10980392156862745</G>
+									<B>0.23921568627450981</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<Content name="Image">
+									<url>rbxassetid://75219052415065</url>
+								</Content>
+								<Color3 name="ImageColor3">
+									<R>1.0</R>
+									<G>1.0</G>
+									<B>1.0</B>
+								</Color3>
+								<float name="ImageTransparency">0</float>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>-44</XO>
+									<YS>0</YS>
+									<YO>-41</YO>
+								</UDim2>
+								<token name="ScaleType">0</token>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>165</XO>
+									<YS>0</YS>
+									<YO>164</YO>
+								</UDim2>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">211</int>
+							</Properties>
+						</Item>
+					</Item>
+				</Item>
+			</Item>
+			<Item class="ImageLabel" referent="RBX00000018">
+				<Properties>
+					<string name="Name">SfxRow</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>0.03137254901960784</R>
+						<G>0.10980392156862745</G>
+						<B>0.23921568627450981</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<Content name="Image">
+						<url>rbxassetid://130386889052542</url>
+					</Content>
+					<Color3 name="ImageColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="ImageTransparency">0</float>
+					<int name="LayoutOrder">0</int>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>86</XO>
+						<YS>0</YS>
+						<YO>360</YO>
+					</UDim2>
+					<token name="ScaleType">0</token>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>1278</XO>
+						<YS>0</YS>
+						<YO>226</YO>
+					</UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">203</int>
+				</Properties>
+				<Item class="ImageLabel" referent="RBX00000019">
+					<Properties>
+						<string name="Name">SfxIcon</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<Content name="Image">
+							<url>rbxassetid://92653426073517</url>
+						</Content>
+						<Color3 name="ImageColor3">
+							<R>1.0</R>
+							<G>1.0</G>
+							<B>1.0</B>
+						</Color3>
+						<float name="ImageTransparency">0</float>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>60</XO>
+							<YS>0</YS>
+							<YO>30</YO>
+						</UDim2>
+						<token name="ScaleType">3</token>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>160</XO>
+							<YS>0</YS>
+							<YO>160</YO>
+						</UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">205</int>
+					</Properties>
+				</Item>
+				<Item class="TextLabel" referent="RBX0000001A">
+					<Properties>
+						<string name="Name">SfxPrefix</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<token name="Font">26</token>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>460</XO>
+							<YS>0</YS>
+							<YO>55</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>230</XO>
+							<YS>0</YS>
+							<YO>110</YO>
+						</UDim2>
+						<string name="Text">SFX:</string>
+						<Color3 name="TextColor3">
+							<R>1.0</R>
+							<G>1.0</G>
+							<B>1.0</B>
+						</Color3>
+						<bool name="TextScaled">false</bool>
+						<float name="TextSize">52</float>
+						<Color3 name="TextStrokeColor3">
+							<R>0.0</R>
+							<G>0.0</G>
+							<B>0.0</B>
+						</Color3>
+						<float name="TextStrokeTransparency">0.25</float>
+						<float name="TextTransparency">0</float>
+						<token name="TextTruncate">1</token>
+						<bool name="TextWrapped">false</bool>
+						<token name="TextXAlignment">1</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">206</int>
+					</Properties>
+				</Item>
+				<Item class="TextLabel" referent="RBX0000001B">
+					<Properties>
+						<string name="Name">SfxStatus</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<token name="Font">26</token>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>700</XO>
+							<YS>0</YS>
+							<YO>55</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>180</XO>
+							<YS>0</YS>
+							<YO>110</YO>
+						</UDim2>
+						<string name="Text">ON</string>
+						<Color3 name="TextColor3">
+							<R>0.2549019607843137</R>
+							<G>0.8431372549019608</G>
+							<B>1.0</B>
+						</Color3>
+						<bool name="TextScaled">false</bool>
+						<float name="TextSize">52</float>
+						<Color3 name="TextStrokeColor3">
+							<R>0.0</R>
+							<G>0.0</G>
+							<B>0.0</B>
+						</Color3>
+						<float name="TextStrokeTransparency">0.25</float>
+						<float name="TextTransparency">0</float>
+						<token name="TextTruncate">1</token>
+						<bool name="TextWrapped">false</bool>
+						<token name="TextXAlignment">0</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">206</int>
+					</Properties>
+				</Item>
+				<Item class="TextButton" referent="RBX0000001C">
+					<Properties>
+						<string name="Name">SfxToggle</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<bool name="AutoButtonColor">false</bool>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">true</bool>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>955</XO>
+							<YS>0</YS>
+							<YO>64</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>230</XO>
+							<YS>0</YS>
+							<YO>96</YO>
+						</UDim2>
+						<string name="Text" />
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">207</int>
+					</Properties>
+					<Item class="UIScale" referent="RBX0000001D">
+						<Properties>
+							<string name="Name">PressScale</string>
+							<float name="Scale">1</float>
+						</Properties>
+					</Item>
+					<Item class="ImageLabel" referent="RBX0000001E">
+						<Properties>
+							<string name="Name">OnBackground</string>
+							<Vector2 name="AnchorPoint">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.03137254901960784</R>
+								<G>0.10980392156862745</G>
+								<B>0.23921568627450981</B>
+							</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<Content name="Image">
+								<url>rbxassetid://110978225407848</url>
+							</Content>
+							<Color3 name="ImageColor3">
+								<R>1.0</R>
+								<G>1.0</G>
+								<B>1.0</B>
+							</Color3>
+							<float name="ImageTransparency">0</float>
+							<int name="LayoutOrder">0</int>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>-83</XO>
+								<YS>0</YS>
+								<YO>-82</YO>
+							</UDim2>
+							<token name="ScaleType">0</token>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>396</XO>
+								<YS>0</YS>
+								<YO>264</YO>
+							</UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">207</int>
+						</Properties>
+					</Item>
+					<Item class="ImageLabel" referent="RBX0000001F">
+						<Properties>
+							<string name="Name">OffBackground</string>
+							<Vector2 name="AnchorPoint">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.03137254901960784</R>
+								<G>0.10980392156862745</G>
+								<B>0.23921568627450981</B>
+							</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<Content name="Image">
+								<url>rbxassetid://131550730293382</url>
+							</Content>
+							<Color3 name="ImageColor3">
+								<R>1.0</R>
+								<G>1.0</G>
+								<B>1.0</B>
+							</Color3>
+							<float name="ImageTransparency">1</float>
+							<int name="LayoutOrder">0</int>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>-39</XO>
+								<YS>0</YS>
+								<YO>-55</YO>
+							</UDim2>
+							<token name="ScaleType">0</token>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>307</XO>
+								<YS>0</YS>
+								<YO>213</YO>
+							</UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">207</int>
+						</Properties>
+					</Item>
+					<Item class="TextLabel" referent="RBX00000020">
+						<Properties>
+							<string name="Name">SfxToggleText</string>
+							<Vector2 name="AnchorPoint">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.03137254901960784</R>
+								<G>0.10980392156862745</G>
+								<B>0.23921568627450981</B>
+							</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<token name="Font">26</token>
+							<int name="LayoutOrder">0</int>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>22</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>108</XO>
+								<YS>0</YS>
+								<YO>96</YO>
+							</UDim2>
+							<string name="Text">ON</string>
+							<Color3 name="TextColor3">
+								<R>1.0</R>
+								<G>1.0</G>
+								<B>1.0</B>
+							</Color3>
+							<bool name="TextScaled">false</bool>
+							<float name="TextSize">38</float>
+							<Color3 name="TextStrokeColor3">
+								<R>0.0</R>
+								<G>0.0</G>
+								<B>0.0</B>
+							</Color3>
+							<float name="TextStrokeTransparency">0.25</float>
+							<float name="TextTransparency">0</float>
+							<token name="TextTruncate">0</token>
+							<bool name="TextWrapped">false</bool>
+							<token name="TextXAlignment">0</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">209</int>
+						</Properties>
+					</Item>
+					<Item class="Frame" referent="RBX00000021">
+						<Properties>
+							<string name="Name">SfxKnob</string>
+							<Vector2 name="AnchorPoint">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.03137254901960784</R>
+								<G>0.10980392156862745</G>
+								<B>0.23921568627450981</B>
+							</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">true</bool>
+							<int name="LayoutOrder">0</int>
+							<UDim2 name="Position">
+								<XS>1</XS>
+								<XO>-78</XO>
+								<YS>0.5</YS>
+								<YO>-39</YO>
+							</UDim2>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>78</XO>
+								<YS>0</YS>
+								<YO>78</YO>
+							</UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">210</int>
+						</Properties>
+						<Item class="ImageLabel" referent="RBX00000022">
+							<Properties>
+								<string name="Name">Image</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>0.03137254901960784</R>
+									<G>0.10980392156862745</G>
+									<B>0.23921568627450981</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<Content name="Image">
+									<url>rbxassetid://75219052415065</url>
+								</Content>
+								<Color3 name="ImageColor3">
+									<R>1.0</R>
+									<G>1.0</G>
+									<B>1.0</B>
+								</Color3>
+								<float name="ImageTransparency">0</float>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>-44</XO>
+									<YS>0</YS>
+									<YO>-41</YO>
+								</UDim2>
+								<token name="ScaleType">0</token>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>165</XO>
+									<YS>0</YS>
+									<YO>164</YO>
+								</UDim2>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">211</int>
+							</Properties>
+						</Item>
+					</Item>
+				</Item>
+			</Item>
+			<Item class="ImageLabel" referent="RBX00000023">
+				<Properties>
+					<string name="Name">MoveSpeedRow</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>0.03137254901960784</R>
+						<G>0.10980392156862745</G>
+						<B>0.23921568627450981</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<Content name="Image">
+						<url>rbxassetid://130386889052542</url>
+					</Content>
+					<Color3 name="ImageColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="ImageTransparency">0</float>
+					<int name="LayoutOrder">0</int>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>86</XO>
+						<YS>0</YS>
+						<YO>560</YO>
+					</UDim2>
+					<token name="ScaleType">0</token>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>1278</XO>
+						<YS>0</YS>
+						<YO>226</YO>
+					</UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">203</int>
+				</Properties>
+				<Item class="TextLabel" referent="RBX00000024">
+					<Properties>
+						<string name="Name">MoveSpeedPrefix</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<token name="Font">26</token>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>400</XO>
+							<YS>0</YS>
+							<YO>35</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>360</XO>
+							<YS>0</YS>
+							<YO>80</YO>
+						</UDim2>
+						<string name="Text">Move Speed:</string>
+						<Color3 name="TextColor3">
+							<R>1.0</R>
+							<G>1.0</G>
+							<B>1.0</B>
+						</Color3>
+						<bool name="TextScaled">false</bool>
+						<float name="TextSize">46</float>
+						<Color3 name="TextStrokeColor3">
+							<R>0.0</R>
+							<G>0.0</G>
+							<B>0.0</B>
+						</Color3>
+						<float name="TextStrokeTransparency">0.25</float>
+						<float name="TextTransparency">0</float>
+						<token name="TextTruncate">1</token>
+						<bool name="TextWrapped">false</bool>
+						<token name="TextXAlignment">1</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">206</int>
+					</Properties>
+				</Item>
+				<Item class="TextLabel" referent="RBX00000025">
+					<Properties>
+						<string name="Name">MoveSpeedValue</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<token name="Font">26</token>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>770</XO>
+							<YS>0</YS>
+							<YO>35</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>120</XO>
+							<YS>0</YS>
+							<YO>80</YO>
+						</UDim2>
+						<string name="Text">16</string>
+						<Color3 name="TextColor3">
+							<R>0.2549019607843137</R>
+							<G>0.8431372549019608</G>
+							<B>1.0</B>
+						</Color3>
+						<bool name="TextScaled">false</bool>
+						<float name="TextSize">46</float>
+						<Color3 name="TextStrokeColor3">
+							<R>0.0</R>
+							<G>0.0</G>
+							<B>0.0</B>
+						</Color3>
+						<float name="TextStrokeTransparency">0.25</float>
+						<float name="TextTransparency">0</float>
+						<token name="TextTruncate">1</token>
+						<bool name="TextWrapped">false</bool>
+						<token name="TextXAlignment">0</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">206</int>
+					</Properties>
+				</Item>
+				<Item class="Frame" referent="RBX00000026">
+					<Properties>
+						<string name="Name">SliderArea</string>
+						<bool name="Active">true</bool>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>95</XO>
+							<YS>0</YS>
+							<YO>108</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>1088</XO>
+							<YS>0</YS>
+							<YO>82</YO>
+						</UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">205</int>
+					</Properties>
+					<Item class="Frame" referent="RBX00000027">
+						<Properties>
+							<string name="Name">TrackLeftCap</string>
+							<Vector2 name="AnchorPoint">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.03137254901960784</R>
+								<G>0.10980392156862745</G>
+								<B>0.23921568627450981</B>
+							</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">true</bool>
+							<int name="LayoutOrder">0</int>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>22</YO>
+							</UDim2>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>19</XO>
+								<YS>0</YS>
+								<YO>38</YO>
+							</UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">206</int>
+						</Properties>
+						<Item class="ImageLabel" referent="RBX00000028">
+							<Properties>
+								<string name="Name">Image</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>0.03137254901960784</R>
+									<G>0.10980392156862745</G>
+									<B>0.23921568627450981</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<Content name="Image">
+									<url>rbxassetid://79604035889224</url>
+								</Content>
+								<Color3 name="ImageColor3">
+									<R>1.0</R>
+									<G>1.0</G>
+									<B>1.0</B>
+								</Color3>
+								<float name="ImageTransparency">0</float>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>-32</XO>
+									<YS>0</YS>
+									<YO>-134</YO>
+								</UDim2>
+								<token name="ScaleType">0</token>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>478</XO>
+									<YS>0</YS>
+									<YO>318</YO>
+								</UDim2>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">206</int>
+							</Properties>
+						</Item>
+					</Item>
+					<Item class="Frame" referent="RBX00000029">
+						<Properties>
+							<string name="Name">TrackMiddle</string>
+							<Vector2 name="AnchorPoint">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.03137254901960784</R>
+								<G>0.10980392156862745</G>
+								<B>0.23921568627450981</B>
+							</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">true</bool>
+							<int name="LayoutOrder">0</int>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>19</XO>
+								<YS>0</YS>
+								<YO>22</YO>
+							</UDim2>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>1050</XO>
+								<YS>0</YS>
+								<YO>38</YO>
+							</UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">206</int>
+						</Properties>
+						<Item class="ImageLabel" referent="RBX0000002A">
+							<Properties>
+								<string name="Name">Image</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>0.03137254901960784</R>
+									<G>0.10980392156862745</G>
+									<B>0.23921568627450981</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<Content name="Image">
+									<url>rbxassetid://79604035889224</url>
+								</Content>
+								<Color3 name="ImageColor3">
+									<R>1.0</R>
+									<G>1.0</G>
+									<B>1.0</B>
+								</Color3>
+								<float name="ImageTransparency">0</float>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>-137</XO>
+									<YS>0</YS>
+									<YO>-134</YO>
+								</UDim2>
+								<token name="ScaleType">0</token>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>1288</XO>
+									<YS>0</YS>
+									<YO>318</YO>
+								</UDim2>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">206</int>
+							</Properties>
+						</Item>
+					</Item>
+					<Item class="Frame" referent="RBX0000002B">
+						<Properties>
+							<string name="Name">TrackRightCap</string>
+							<Vector2 name="AnchorPoint">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.03137254901960784</R>
+								<G>0.10980392156862745</G>
+								<B>0.23921568627450981</B>
+							</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">true</bool>
+							<int name="LayoutOrder">0</int>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>1069</XO>
+								<YS>0</YS>
+								<YO>22</YO>
+							</UDim2>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>19</XO>
+								<YS>0</YS>
+								<YO>38</YO>
+							</UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">206</int>
+						</Properties>
+						<Item class="ImageLabel" referent="RBX0000002C">
+							<Properties>
+								<string name="Name">Image</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>0.03137254901960784</R>
+									<G>0.10980392156862745</G>
+									<B>0.23921568627450981</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<Content name="Image">
+									<url>rbxassetid://79604035889224</url>
+								</Content>
+								<Color3 name="ImageColor3">
+									<R>1.0</R>
+									<G>1.0</G>
+									<B>1.0</B>
+								</Color3>
+								<float name="ImageTransparency">0</float>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>-441</XO>
+									<YS>0</YS>
+									<YO>-134</YO>
+								</UDim2>
+								<token name="ScaleType">0</token>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>478</XO>
+									<YS>0</YS>
+									<YO>318</YO>
+								</UDim2>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">206</int>
+							</Properties>
+						</Item>
+					</Item>
+					<Item class="Frame" referent="RBX0000002D">
+						<Properties>
+							<string name="Name">FillLeftCap</string>
+							<Vector2 name="AnchorPoint">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.03137254901960784</R>
+								<G>0.10980392156862745</G>
+								<B>0.23921568627450981</B>
+							</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">true</bool>
+							<int name="LayoutOrder">0</int>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>4</XO>
+								<YS>0</YS>
+								<YO>26</YO>
+							</UDim2>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>15</XO>
+								<YS>0</YS>
+								<YO>30</YO>
+							</UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">207</int>
+						</Properties>
+						<Item class="ImageLabel" referent="RBX0000002E">
+							<Properties>
+								<string name="Name">Image</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>0.03137254901960784</R>
+									<G>0.10980392156862745</G>
+									<B>0.23921568627450981</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<Content name="Image">
+									<url>rbxassetid://107077598572207</url>
+								</Content>
+								<Color3 name="ImageColor3">
+									<R>1.0</R>
+									<G>1.0</G>
+									<B>1.0</B>
+								</Color3>
+								<float name="ImageTransparency">0</float>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>-2</XO>
+									<YS>0</YS>
+									<YO>-2</YO>
+								</UDim2>
+								<token name="ScaleType">0</token>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>281</XO>
+									<YS>0</YS>
+									<YO>34</YO>
+								</UDim2>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">207</int>
+							</Properties>
+						</Item>
+					</Item>
+					<Item class="Frame" referent="RBX0000002F">
+						<Properties>
+							<string name="Name">FillMiddle</string>
+							<Vector2 name="AnchorPoint">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Color3 name="BackgroundColor3">
+								<R>0.03137254901960784</R>
+								<G>0.10980392156862745</G>
+								<B>0.23921568627450981</B>
+							</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">true</bool>
+							<int name="LayoutOrder">0</int>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>19</XO>
+								<YS>0</YS>
+								<YO>26</YO>
+							</UDim2>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>525</XO>
+								<YS>0</YS>
+								<YO>30</YO>
+							</UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">207</int>
+						</Properties>
+						<Item class="ImageLabel" referent="RBX00000030">
+							<Properties>
+								<string name="Name">Image</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>0.03137254901960784</R>
+									<G>0.10980392156862745</G>
+									<B>0.23921568627450981</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<Content name="Image">
+									<url>rbxassetid://107077598572207</url>
+								</Content>
+								<Color3 name="ImageColor3">
+									<R>1.0</R>
+									<G>1.0</G>
+									<B>1.0</B>
+								</Color3>
+								<float name="ImageTransparency">0</float>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>-36</XO>
+									<YS>0</YS>
+									<YO>-2</YO>
+								</UDim2>
+								<token name="ScaleType">0</token>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>598</XO>
+									<YS>0</YS>
+									<YO>34</YO>
+								</UDim2>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">207</int>
+							</Properties>
+						</Item>
+					</Item>
+					<Item class="TextButton" referent="RBX00000031">
+						<Properties>
+							<string name="Name">SliderKnob</string>
+							<Vector2 name="AnchorPoint">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<bool name="AutoButtonColor">false</bool>
+							<Color3 name="BackgroundColor3">
+								<R>0.03137254901960784</R>
+								<G>0.10980392156862745</G>
+								<B>0.23921568627450981</B>
+							</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">true</bool>
+							<int name="LayoutOrder">0</int>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>506</XO>
+								<YS>0</YS>
+								<YO>3</YO>
+							</UDim2>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>76</XO>
+								<YS>0</YS>
+								<YO>76</YO>
+							</UDim2>
+							<string name="Text" />
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">209</int>
+						</Properties>
+						<Item class="ImageLabel" referent="RBX00000032">
+							<Properties>
+								<string name="Name">Image</string>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Color3 name="BackgroundColor3">
+									<R>0.03137254901960784</R>
+									<G>0.10980392156862745</G>
+									<B>0.23921568627450981</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<Content name="Image">
+									<url>rbxassetid://75219052415065</url>
+								</Content>
+								<Color3 name="ImageColor3">
+									<R>1.0</R>
+									<G>1.0</G>
+									<B>1.0</B>
+								</Color3>
+								<float name="ImageTransparency">0</float>
+								<int name="LayoutOrder">0</int>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>-42</XO>
+									<YS>0</YS>
+									<YO>-40</YO>
+								</UDim2>
+								<token name="ScaleType">0</token>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>160</XO>
+									<YS>0</YS>
+									<YO>160</YO>
+								</UDim2>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">210</int>
+							</Properties>
+						</Item>
+					</Item>
+				</Item>
+			</Item>
+			<Item class="ImageLabel" referent="RBX00000033">
+				<Properties>
+					<string name="Name">AquariumTeleportRow</string>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<Color3 name="BackgroundColor3">
+						<R>0.03137254901960784</R>
+						<G>0.10980392156862745</G>
+						<B>0.23921568627450981</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<Content name="Image">
+						<url>rbxassetid://130386889052542</url>
+					</Content>
+					<Color3 name="ImageColor3">
+						<R>1.0</R>
+						<G>1.0</G>
+						<B>1.0</B>
+					</Color3>
+					<float name="ImageTransparency">0</float>
+					<int name="LayoutOrder">0</int>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>86</XO>
+						<YS>0</YS>
+						<YO>760</YO>
+					</UDim2>
+					<token name="ScaleType">0</token>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>1278</XO>
+						<YS>0</YS>
+						<YO>226</YO>
+					</UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">203</int>
+				</Properties>
+				<Item class="ImageLabel" referent="RBX00000034">
+					<Properties>
+						<string name="Name">FishBowlIcon</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<Content name="Image">
+							<url>rbxassetid://81878984079270</url>
+						</Content>
+						<Color3 name="ImageColor3">
+							<R>1.0</R>
+							<G>1.0</G>
+							<B>1.0</B>
+						</Color3>
+						<float name="ImageTransparency">0</float>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>60</XO>
+							<YS>0</YS>
+							<YO>30</YO>
+						</UDim2>
+						<token name="ScaleType">3</token>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>160</XO>
+							<YS>0</YS>
+							<YO>160</YO>
+						</UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">205</int>
+					</Properties>
+				</Item>
+				<Item class="TextLabel" referent="RBX00000035">
+					<Properties>
+						<string name="Name">AquariumTitle</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<token name="Font">26</token>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>220</XO>
+							<YS>0</YS>
+							<YO>55</YO>
+						</UDim2>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>830</XO>
+							<YS>0</YS>
+							<YO>110</YO>
+						</UDim2>
+						<string name="Text">My Aquarium</string>
+						<Color3 name="TextColor3">
+							<R>1.0</R>
+							<G>1.0</G>
+							<B>1.0</B>
+						</Color3>
+						<bool name="TextScaled">false</bool>
+						<float name="TextSize">46</float>
+						<Color3 name="TextStrokeColor3">
+							<R>0.0</R>
+							<G>0.0</G>
+							<B>0.0</B>
+						</Color3>
+						<float name="TextStrokeTransparency">0.25</float>
+						<float name="TextTransparency">0</float>
+						<token name="TextTruncate">1</token>
+						<bool name="TextWrapped">false</bool>
+						<token name="TextXAlignment">2</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">206</int>
+					</Properties>
+				</Item>
+				<Item class="ImageButton" referent="RBX00000036">
+					<Properties>
+						<string name="Name">TeleportButton</string>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>0</Y>
+						</Vector2>
+						<bool name="AutoButtonColor">false</bool>
+						<Color3 name="BackgroundColor3">
+							<R>0.03137254901960784</R>
+							<G>0.10980392156862745</G>
+							<B>0.23921568627450981</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<Content name="Image">
+							<url>rbxassetid://107462888144853</url>
+						</Content>
+						<Color3 name="ImageColor3">
+							<R>1.0</R>
+							<G>1.0</G>
+							<B>1.0</B>
+						</Color3>
+						<float name="ImageTransparency">0</float>
+						<int name="LayoutOrder">0</int>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>930</XO>
+							<YS>0</YS>
+							<YO>64</YO>
+						</UDim2>
+						<token name="ScaleType">3</token>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>270</XO>
+							<YS>0</YS>
+							<YO>96</YO>
+						</UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">208</int>
+					</Properties>
+					<Item class="UIScale" referent="RBX00000037">
+						<Properties>
+							<string name="Name">PressScale</string>
+							<float name="Scale">1</float>
+						</Properties>
+					</Item>
+				</Item>
+			</Item>
+		</Item>
+	</Item>
+</roblox>

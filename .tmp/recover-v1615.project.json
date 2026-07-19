@@ -1,0 +1,81 @@
+{
+  "name": "FishyFishVersion1615UiRecovery",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedFirst": {
+      "$className": "ReplicatedFirst",
+      "$path": "v1615-src/ReplicatedFirst"
+    },
+    "StarterGui": {
+      "$className": "StarterGui",
+      "AquariumDesignerShopCleanup": {
+        "$path": "v1615-src/StarterGui/AquariumDesignerShopCleanup.client.luau"
+      },
+      "AquariumFreePlacementEditor": {
+        "$path": "v1615-src/StarterGui/AquariumFreePlacementEditor.client.luau"
+      },
+      "FishingGui": {
+        "$className": "ScreenGui",
+        "AutoFishButtonVisualPatch": {
+          "$path": "v1615-src/StarterGui/FishingGui/AutoFishButtonVisualPatch.client.luau"
+        },
+        "FishdexRebuildClient": {
+          "$path": "v1615-src/StarterGui/FishingGui/FishdexRebuildClient.client.luau"
+        },
+        "FishdexVisualPatch": {
+          "$properties": {
+            "Disabled": true
+          },
+          "$path": "v1615-src/StarterGui/FishingGui/FishdexVisualPatch.client.luau"
+        },
+        "FishingClient": {
+          "$path": "v1615-src/StarterGui/FishingGui/FishingClient"
+        },
+        "IslandWarpModernClient": {
+          "$path": "v1615-src/StarterGui/FishingGui/IslandWarpModernClient.client.luau"
+        },
+        "Panels": {
+          "$className": "Folder"
+        },
+        "QuestModernClient": {
+          "$path": "v1615-src/StarterGui/FishingGui/QuestModernClient.client.luau"
+        },
+        "SeasideShopModernClient": {
+          "$path": "v1615-src/StarterGui/FishingGui/SeasideShopModernClient.client.luau"
+        },
+        "SupplyModernShopClient": {
+          "$path": "v1615-src/StarterGui/FishingGui/SupplyModernShopClient.client.luau"
+        },
+        "TapButtonVisualPatch": {
+          "$properties": {
+            "Disabled": true
+          },
+          "$path": "v1615-src/StarterGui/FishingGui/TapButtonVisualPatch.client.luau"
+        },
+        "TapButtoncodeCircle": {
+          "$path": "v1615-src/StarterGui/FishingGui/TapButtoncodeCircle.client.luau"
+        },
+        "$properties": {
+          "DisplayOrder": 100.0,
+          "ResetOnSpawn": false
+        }
+      },
+      "$properties": {
+        "ScreenOrientation": "Sensor"
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "$path": "v1615-src/StarterPlayerScripts"
+      },
+      "$properties": {
+        "AvatarJointUpgrade": "Enabled",
+        "CameraMaxZoomDistance": 128.0,
+        "CharacterBreakJointsOnDeath": false,
+        "CharacterUseJumpPower": false
+      }
+    }
+  }
+}

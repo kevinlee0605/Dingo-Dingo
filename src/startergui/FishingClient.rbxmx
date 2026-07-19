@@ -6631,10 +6631,14 @@ function QuestModernUI.create(config)
 		local quests = period and period.quests or {}
 
 		local completedCount = 0
+		local visibleQuestCount = 0
 		for _, quest in ipairs(quests) do
-			if quest.completed == true
-				or (tonumber(quest.progress) or 0) >= math.max(1, tonumber(quest.target) or 1) then
-				completedCount += 1
+			if self.activePeriod ~= "Daily" or quest.claimed ~= true then
+				visibleQuestCount += 1
+				if quest.completed == true
+					or (tonumber(quest.progress) or 0) >= math.max(1, tonumber(quest.target) or 1) then
+					completedCount += 1
+				end
 			end
 		end
 
@@ -6642,7 +6646,7 @@ function QuestModernUI.create(config)
 		self.completedText.Text = string.format(
 			"%d/%d complete",
 			completedCount,
-			#quests
+			visibleQuestCount
 		)
 	end
 
@@ -6924,12 +6928,21 @@ function QuestModernUI.create(config)
 
 		local period = self:GetPeriod()
 		local quests = period and period.quests or {}
+		local visibleQuests = {}
 
-		if #quests == 0 then
+		for _, quest in ipairs(quests) do
+			if self.activePeriod ~= "Daily" or quest.claimed ~= true then
+				table.insert(visibleQuests, quest)
+			end
+		end
+
+		if #visibleQuests == 0 then
 			local empty = makeText(
 				self.list,
 				"EmptyText",
-				"Loading quests...",
+				self.activePeriod == "Daily"
+					and "All Daily quest rewards claimed. New quests arrive after reset."
+					or "Loading quests...",
 				34,
 				Color3.fromRGB(220, 235, 255)
 			)
@@ -6940,11 +6953,11 @@ function QuestModernUI.create(config)
 			return
 		end
 
-		for index, quest in ipairs(quests) do
+		for index, quest in ipairs(visibleQuests) do
 			self:MakeQuestCard(quest, index, period)
 		end
 
-		self.updateCanvasForQuestCount(#quests)
+		self.updateCanvasForQuestCount(#visibleQuests)
 	end
 
 	function controller:Render()

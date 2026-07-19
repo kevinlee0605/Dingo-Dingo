@@ -1,0 +1,9 @@
+<roblox version="4">
+	<External>null</External>
+	<External>nil</External>
+	<Item class="BindableEvent" referent="RBX00000001">
+		<Properties>
+			<string name="Name">OpenFishingPanel</string>
+		</Properties>
+	</Item>
+</roblox>

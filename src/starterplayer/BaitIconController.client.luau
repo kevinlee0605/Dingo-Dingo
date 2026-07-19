@@ -6,6 +6,12 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local fishingGui = playerGui:WaitForChild("FishingGui")
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
+local baitIconTemplates = fishingGui:WaitForChild("BaitIconTemplates")
+local baitIconTemplate = baitIconTemplates:WaitForChild("BaitIconTemplate")
+
+if not baitIconTemplate:IsA("ImageLabel") then
+	error("[BaitIconController] FishingGui.BaitIconTemplates.BaitIconTemplate must be an ImageLabel")
+end
 
 local BAIT_IMAGE_SCALES = {
 	FreshBait = 1.55,
@@ -47,13 +53,11 @@ local function addImage(parent, baitId, size, position)
 		return true
 	end
 
-	local image = Instance.new("ImageLabel")
+	local image = baitIconTemplate:Clone()
 	image.Name = "BaitIcon"
-	image.BackgroundTransparency = 1
 	image.Image = imageContent
-	image.ScaleType = Enum.ScaleType.Fit
 	applyImagePresentation(image, baitId, size, position)
-	image.ZIndex = 99
+	image.Visible = true
 	image.Parent = parent
 	task.spawn(function()
 		ContentProvider:PreloadAsync({ image }, function(contentId, status)

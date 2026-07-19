@@ -1,0 +1,30 @@
+{
+  "name": "FishyFishSnapshotUiRecovery",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedFirst": {
+      "$className": "ReplicatedFirst",
+      "$path": "snapshot-src/ReplicatedFirst"
+    },
+    "StarterGui": {
+      "$className": "StarterGui",
+      "$properties": {
+        "ScreenOrientation": "Sensor"
+      },
+      "$path": "snapshot-src/StarterGui"
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "$path": "snapshot-src/StarterPlayerScripts"
+      },
+      "$properties": {
+        "AvatarJointUpgrade": "Enabled",
+        "CameraMaxZoomDistance": 128.0,
+        "CharacterBreakJointsOnDeath": false,
+        "CharacterUseJumpPower": false
+      }
+    }
+  }
+}

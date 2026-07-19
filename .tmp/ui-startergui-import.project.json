@@ -1,0 +1,39 @@
+{
+  "name": "Fishy Fish StarterGui Import",
+  "tree": {
+    "$className": "Folder",
+    "AquariumFreePlacementEditor": {
+      "$path": "../src/startergui/AquariumFreePlacementEditor.client.luau"
+    },
+    "AquariumDesignerShopCleanup": {
+      "$path": "../src/startergui/AquariumDesignerShopCleanup.client.luau"
+    },
+    "FishingGui": {
+      "$path": "../src/ui/FishingGui"
+    },
+    "TopHudGui": {
+      "$path": "../src/ui/TopHudGui"
+    },
+    "ServerUtcClockGui": {
+      "$path": "../src/ui/ServerUtcClockGui",
+      "ServerUtcClock": {
+        "$path": "../src/starterplayer/ServerUtcClock.client.luau"
+      }
+    },
+    "Phase3EconomyGui": {
+      "$path": "../src/ui/Phase3EconomyGui",
+      "Phase3EconomyUI": {
+        "$path": "../src/starterplayer/Phase3EconomyUI.client.luau"
+      }
+    },
+    "AquariumFreePlacementGui": {
+      "$path": "../src/ui/AquariumFreePlacementGui"
+    },
+    "CustomHotbarGui": {
+      "$path": "../src/ui/CustomHotbarGui",
+      "CustomHotbarClient": {
+        "$path": "../src/starterplayer/CustomHotbarClient.client.luau"
+      }
+    }
+  }
+}

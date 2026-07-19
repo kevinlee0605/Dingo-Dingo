@@ -1,0 +1,15 @@
+{
+  "name": "Extract all version 1615 UI",
+  "tree": {
+    "$className": "DataModel",
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$path": "v1615-all/StarterPlayerScripts"
+      }
+    },
+    "StarterGui": {
+      "$path": "v1615-all/StarterGui"
+    }
+  }
+}

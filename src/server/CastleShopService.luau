@@ -422,46 +422,9 @@ local function findExistingCastle()
 end
 
 local function repairExistingCastle(castle)
-	local seaStarBooth = castle:FindFirstChild("SeaStarBooth", true) or castle:FindFirstChild("AquariumDesignerBooth", true)
-	if seaStarBooth then
-		seaStarBooth.Name = "SeaStarBooth"
-		local boothSign = seaStarBooth:FindFirstChild("BoothSign", true)
-		local boothText = boothSign and boothSign:FindFirstChildWhichIsA("TextLabel", true)
-		if boothText then
-			boothText.Text = "Sea Star Shop\nCosmetic currency and permanent aquarium themes."
-		end
-		for _, descendant in ipairs(seaStarBooth:GetDescendants()) do
-			if descendant:IsA("BasePart") and descendant:GetAttribute("PurchaseKey") == "AquariumDesigner" then
-				descendant:SetAttribute("PurchaseKind", nil)
-				descendant:SetAttribute("PurchaseKey", nil)
-				descendant:SetAttribute("CastleShopAction", "OpenShop")
-				descendant:SetAttribute("ShopTab", "SeaStars")
-				local prompt = descendant:FindFirstChildWhichIsA("ProximityPrompt")
-				if prompt then
-					prompt.Name = "CastleShopOpenPrompt"
-					prompt.ActionText = "Open Sea Stars"
-					prompt.ObjectText = "Sea Star Shop"
-				end
-			end
-			if descendant:IsA("TextLabel") and (descendant.Text == "Buy Pass" or string.find(descendant.Text, "Aquarium Designer", 1, true)) then
-				descendant.Text = "Open Shop"
-			end
-		end
-	end
-
-	for _, descendant in ipairs(castle:GetDescendants()) do
-		if descendant:IsA("BasePart") and descendant:FindFirstAncestor("AntiFallBorder") then
-			descendant.Transparency = 1
-			descendant.CanCollide = true
-			descendant.CanTouch = false
-			descendant.CanQuery = true
-			pcall(function()
-				descendant.CollisionGroup = "Default"
-			end)
-		end
-	end
-
-	ensureCastleOpenShopPrompt(castle)
+	-- The castle is authored in Studio. Runtime startup must not delete booths,
+	-- rewrite collision, add geometry, or otherwise make Play differ from Edit.
+	-- Existing authored prompts only need their handlers connected.
 	CastleShopService.connectPrompts(castle)
 	return castle
 end
@@ -624,14 +587,11 @@ function CastleShopService.build()
 	makeBanner(decorationsFolder, "FrontBannerRight", 27, -47, BLUE)
 
 	makeSign(signsFolder, "CastleShopMainSign", currentOrigin + Vector3.new(0, 31.5, -48.2), Vector3.new(44, 7, 0.8), "Castle Shop", WOOD_DARK, Enum.NormalId.Front, GOLD, 38)
-	makeSign(signsFolder, "CastleShopSubtitleSign", currentOrigin + Vector3.new(0, 24, -48.4), Vector3.new(42, 4.5, 0.8), "Passes, Upgrades & Bait", WOOD, Enum.NormalId.Front, Color3.fromRGB(255, 255, 255), 24)
+	makeSign(signsFolder, "CastleShopSubtitleSign", currentOrigin + Vector3.new(0, 24, -48.4), Vector3.new(42, 4.5, 0.8), "Passes, Upgrades, Bait & Items", WOOD, Enum.NormalId.Front, Color3.fromRGB(255, 255, 255), 24)
 	makeOpenShopPromptPart(signsFolder, "CastleShopOpenPromptPart", currentOrigin + Vector3.new(0, 6, -62), Vector3.new(36, 10, 12), "Passes", "Open Shop", "Castle Shop")
 
 	makeBooth(boothsFolder, "VipAnglerBooth", -42, 18, GOLD, "VIP Angler Pass", "VIP tag, +10% coin boost, daily bait reward, exclusive lobby title.", {
 		{ kind = "GamePass", key = "VipAngler", label = "Buy VIP", actionText = "Buy VIP", objectText = "VIP Angler Pass" },
-	})
-	makeBooth(boothsFolder, "SeaStarBooth", -14, 18, BLUE, "Sea Star Shop", "Cosmetic currency and permanent aquarium themes.", {
-		{ kind = "OpenShop", key = "SeaStars", shopTab = "SeaStars", label = "Open Shop", actionText = "Open Sea Stars", objectText = "Sea Star Shop" },
 	})
 	makeBooth(boothsFolder, "BiggerBagBooth", 14, 18, GREEN, "Bigger Bag", "Increase your fish storage.", {
 		{ kind = "GamePass", key = "SmallBag", label = "+25 slots", actionText = "Buy +25", objectText = "Bigger Bag" },
@@ -655,7 +615,13 @@ function CastleShopService.ensure()
 		return repairExistingCastle(existing)
 	end
 
-	return CastleShopService.build()
+	-- Older builds generated a second castle whenever the authored castle did
+	-- not use CastleShop/CastleShopArea as its model name. The production map's
+	-- castle is nested under the authored map hierarchy, so never synthesize a
+	-- replacement here. Connecting tagged/attributed prompts across Workspace is
+	-- sufficient and leaves the saved map untouched.
+	CastleShopService.connectPrompts(workspace)
+	return nil
 end
 
 function CastleShopService.start()
@@ -663,11 +629,9 @@ function CastleShopService.start()
 
 	if not CastleShopService._workspaceConnection then
 		CastleShopService._workspaceConnection = workspace.ChildAdded:Connect(function(child)
-			if child.Name == "FishyFishWorld" then
-				task.defer(function()
-					CastleShopService.ensure()
-				end)
-			end
+			task.defer(function()
+				CastleShopService.connectPrompts(child)
+			end)
 		end)
 	end
 end

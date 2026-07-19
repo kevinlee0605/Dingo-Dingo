@@ -1,0 +1,30 @@
+{
+  "name": "Extract version 1615 UI",
+  "tree": {
+    "$className": "DataModel",
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "EconomyUIIntegration": {
+          "$path": "v1615-true/EconomyUIIntegration.client.luau"
+        },
+        "Phase3EconomyUI": {
+          "$path": "v1615-true/Phase3EconomyUI.client.luau"
+        },
+        "ResponsiveUiAdapter": {
+          "$path": "v1615-true/ResponsiveUiAdapter.client.luau"
+        },
+        "ServerUtcClock": {
+          "$path": "v1615-true/ServerUtcClock.client.luau"
+        }
+      },
+      "$properties": {
+        "AvatarJointUpgrade": "Enabled",
+        "CameraMaxZoomDistance": 128.0,
+        "CharacterBreakJointsOnDeath": false,
+        "CharacterUseJumpPower": false
+      }
+    }
+  }
+}

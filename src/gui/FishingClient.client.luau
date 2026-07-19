@@ -1,19 +1,22 @@
 print("FishingClient started")
 
 local Players = game:GetService("Players")
-MarketplaceService = game:GetService("MarketplaceService")
+local MarketplaceService = game:GetService("MarketplaceService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
 local Lighting = game:GetService("Lighting")
 local TextChatService = game:GetService("TextChatService")
 local StarterGui = game:GetService("StarterGui")
 
 local player = Players.LocalPlayer
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
-ResourceConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ResourceConfig"))
+local FishingWater = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("FishingWater"))
+local ResourceConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ResourceConfig"))
 local MonetizationConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("MonetizationConfig"))
+local FishingSFX = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("FishingSFX"))
 
 if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
 	TextChatService.OnIncomingMessage = function(message)
@@ -143,6 +146,37 @@ local minigameRunning = false
 local activeMinigameCleanup = nil
 local biomeWarpActualBiome = nil
 local panelCollapsed = true
+local toolSwitchLock = {
+	active = false,
+	actionName = "FishyFishLockUtilityHotbar",
+}
+
+function toolSwitchLock.set(locked)
+	locked = locked == true
+	if toolSwitchLock.active == locked then
+		return
+	end
+
+	toolSwitchLock.active = locked
+	player:SetAttribute("FishingToolSwitchLocked", locked)
+	if locked then
+		ContextActionService:BindActionAtPriority(
+			toolSwitchLock.actionName,
+			function()
+				return Enum.ContextActionResult.Sink
+			end,
+			false,
+			Enum.ContextActionPriority.High.Value + 100,
+			Enum.KeyCode.One,
+			Enum.KeyCode.Two,
+			Enum.KeyCode.Three
+		)
+	else
+		ContextActionService:UnbindAction(toolSwitchLock.actionName)
+	end
+end
+
+player:SetAttribute("FishingToolSwitchLocked", false)
 
 -- One physical hotbar click currently reaches setTab through two routes:
 -- PanelEvent and ToolHotbarBinder. Ignore the immediate duplicate call.
@@ -189,8 +223,6 @@ local limitTextSize = guiPrimitives.limitTextSize
 local addGloss = guiPrimitives.addGloss
 local makeText = guiPrimitives.makeText
 local makeButton = guiPrimitives.makeButton
-local makeFishIcon = guiPrimitives.makeFishIcon
-local makeRodIcon = guiPrimitives.makeRodIcon
 
 local baitHelpers = BaitHelpers.create({
 	GameConfig = GameConfig,
@@ -209,8 +241,6 @@ local questHelpers = QuestHelpers.create({
 		return state
 	end,
 })
-local formatQuestReward = questHelpers.formatQuestReward
-local getQuestPeriod = questHelpers.getQuestPeriod
 local getPlayerLeaderstat = LeaderboardHelpers.getPlayerLeaderstat
 local formatCompactNumber = LeaderboardHelpers.formatCompactNumber
 
@@ -539,7 +569,7 @@ local function renderFishmongerSortButtons()
 	end
 end
 
-function renderFishmongerSellOptions()
+renderFishmongerSellOptions = function()
 	renderFishmongerSortButtons()
 	clearChildren(fishmongerUI.fishmongerList)
 
@@ -599,7 +629,7 @@ function renderFishmongerSellOptions()
 
 		local card = makePopupListCard(fishmongerUI.fishmongerList, "SellOption_" .. tostring(fish.serial or index), 82, color, 0.25)
 
-		local icon = makeFishIcon(card, fish.id, fish.rarity, true)
+		local icon = guiPrimitives.makeFishIcon(card, fish.id, fish.rarity, true)
 		icon.Position = UDim2.new(0, 8, 0, 12)
 		icon.Size = UDim2.new(0, 58, 0, 58)
 		icon.ZIndex = 98
@@ -747,7 +777,7 @@ local function getRodRequirementText(rod)
 	)
 end
 
-function fishyFishGetRodResourceRequirement(rod)
+function rodShopUI.getResourceRequirement(rod)
 	local inventory = state.ResourceInventory or {}
 	for _, resourceId in ipairs(ResourceConfig.ResourceOrder) do
 		local required = tonumber(rod.resourceCosts and rod.resourceCosts[resourceId]) or 0
@@ -760,7 +790,7 @@ function fishyFishGetRodResourceRequirement(rod)
 	return "Resources: None (Met)", true
 end
 
-function renderRodShopOptions()
+renderRodShopOptions = function()
 	renderSupplyShopTabs()
 	clearChildren(rodShopUI.list)
 
@@ -776,12 +806,12 @@ function renderRodShopOptions()
 			local canAfford = state.Coins >= rod.cost
 			local levelOK = state.Level >= rod.unlockLevel
 			local previousOK = not rod.previousRod or state.OwnedRods[rod.previousRod] == true
-			local resourceText, resourcesOK = fishyFishGetRodResourceRequirement(rod)
+			local resourceText, resourcesOK = rodShopUI.getResourceRequirement(rod)
 			local canUseButton = (owned and not equipped) or (not owned and previousOK and levelOK and resourcesOK and canAfford)
 
 			local card = makePopupListCard(rodShopUI.list, rodId .. "ShopOption", 136, owned and Color3.fromRGB(112, 255, 156) or Color3.fromRGB(83, 104, 134), 0.25)
 
-			local icon = makeRodIcon(card, rodId)
+			local icon = guiPrimitives.makeRodIcon(card, rodId)
 			icon.Position = UDim2.new(0, 8, 0, 28)
 			icon.Size = UDim2.new(0, 72, 0, 72)
 			icon.ZIndex = 98
@@ -1569,7 +1599,7 @@ toast.Parent = root
 addCorner(toast, 8)
 addStroke(toast, Color3.fromRGB(255, 255, 255), 1).Transparency = 0.88
 
-function showToast(message)
+showToast = function(message)
 	statusText.Text = message
 	toast.Text = message
 	toast.Visible = true
@@ -1679,29 +1709,46 @@ local function getLocalFishingBiomeId()
 		return nil
 	end
 
-	local groundBiomeId = getGroundBiomeId(rootPart.Position, character)
-	if groundBiomeId then
-		return groundBiomeId
-	end
+	local biomeIdAtPosition = getGroundBiomeId(rootPart.Position, character)
 
-	for _, biomeId in ipairs(GameConfig.BiomeOrder) do
-		if biomeId == DEFAULT_FISHING_ISLAND_ID then
-			continue
-		end
+	if not biomeIdAtPosition then
+		for _, biomeId in ipairs(GameConfig.BiomeOrder) do
+			local biome = GameConfig.Biomes[biomeId]
+			local center = biome.position
+			local dx = math.abs(rootPart.Position.X - center.X)
+			local dz = math.abs(rootPart.Position.Z - center.Z)
+			local rangeX = 58
+			local rangeZ = 54
 
-		local biome = GameConfig.Biomes[biomeId]
-		local center = biome.position
-		local dx = math.abs(rootPart.Position.X - center.X)
-		local dz = math.abs(rootPart.Position.Z - center.Z)
-		local rangeX = 58
-		local rangeZ = 54
-
-		if dx <= rangeX and dz <= rangeZ then
-			return biomeId
+			if dx <= rangeX and dz <= rangeZ then
+				biomeIdAtPosition = biomeId
+				break
+			end
 		end
 	end
 
-	return nil
+	if not biomeIdAtPosition
+		or not FishingWater.isNearWater(rootPart.Position, { character })
+	then
+		return nil
+	end
+
+	return biomeIdAtPosition
+end
+
+local function getForwardFishingWaterSurface()
+	local character = player.Character
+	local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+	if not rootPart then
+		return nil
+	end
+
+	return FishingWater.findCastSurface(
+		rootPart.Position,
+		rootPart.CFrame.LookVector,
+		rootPart.CFrame.RightVector,
+		{ character }
+	)
 end
 
 local function getActiveFishingBiomeId()
@@ -1834,6 +1881,7 @@ function CastPower.run(biomeId)
 			if activeMinigameCleanup then
 				activeMinigameCleanup()
 			end
+			toolSwitchLock.set(false)
 			fishingBusy = false
 			setCastPowerVisible(false)
 			showToast("Hold your fishing rod before fishing.")
@@ -1841,6 +1889,10 @@ function CastPower.run(biomeId)
 			return
 		end
 
+		-- Start the combined cast/plop cue before the release presentation so
+		-- its casting transient lines up with the rod animation.
+		FishingSFX.playCast()
+		toolSwitchLock.set(true)
 		finished = true
 		disconnectAll()
 		activeMinigameCleanup = nil
@@ -1857,7 +1909,6 @@ function CastPower.run(biomeId)
 		end
 		CastPower.content.Visible = false
 		setCastPowerVisible(false)
-
 		StartFishing:FireServer({
 			biomeId = biomeId,
 			castPower = math.clamp(power, 0, 1),
@@ -1904,7 +1955,7 @@ function CastPower.run(biomeId)
 	return true
 end
 
-function startManualFishing()
+function CastPower.startManualFishing()
 	if fishingBusy or minigameRunning or not state then
 		return
 	end
@@ -1916,7 +1967,12 @@ function startManualFishing()
 
 	local biomeId = getActiveFishingBiomeId()
 	if not biomeId then
-		showToast("Move to a fishing area first.")
+		showToast("Move closer to the water before fishing.")
+		return
+	end
+
+	if not getForwardFishingWaterSurface() then
+		showToast("Face the nearby water before casting.")
 		return
 	end
 
@@ -1927,6 +1983,7 @@ function startManualFishing()
 	fishingBusy = true
 	showToast("Casting in " .. biome.displayName .. "...")
 	if not CastPower.run(biomeId) then
+		toolSwitchLock.set(false)
 		fishingBusy = false
 	end
 	renderContent()
@@ -1980,7 +2037,7 @@ end
 
 centerCastButton.MouseButton1Click:Connect(function()
 	print("Tap clicked")
-	startManualFishing()
+	CastPower.startManualFishing()
 end)
 
 centerAutoButton.MouseButton1Click:Connect(function()
@@ -1998,6 +2055,7 @@ local function setTab(tabName)
 	local isUtilityPanel = tabName == "Bag" or tabName == "Fishdex"
 	if isUtilityPanel
 		and (UserInputService:GetFocusedTextBox() ~= nil
+			or toolSwitchLock.active
 			or fishingBusy
 			or minigameRunning
 			or CastPower.running)
@@ -2102,6 +2160,9 @@ ToolHotbarBinder.start({
 	player = player,
 	setTab = setTab,
 	hasPanel = hasHudPanel,
+	isToolSwitchLocked = function()
+		return toolSwitchLock.active
+	end,
 	watchLegacyAquariumViewerTools = watchLegacyAquariumViewerTools,
 })
 
@@ -3104,7 +3165,7 @@ end
 local function renderQuestsTab()
 	renderQuestPeriodTabs()
 
-	local period = getQuestPeriod(activeQuestPeriod)
+	local period = questHelpers.getQuestPeriod(activeQuestPeriod)
 	if not period then
 		local loading = makeCard(mainPanelUI.content, 64)
 		local loadingText = makeText(loading, "Loading quests...", 15, Color3.fromRGB(190, 204, 220), true)
@@ -3149,7 +3210,7 @@ local function renderQuestsTab()
 		progress.Position = UDim2.new(0, 12, 0, 66)
 		progress.Size = UDim2.new(1, -126, 0, 18)
 
-		local reward = makeText(card, "Reward: " .. formatQuestReward(quest.reward), 12, Color3.fromRGB(214, 226, 244), false)
+		local reward = makeText(card, "Reward: " .. questHelpers.formatQuestReward(quest.reward), 12, Color3.fromRGB(214, 226, 244), false)
 		reward.Position = UDim2.new(0, 12, 0, 88)
 		reward.Size = UDim2.new(1, -126, 0, 28)
 		reward.TextWrapped = true
@@ -3201,18 +3262,18 @@ local function renderQuestsTab()
 	end
 end
 
-function fishyFishGetMonetizationState()
+function mainPanelUI.getMonetizationState()
 	return state and state.Monetization or {}
 end
 
-function fishyFishOwnsGamePass(passKey)
-	local monetization = fishyFishGetMonetizationState()
+function mainPanelUI.ownsGamePass(passKey)
+	local monetization = mainPanelUI.getMonetizationState()
 	local owned = monetization.OwnedGamePasses or {}
 	return owned[passKey] == true
 end
 
-function fishyFishCopyAquariumDesignWith(changes)
-	local monetization = fishyFishGetMonetizationState()
+function mainPanelUI.copyAquariumDesignWith(changes)
+	local monetization = mainPanelUI.getMonetizationState()
 	local current = monetization.AquariumPreviewDesign or monetization.AquariumDesign or MonetizationConfig.AquariumDesigner.defaultDesign
 	local design = {
 		theme = current.theme,
@@ -3272,7 +3333,7 @@ function fishyFishCopyAquariumDesignWith(changes)
 	return design
 end
 
-function fishyFishMakeShopIcon(parent, text, color)
+function mainPanelUI.makeShopIcon(parent, text, color)
 	local icon = Instance.new("Frame")
 	icon.Position = UDim2.new(0, 10, 0, 12)
 	icon.Size = UDim2.new(0, 54, 0, 54)
@@ -3290,7 +3351,7 @@ end
 
 local fishyFishRobuxPriceCache = {}
 
-function fishyFishGetRobuxPrice(item, infoType)
+function mainPanelUI.getRobuxPrice(item, infoType)
 	local itemId = tonumber(item.id) or tonumber(item.Id)
 	local fallbackPrice = tonumber(item.priceRobux) or tonumber(item.Price)
 	if not itemId or itemId <= 0 then
@@ -3311,7 +3372,7 @@ function fishyFishGetRobuxPrice(item, infoType)
 	return price
 end
 
-function fishyFishRenderShopSubTabs()
+function mainPanelUI.renderShopSubTabs()
 	local selector = Instance.new("Frame")
 	selector.Size = UDim2.new(1, -8, 0, 38)
 	selector.BackgroundTransparency = 1
@@ -3334,9 +3395,9 @@ function fishyFishRenderShopSubTabs()
 	end
 end
 
-function fishyFishRenderRobuxItem(itemKey, item, purchaseAction, owned, iconText, iconColor, infoType)
+function mainPanelUI.renderRobuxItem(itemKey, item, purchaseAction, owned, iconText, iconColor, infoType)
 	local card = makeCard(mainPanelUI.content, 104)
-	fishyFishMakeShopIcon(card, iconText, iconColor)
+	mainPanelUI.makeShopIcon(card, iconText, iconColor)
 
 	local name = makeText(card, item.name, 15, Color3.fromRGB(255, 255, 255), true)
 	name.Position = UDim2.new(0, 76, 0, 8)
@@ -3347,7 +3408,7 @@ function fishyFishRenderRobuxItem(itemKey, item, purchaseAction, owned, iconText
 	description.Size = UDim2.new(1, -194, 0, 36)
 	description.TextWrapped = true
 
-	local priceInRobux = fishyFishGetRobuxPrice(item, infoType or Enum.InfoType.GamePass)
+	local priceInRobux = mainPanelUI.getRobuxPrice(item, infoType or Enum.InfoType.GamePass)
 	local price = makeText(card, tostring(priceInRobux or "?") .. " Robux", 12, Color3.fromRGB(255, 219, 92), true)
 	price.Position = UDim2.new(0, 76, 0, 74)
 	price.Size = UDim2.new(1, -194, 0, 18)
@@ -3367,10 +3428,10 @@ function fishyFishRenderRobuxItem(itemKey, item, purchaseAction, owned, iconText
 	end
 end
 
-function fishyFishRenderShopGamePasses()
-	local monetization = fishyFishGetMonetizationState()
+function mainPanelUI.renderShopGamePasses()
+	local monetization = mainPanelUI.getMonetizationState()
 	local reward = makeCard(mainPanelUI.content, 92)
-	fishyFishMakeShopIcon(reward, "VIP", Color3.fromRGB(255, 181, 36))
+	mainPanelUI.makeShopIcon(reward, "VIP", Color3.fromRGB(255, 181, 36))
 	local title = makeText(reward, "VIP Daily Reward", 16, Color3.fromRGB(255, 255, 255), true)
 	title.Position = UDim2.new(0, 76, 0, 10)
 	title.Size = UDim2.new(1, -194, 0, 22)
@@ -3387,33 +3448,33 @@ function fishyFishRenderShopGamePasses()
 
 	for _, passKey in ipairs({ "VipAngler" }) do
 		local pass = MonetizationConfig.GamePasses[passKey]
-		fishyFishRenderRobuxItem(passKey, pass, function(key)
+		mainPanelUI.renderRobuxItem(passKey, pass, function(key)
 			fireShopAction("PromptGamePass", "GamePass", key)
-		end, fishyFishOwnsGamePass(passKey), passKey == "VipAngler" and "VIP" or "AQUA", passKey == "VipAngler" and Color3.fromRGB(255, 181, 36) or Color3.fromRGB(58, 174, 205), Enum.InfoType.GamePass)
+		end, mainPanelUI.ownsGamePass(passKey), passKey == "VipAngler" and "VIP" or "AQUA", passKey == "VipAngler" and Color3.fromRGB(255, 181, 36) or Color3.fromRGB(58, 174, 205), Enum.InfoType.GamePass)
 	end
 end
 
-function fishyFishRenderShopBait()
+function mainPanelUI.renderShopBait()
 	for _, productKey in ipairs(MonetizationConfig.DeveloperProductOrder) do
 		local product = MonetizationConfig.DeveloperProducts[productKey]
-		fishyFishRenderRobuxItem(productKey, product, function(key)
+		mainPanelUI.renderRobuxItem(productKey, product, function(key)
 			fireShopAction("PromptProduct", "Product", key)
 		end, false, "BAIT", Color3.fromRGB(116, 94, 255), Enum.InfoType.Product)
 	end
 end
 
-function fishyFishRenderShopCoins()
+function mainPanelUI.renderShopCoins()
 	for _, productKey in ipairs(MonetizationConfig.CoinProductOrder or {}) do
 		local product = MonetizationConfig.DeveloperProducts[productKey]
 		if product then
-			fishyFishRenderRobuxItem(productKey, product, function(key)
+			mainPanelUI.renderRobuxItem(productKey, product, function(key)
 				fireShopAction("PromptProduct", "Product", key)
 			end, false, "COIN", Color3.fromRGB(255, 181, 36), Enum.InfoType.Product)
 		end
 	end
 end
 
-function fishyFishRenderShopStorage()
+function mainPanelUI.renderShopStorage()
 	local summary = makeCard(mainPanelUI.content, 74)
 	local heading = makeText(summary, "Fish Bag Storage", 16, Color3.fromRGB(255, 255, 255), true)
 	heading.Position = UDim2.new(0, 12, 0, 10)
@@ -3424,19 +3485,19 @@ function fishyFishRenderShopStorage()
 
 	for _, passKey in ipairs({ "SmallBag", "MediumBag", "LargeBag" }) do
 		local pass = MonetizationConfig.GamePasses[passKey]
-		fishyFishRenderRobuxItem(passKey, pass, function(key)
+		mainPanelUI.renderRobuxItem(passKey, pass, function(key)
 			fireShopAction("PromptGamePass", "GamePass", key)
-		end, fishyFishOwnsGamePass(passKey), tostring(pass.totalSlots or pass.TotalSlots or GameConfig.BASE_BACKPACK_SIZE) .. " MAX", Color3.fromRGB(76, 160, 92), Enum.InfoType.GamePass)
+		end, mainPanelUI.ownsGamePass(passKey), tostring(pass.totalSlots or pass.TotalSlots or GameConfig.BASE_BACKPACK_SIZE) .. " MAX", Color3.fromRGB(76, 160, 92), Enum.InfoType.GamePass)
 	end
 end
 
-function fishyFishRenderAquariumDesignerControls()
-	local monetization = fishyFishGetMonetizationState()
+function mainPanelUI.renderAquariumDesignerControls()
+	local monetization = mainPanelUI.getMonetizationState()
 	local currentDesign = monetization.AquariumPreviewDesign or monetization.AquariumDesign or MonetizationConfig.AquariumDesigner.defaultDesign
 	local canEditAquarium = state.AquariumView and state.AquariumView.CanEdit == true
 
 	local summary = makeCard(mainPanelUI.content, 96)
-	fishyFishMakeShopIcon(summary, "FREE", Color3.fromRGB(58, 174, 205))
+	mainPanelUI.makeShopIcon(summary, "FREE", Color3.fromRGB(58, 174, 205))
 	local heading = makeText(summary, "Aquarium Designer", 16, Color3.fromRGB(255, 255, 255), true)
 	heading.Position = UDim2.new(0, 76, 0, 8)
 	heading.Size = UDim2.new(1, -194, 0, 22)
@@ -3462,7 +3523,7 @@ function fishyFishRenderAquariumDesignerControls()
 		local premium = item.free ~= true
 		local owned = item.free == true or (state.SeaStarUnlocks and state.SeaStarUnlocks[id] == true)
 		local card = makeCard(mainPanelUI.content, 124)
-		fishyFishMakeShopIcon(card, owned and "OWNED" or "LOCK", owned and Color3.fromRGB(58, 174, 205) or Color3.fromRGB(255, 181, 36))
+		mainPanelUI.makeShopIcon(card, owned and "OWNED" or "LOCK", owned and Color3.fromRGB(58, 174, 205) or Color3.fromRGB(255, 181, 36))
 		local name = makeText(card, (labelPrefix or "") .. item.name, 15, Color3.fromRGB(255, 255, 255), true)
 		name.Position = UDim2.new(0, 76, 0, 8)
 		name.Size = UDim2.new(1, -96, 0, 22)
@@ -3481,7 +3542,7 @@ function fishyFishRenderAquariumDesignerControls()
 		preview.AutoButtonColor = canEditAquarium
 		preview.MouseButton1Click:Connect(function()
 			if canEditAquarium then
-				fireShopAction("PreviewAquariumDesign", "Aquarium", kind, fishyFishCopyAquariumDesignWith({ [kind] = id }))
+				fireShopAction("PreviewAquariumDesign", "Aquarium", kind, mainPanelUI.copyAquariumDesignWith({ [kind] = id }))
 			end
 		end)
 
@@ -3493,7 +3554,7 @@ function fishyFishRenderAquariumDesignerControls()
 		apply.MouseButton1Click:Connect(function()
 			if canEditAquarium then
 				if owned then
-					fireShopAction("ApplyAquariumDesign", "Aquarium", kind, fishyFishCopyAquariumDesignWith({ [kind] = id }))
+					fireShopAction("ApplyAquariumDesign", "Aquarium", kind, mainPanelUI.copyAquariumDesignWith({ [kind] = id }))
 				else
 					fireShopAction("PurchaseAquariumTheme", "AquariumTheme", id)
 				end
@@ -3508,7 +3569,7 @@ function fishyFishRenderAquariumDesignerControls()
 	end
 
 	local signCard = makeCard(mainPanelUI.content, 104)
-	fishyFishMakeShopIcon(signCard, "TEXT", Color3.fromRGB(255, 181, 36))
+	mainPanelUI.makeShopIcon(signCard, "TEXT", Color3.fromRGB(255, 181, 36))
 	local signTitle = makeText(signCard, "Display Sign Text", 15, Color3.fromRGB(255, 255, 255), true)
 	signTitle.Position = UDim2.new(0, 76, 0, 8)
 	signTitle.Size = UDim2.new(1, -194, 0, 22)
@@ -3532,7 +3593,7 @@ function fishyFishRenderAquariumDesignerControls()
 	applySign.AutoButtonColor = canEditAquarium
 	applySign.MouseButton1Click:Connect(function()
 		if canEditAquarium then
-			fireShopAction("ApplyAquariumDesign", "Aquarium", "signText", fishyFishCopyAquariumDesignWith({ signText = signBox.Text }))
+			fireShopAction("ApplyAquariumDesign", "Aquarium", "signText", mainPanelUI.copyAquariumDesignWith({ signText = signBox.Text }))
 		end
 	end)
 end
@@ -3574,16 +3635,16 @@ local function renderShopTab()
 		return
 	end
 
-	fishyFishRenderShopSubTabs()
+	mainPanelUI.renderShopSubTabs()
 
 	if activeShopTab == "Passes" then
-		fishyFishRenderShopGamePasses()
+		mainPanelUI.renderShopGamePasses()
 	elseif activeShopTab == "Items" then
-		fishyFishRenderShopBait()
+		mainPanelUI.renderShopBait()
 	elseif activeShopTab == "Coins" then
-		fishyFishRenderShopCoins()
+		mainPanelUI.renderShopCoins()
 	elseif activeShopTab == "Upgrades" then
-		fishyFishRenderShopStorage()
+		mainPanelUI.renderShopStorage()
 	end
 end
 
@@ -3836,265 +3897,6 @@ RunService.RenderStepped:Connect(function(deltaTime)
 	end
 end)
 
-function minigameUI.legacyRunMinigame(prompt)
-	if minigameRunning then
-		return
-	end
-
-	local isAutoFish = prompt.autoFish == true
-	local fish = prompt.fish or {}
-	local promptBait = prompt.bait or {}
-	local promptBaitId = promptBait.id or (state and state.EquippedBait) or GameConfig.BasicBaitId
-	local promptBaitData = getBaitData(promptBaitId)
-	local promptBaitName = promptBait.name or promptBaitData.displayName
-	local promptBaitText = "Bait: " .. promptBaitName .. " (" .. getBaitCountText(promptBaitId, promptBait.remaining) .. ")"
-	local castText = prompt.cast and prompt.cast.displayName and ("\nCast: " .. prompt.cast.displayName) or ""
-	local minigameConfig = prompt.minigame or GameConfig.getFishingMinigameConfig(fish.rarity or "Common", state and state.EquippedRod or "WoodenRod")
-	local difficulty = minigameConfig.difficulty or GameConfig.FishingMinigame.RarityDifficulty.Common
-	local random = Random.new(math.floor((os.clock() * 100000) % 2147483647))
-
-	minigameRunning = true
-	CastPower.running = false
-	CastPower.activeConfig = nil
-	setMinigameVisible(true)
-	CastPower.content.Visible = false
-	minigameUI.catchButton.Visible = false
-	minigameUI.timingBar.Visible = false
-	minigameUI.zone.Visible = false
-	minigameUI.marker.Visible = false
-	minigameUI.fishingGameContent.Visible = true
-	setMinigameFishIcon(fish)
-
-	minigameUI.minigameText.Text = isAutoFish and "AutoFish is waiting for a bite..." or "Waiting for a bite..."
-	minigameUI.minigameFishInfo.Text = "Something is biting..."
-	minigameUI.minigameProgressText.Text = "Progress --"
-	minigameUI.minigameInstruction.Text = promptBaitText .. castText
-	minigameUI.progressFill.Size = UDim2.new(1, 0, 0, 0)
-	forcePureWhiteText(minigameUI.minigameText)
-
-	task.wait(tonumber(prompt.biteDelay) or 0)
-
-	if not minigameRunning then
-		return
-	end
-
-	local barSize = math.clamp(tonumber(minigameConfig.barSize) or 0.24, 0.16, 0.58)
-	local maxBarTop = 1 - barSize
-	local barTop = math.clamp(0.70, 0, maxBarTop)
-	local barVelocity = 0
-	local fishY = random:NextNumber(0.20, 0.80)
-	local fishTarget = random:NextNumber(0.15, 0.85)
-	local fishVelocity = 0
-	local progress = math.clamp(tonumber(minigameConfig.startProgress) or 0.34, 0.08, 0.86)
-	local minSuccessDuration = tonumber(minigameConfig.minSuccessDuration) or 1.75
-	local maxDuration = tonumber(minigameConfig.maxDuration) or 35
-	local gameStartedAt = os.clock()
-	local nextDecisionAt = gameStartedAt + random:NextNumber(difficulty.turnIntervalMin or 1, difficulty.turnIntervalMax or 2)
-	local pauseUntil = 0
-	local burstUntil = 0
-	local holding = false
-	local finished = false
-
-	minigameUI.catchBar.Size = UDim2.new(1, -32, barSize, 0)
-	minigameUI.catchBar.Position = UDim2.new(0.5, 0, barTop, 0)
-	minigameUI.fishMarker.Position = UDim2.new(0.5, 0, fishY, 0)
-	minigameUI.progressFill.Size = UDim2.new(1, 0, progress, 0)
-	minigameUI.minigameText.Text = isAutoFish and "AutoFish is reeling..." or "Keep the fish inside the green bar!"
-	minigameUI.minigameFishInfo.Text = string.format("%s [%s]\nValue: %d | XP: %d", fish.name or "Fish", fish.rarity or "Common", fish.value or 0, fish.xp or 0)
-	minigameUI.minigameProgressText.Text = string.format("Progress %d%%", math.floor(progress * 100 + 0.5))
-	minigameUI.minigameInstruction.Text = promptBaitText .. castText .. "\n" .. (isAutoFish and "AutoFish is handling this catch." or "Hold mouse, tap, or Space to lift the green bar. Release to let it fall.")
-	forcePureWhiteText(minigameUI.minigameText)
-
-	local renderConnection
-	local inputBeganConnection
-	local inputEndedConnection
-
-	local function disconnectAll()
-		if renderConnection then
-			renderConnection:Disconnect()
-			renderConnection = nil
-		end
-		if inputBeganConnection then
-			inputBeganConnection:Disconnect()
-			inputBeganConnection = nil
-		end
-		if inputEndedConnection then
-			inputEndedConnection:Disconnect()
-			inputEndedConnection = nil
-		end
-	end
-	activeMinigameCleanup = disconnectAll
-
-	local function finish(success)
-		if finished then
-			return
-		end
-
-		finished = true
-		disconnectAll()
-		activeMinigameCleanup = nil
-
-		setMinigameVisible(false)
-		minigameRunning = false
-		fishingBusy = false
-
-		if not isAutoFish then
-			FinishMinigame:FireServer({
-				success = success == true,
-				sessionId = prompt.sessionId,
-			})
-		end
-
-		renderContent()
-	end
-
-	local function isCatchInput(input)
-		return input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch
-			or input.KeyCode == Enum.KeyCode.Space
-	end
-
-	if not isAutoFish then
-		inputBeganConnection = UserInputService.InputBegan:Connect(function(input)
-			if isCatchInput(input) then
-				holding = true
-			end
-		end)
-
-		inputEndedConnection = UserInputService.InputEnded:Connect(function(input)
-			if isCatchInput(input) then
-				holding = false
-			end
-		end)
-	end
-
-	local function chooseFishTarget(fromY, preferFarTarget)
-		if preferFarTarget then
-			local jumpMin = tonumber(difficulty.jumpMin) or 0.12
-			local jumpMax = math.max(jumpMin, tonumber(difficulty.jumpMax) or jumpMin)
-			local direction = random:NextInteger(0, 1) == 0 and -1 or 1
-			local distance = random:NextNumber(jumpMin, jumpMax)
-			local target = fromY + (direction * distance)
-
-			if target < 0.08 or target > 0.92 then
-				target = fromY - (direction * distance)
-			end
-
-			return math.clamp(target, 0.08, 0.92)
-		end
-
-		return random:NextNumber(0.08, 0.92)
-	end
-
-	renderConnection = RunService.RenderStepped:Connect(function(deltaTime)
-		if not minigameRunning or finished then
-			return
-		end
-
-		local now = os.clock()
-		local elapsed = now - gameStartedAt
-
-		if now >= nextDecisionAt then
-			local pauseChance = difficulty.pauseChance or 0
-			local jumpChance = difficulty.jumpChance or 0
-			local burstChance = difficulty.burstChance or 0
-
-			fishTarget = chooseFishTarget(fishY, jumpChance > 0 and random:NextNumber() < jumpChance)
-
-			if pauseChance > 0 and random:NextNumber() < pauseChance then
-				pauseUntil = now + random:NextNumber(difficulty.pauseMin or 0.12, difficulty.pauseMax or 0.45)
-			end
-
-			if burstChance > 0 and random:NextNumber() < burstChance then
-				burstUntil = now + random:NextNumber(difficulty.burstMin or 0.18, difficulty.burstMax or 0.38)
-			end
-
-			nextDecisionAt = now + random:NextNumber(difficulty.turnIntervalMin or 1, difficulty.turnIntervalMax or 2)
-		end
-
-		local targetVelocity = 0
-		if now >= pauseUntil then
-			local distance = fishTarget - fishY
-			local targetSlack = tonumber(difficulty.targetSlack) or 0.025
-			if math.abs(distance) < targetSlack then
-				fishTarget = chooseFishTarget(fishY, false)
-				distance = fishTarget - fishY
-			end
-
-			local direction = distance >= 0 and 1 or -1
-			local jitter = random:NextNumber(-(difficulty.jitter or 0), difficulty.jitter or 0)
-			local speed = tonumber(difficulty.moveSpeed) or 0.25
-			if now < burstUntil then
-				speed *= tonumber(difficulty.burstMultiplier) or 1.35
-			end
-
-			targetVelocity = (direction * speed) + jitter
-		end
-
-		local acceleration = tonumber(difficulty.acceleration) or 6
-		local velocityBlend = math.min(1, acceleration * deltaTime)
-		fishVelocity += (targetVelocity - fishVelocity) * velocityBlend
-		fishY += fishVelocity * deltaTime
-
-		if fishY <= 0.04 then
-			fishY = 0.04
-			fishVelocity = math.abs(fishVelocity) * 0.35
-			fishTarget = math.max(fishTarget, 0.16)
-		elseif fishY >= 0.96 then
-			fishY = 0.96
-			fishVelocity = -math.abs(fishVelocity) * 0.35
-			fishTarget = math.min(fishTarget, 0.84)
-		end
-
-		if isAutoFish then
-			local targetTop = math.clamp(fishY - (barSize / 2), 0, maxBarTop)
-			barTop += (targetTop - barTop) * math.min(1, deltaTime * 5)
-			progress = math.clamp(progress + (minigameConfig.progressGainPerSecond or 0.34) * deltaTime, 0, 1)
-		else
-			local acceleration = holding and -(minigameConfig.lift or 2.75) or (minigameConfig.gravity or 1.8)
-			barVelocity += acceleration * deltaTime
-			barVelocity = math.clamp(barVelocity, -(minigameConfig.maxBarVelocity or 1.65), minigameConfig.maxBarVelocity or 1.65)
-			barVelocity *= math.pow(minigameConfig.damping or 0.90, deltaTime * 60)
-			barTop += barVelocity * deltaTime
-
-			if barTop <= 0 then
-				barTop = 0
-				barVelocity = math.abs(barVelocity) * (minigameConfig.bounceDamping or 0.36)
-			elseif barTop >= maxBarTop then
-				barTop = maxBarTop
-				barVelocity = -math.abs(barVelocity) * (minigameConfig.bounceDamping or 0.36)
-			end
-
-			local fishInsideBar = fishY >= barTop and fishY <= barTop + barSize
-			if fishInsideBar then
-				progress += (minigameConfig.progressGainPerSecond or 0.34) * deltaTime
-			else
-				progress -= (minigameConfig.progressDrainPerSecond or 0.16) * deltaTime
-			end
-			progress = math.clamp(progress, 0, 1)
-		end
-
-		minigameUI.catchBar.Position = UDim2.new(0.5, 0, barTop, 0)
-		minigameUI.fishMarker.Position = UDim2.new(0.5, 0, fishY, 0)
-		minigameUI.progressFill.Size = UDim2.new(1, 0, progress, 0)
-		minigameUI.minigameProgressText.Text = string.format("Progress %d%%", math.floor(progress * 100 + 0.5))
-
-		if isAutoFish and elapsed >= (prompt.visualTime or 3) then
-			minigameUI.minigameText.Text = "AutoFish caught it!"
-			finish(true)
-		elseif not isAutoFish and progress >= 1 and elapsed >= minSuccessDuration then
-			minigameUI.minigameText.Text = "Caught!"
-			finish(true)
-		elseif not isAutoFish and progress <= 0 then
-			minigameUI.minigameText.Text = "The fish escaped!"
-			finish(false)
-		elseif not isAutoFish and elapsed >= maxDuration then
-			minigameUI.minigameText.Text = "The fish escaped!"
-			finish(false)
-		end
-	end)
-end
-
 local function runMinigame(prompt)
 	if minigameRunning then
 		return
@@ -4110,6 +3912,19 @@ local function runMinigame(prompt)
 	CastPower.content.Visible = false
 
 	local lifecycleFinished = false
+	local evidenceStartedAt = tonumber(prompt.receivedAt) or os.clock()
+	local inputSequence = 0
+	local function sendInputEvidence(event)
+		inputSequence += 1
+		FinishMinigame:FireServer({
+			action = "Input",
+			sessionId = prompt.sessionId,
+			sequence = inputSequence,
+			kind = event.kind,
+			holding = event.holding,
+			elapsed = event.elapsed,
+		})
+	end
 	local function complete(success, isAutoFish)
 		if lifecycleFinished then
 			return
@@ -4120,11 +3935,14 @@ local function runMinigame(prompt)
 		minigameUI.setFishingVisible(false)
 		minigameRunning = false
 		fishingBusy = false
+		toolSwitchLock.set(false)
 
 		if not isAutoFish then
 			FinishMinigame:FireServer({
+				action = "Complete",
 				success = success == true,
 				sessionId = prompt.sessionId,
+				elapsed = math.max(0, os.clock() - evidenceStartedAt),
 			})
 		end
 
@@ -4147,6 +3965,8 @@ local function runMinigame(prompt)
 			getBaitCountText = getBaitCountText,
 			setFishIcon = setMinigameFishIcon,
 			forcePureWhiteText = forcePureWhiteText,
+			startedAt = evidenceStartedAt,
+			onInputEvent = sendInputEvidence,
 			onFinish = complete,
 		})
 	end)
@@ -4196,6 +4016,7 @@ end
 
 StateUpdated.OnClientEvent:Connect(function(newState)
 	state = newState
+	MonetizationConfig.ApplyResolvedProductIds(newState.Monetization and newState.Monetization.DeveloperProductIds)
 	syncEquippedRodAttributes()
 
 	refreshHud()
@@ -4213,6 +4034,7 @@ StateUpdated.OnClientEvent:Connect(function(newState)
 end)
 
 FishingPrompt.OnClientEvent:Connect(function(prompt)
+	prompt.receivedAt = os.clock()
 	if prompt.autoFish then
 		showToast("AutoFish is catching...")
 	elseif prompt.cast and prompt.cast.displayName then
@@ -4240,6 +4062,7 @@ Notice.OnClientEvent:Connect(function(message)
 	end
 
 	showToast(message)
+	toolSwitchLock.set(false)
 	fishingBusy = false
 	minigameRunning = false
 	CastPower.running = false
@@ -4263,7 +4086,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if isAquariumViewerFallbackInput then
 		openAquariumHub()
 	elseif input.KeyCode == Enum.KeyCode.F and state and not fishingBusy and getActiveFishingBiomeId() then
-		startManualFishing()
+		CastPower.startManualFishing()
 	elseif input.KeyCode == Enum.KeyCode.B then
 		setTab("Bag")
 	end
@@ -4276,11 +4099,16 @@ task.spawn(function()
 
 	if success and result then
 		state = result
+		MonetizationConfig.ApplyResolvedProductIds(result.Monetization and result.Monetization.DeveloperProductIds)
 		syncEquippedRodAttributes()
 	end
 
 	renderContent()
 	updateAquariumViewerFallbackButton()
+end)
+
+player.CharacterAdded:Connect(function()
+	toolSwitchLock.set(false)
 end)
 
 local locationCheckElapsed = 0

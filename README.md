@@ -16,12 +16,29 @@ Then open Roblox Studio, open the Rojo plugin, and connect to:
 localhost:34872
 ```
 
-### Studio UI safety
+### Authored UI and safe Studio sync
 
-`StarterGui` is intentionally not mapped in `default.project.json`. The Roblox
-Studio version of the UI is authoritative, so connecting Rojo will not replace
-or delete UI work. Export the current Studio UI before adding `StarterGui` back
-to the Rojo project.
+The UI hierarchy is authored in `src/ui` and mapped into `StarterGui`. Visual
+instances live in Explorer; LocalScripts and ModuleScripts bind state, remotes,
+navigation, and dynamic lists to those instances.
+
+For a UI-only Studio sync, serve `ui-migration.project.json` instead of the full
+project. It owns the migrated ScreenGuis but does not map `Workspace` or server
+scripts, so it cannot replace the map:
+
+```bash
+bin/rojo serve ui-migration.project.json --port 34874
+```
+
+After syncing, save or publish the Team Create place. Collaborators do not need
+Rojo; they receive the authored StarterGui hierarchy from the shared place when
+they reopen or rejoin Studio.
+
+Run the structural UI checks before syncing:
+
+```bash
+python tools/validate_ui_migration.py
+```
 
 To build a place file from scratch:
 
