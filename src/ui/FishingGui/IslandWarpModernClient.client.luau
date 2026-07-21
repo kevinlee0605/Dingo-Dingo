@@ -15,6 +15,8 @@ local root = authoredHost:WaitForChild("ModernIslandWarp")
 local uiScale = root:WaitForChild("ResponsiveScale")
 local closeButton = root:WaitForChild("CloseButton")
 local scroll = root:WaitForChild("IslandList")
+local scrollTrack = root:WaitForChild("IslandScrollbarTrack")
+local scrollThumb = root:WaitForChild("IslandScrollbarThumb")
 local listHolder = scroll:WaitForChild("Cards")
 local layout = listHolder:FindFirstChildOfClass("UIListLayout")
 local cardTemplate = root:WaitForChild("IslandCardTemplate")
@@ -24,6 +26,8 @@ assert(root:IsA("ImageLabel"), "ModernIslandWarp must be an authored ImageLabel"
 assert(uiScale:IsA("UIScale"), "ModernIslandWarp.ResponsiveScale must be authored")
 assert(closeButton:IsA("ImageButton"), "ModernIslandWarp.CloseButton must be authored")
 assert(scroll:IsA("ScrollingFrame"), "ModernIslandWarp.IslandList must be authored")
+assert(scrollTrack:IsA("Frame"), "ModernIslandWarp.IslandScrollbarTrack must be authored")
+assert(scrollThumb:IsA("ImageButton"), "ModernIslandWarp.IslandScrollbarThumb must be authored")
 assert(listHolder:IsA("Frame") and layout, "ModernIslandWarp.Cards layout must be authored")
 assert(cardTemplate:IsA("Frame"), "ModernIslandWarp.IslandCardTemplate must be authored")
 
@@ -37,6 +41,52 @@ local ISLAND_WARP_UI_SIZE_MULTIPLIER = 0.70
 local SCROLL_WHEEL_STEP = 135
 local CARD_HEIGHT = 300
 local CARD_GAP = 26
+local CARD_WIDTH = 1106
+local CARD_RIGHT_EXTENSION = 16
+local SCROLL_THUMB_WIDTH = 14
+local SCROLL_THUMB_X = 1178
+local SCROLL_TRACK_Y = 176
+
+-- The authored list viewport is slightly wider than each island card. Center
+-- the vertical stack so that spare width is split evenly between both sides.
+layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+local function hideNativeScrollbar()
+	scroll.ScrollBarThickness = 0
+	scroll.ScrollBarImageTransparency = 1
+	scroll.VerticalScrollBarInset = Enum.ScrollBarInset.None
+end
+
+local function updateCustomScrollbar()
+	local viewportHeight = math.max(1, scroll.AbsoluteWindowSize.Y)
+	local contentHeight = math.max(scroll.AbsoluteCanvasSize.Y, viewportHeight)
+	local trackHeight = math.max(1, scrollTrack.AbsoluteSize.Y)
+	local scrollRange = math.max(0, contentHeight - viewportHeight)
+	local visibleRatio = scrollRange > 0 and viewportHeight / contentHeight or 0.72
+	local thumbHeight = math.clamp(
+		math.floor(trackHeight * visibleRatio),
+		90,
+		trackHeight
+	)
+	local travel = math.max(0, trackHeight - thumbHeight)
+	local progress = scrollRange > 0
+		and math.clamp(scroll.CanvasPosition.Y / scrollRange, 0, 1)
+		or 0
+	scrollThumb.Visible = true
+	scrollThumb.Active = scrollRange > 1
+	scrollThumb.Size = UDim2.fromOffset(SCROLL_THUMB_WIDTH, thumbHeight)
+	scrollThumb.Position = UDim2.fromOffset(
+		SCROLL_THUMB_X,
+		SCROLL_TRACK_Y + math.floor(travel * progress)
+	)
+end
+
+hideNativeScrollbar()
+scroll:GetPropertyChangedSignal("ScrollBarThickness"):Connect(hideNativeScrollbar)
+scroll:GetPropertyChangedSignal("ScrollBarImageTransparency"):Connect(hideNativeScrollbar)
+scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(updateCustomScrollbar)
+scroll:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(updateCustomScrollbar)
+scroll:GetPropertyChangedSignal("AbsoluteWindowSize"):Connect(updateCustomScrollbar)
 
 local ASSETS = {
 	LilyshoreIsland = "rbxassetid://94386681729236",
@@ -102,15 +152,15 @@ local function addPressFeedback(button)
 	local originalSize = button.Size
 	local pressedPosition = UDim2.new(
 		originalPosition.X.Scale,
-		originalPosition.X.Offset + 4,
+		originalPosition.X.Offset + 3,
 		originalPosition.Y.Scale,
-		originalPosition.Y.Offset + 4
+		originalPosition.Y.Offset + 3
 	)
 	local pressedSize = UDim2.new(
 		originalSize.X.Scale,
-		originalSize.X.Offset - 8,
+		originalSize.X.Offset - 6,
 		originalSize.Y.Scale,
-		originalSize.Y.Offset - 8
+		originalSize.Y.Offset - 6
 	)
 	local buttonTween
 	local artworkTween
@@ -251,6 +301,7 @@ local function configureIslandCard(island, layoutOrder)
 	card.Name = island.id .. "Card"
 	card.LayoutOrder = layoutOrder
 	card.Visible = true
+	card.Size = UDim2.fromOffset(CARD_WIDTH, CARD_HEIGHT)
 	card:SetAttribute("IslandWarpDynamicCard", true)
 
 	local icon = requireChild(card, "IslandIcon", "Frame")
@@ -280,6 +331,7 @@ local function configureIslandCard(island, layoutOrder)
 	end
 
 	local goButton = requireChild(card, "GoButton", "ImageButton")
+	goButton.Position = UDim2.fromOffset(790 + CARD_RIGHT_EXTENSION, 74)
 	requireChild(goButton, "Label", "TextLabel").Text = "GO"
 	addPressFeedback(goButton)
 	goButton.MouseButton1Click:Connect(function()
@@ -296,6 +348,14 @@ for _, child in ipairs(listHolder:GetChildren()) do
 		child:Destroy()
 	end
 end
+local comingSoonCard = listHolder:FindFirstChild("ComingSoonCard")
+if comingSoonCard and comingSoonCard:IsA("Frame") then
+	comingSoonCard.Size = UDim2.fromOffset(CARD_WIDTH, CARD_HEIGHT)
+	local comingSoonButton = comingSoonCard:FindFirstChild("GoButton")
+	if comingSoonButton and comingSoonButton:IsA("GuiObject") then
+		comingSoonButton.Position = UDim2.fromOffset(790 + CARD_RIGHT_EXTENSION, 74)
+	end
+end
 for index, island in ipairs(ISLANDS) do
 	configureIslandCard(island, index)
 end
@@ -306,8 +366,9 @@ local function updateScrollCanvas()
 		local contentHeight = (cardCount * CARD_HEIGHT)
 			+ ((cardCount - 1) * CARD_GAP)
 			+ 24
-		listHolder.Size = UDim2.new(1, -16, 0, contentHeight)
+		listHolder.Size = UDim2.new(1, 0, 0, contentHeight)
 		scroll.CanvasSize = UDim2.fromOffset(0, contentHeight)
+		updateCustomScrollbar()
 	end)
 end
 layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateScrollCanvas)

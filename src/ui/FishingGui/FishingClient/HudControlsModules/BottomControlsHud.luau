@@ -59,6 +59,11 @@ function BottomControlsHud.create(deps, refs)
 	local autoInnerRing = requiredChild(autoCircle, "InnerRing", "Frame")
 	local autoInnerStroke = requiredChild(autoInnerRing, "InnerStroke", "UIStroke")
 	local autoVisualText = requiredChild(autoCircle, "AutoText", "TextLabel")
+	local autoVisualTextConstraint = requiredChild(
+		autoVisualText,
+		"UITextSizeConstraint",
+		"UITextSizeConstraint"
+	)
 
 	local tapButton = requiredChild(centerControls, "TapButton", "TextButton")
 	local tapPressScale = requiredChild(tapButton, "PressScale", "UIScale")
@@ -72,6 +77,11 @@ function BottomControlsHud.create(deps, refs)
 	local tapVisualScale = requiredChild(tapVisual, "PressScale", "UIScale")
 	local tapVisualCenter = requiredChild(tapVisual, "TranslucentCenter", "Frame")
 	local tapVisualText = requiredChild(tapVisualCenter, "TapText", "TextLabel")
+	local tapVisualTextConstraint = requiredChild(
+		tapVisualText,
+		"UITextSizeConstraint",
+		"UITextSizeConstraint"
+	)
 
 	local centerTitle = requiredChild(centerControls, "CenterTitle", "TextLabel")
 	requiredChild(centerTitle, "UITextSizeConstraint", "UITextSizeConstraint")
@@ -92,9 +102,9 @@ function BottomControlsHud.create(deps, refs)
 	refs.centerTitle = centerTitle
 	refs.centerBaitText = centerBaitText
 
-	autoTitleText.Font = Enum.Font.FredokaOne
-	autoStateText.Font = Enum.Font.FredokaOne
-	tapStateText.Font = Enum.Font.FredokaOne
+	autoTitleText.Font = Enum.Font.GothamBlack
+	autoStateText.Font = Enum.Font.GothamBlack
+	tapStateText.Font = Enum.Font.GothamBlack
 
 	autoImage.Image = BUTTON_BACKBONE_IMAGE
 	tapImage.Image = BUTTON_BACKBONE_IMAGE
@@ -158,7 +168,8 @@ function BottomControlsHud.create(deps, refs)
 		end
 
 		positioningAuto = true
-		autoButton.Size = UDim2.fromOffset(104, 104)
+		-- Keep the two interaction areas identical to their responsive layout.
+		autoButton.Size = tapButton.Size
 		local autoSize = autoButton.AbsoluteSize
 		local gap = math.clamp(tapSize.Y * 0.08, 8, 20)
 		local targetCenterX = tapButton.AbsolutePosition.X + tapSize.X * 0.5 + tapSize.X * 0.38
@@ -178,6 +189,46 @@ function BottomControlsHud.create(deps, refs)
 		positioningAuto = false
 	end
 
+	local viewportConnection = nil
+	local function updateResponsiveButtonLayout()
+		local camera = Workspace.CurrentCamera
+		local viewport = camera and camera.ViewportSize or Vector2.new(1920, 1080)
+		local isMobile = math.min(viewport.X, viewport.Y) <= 600
+
+		local visualSize = isMobile and 108 or 140
+		local buttonWidth = isMobile and 220 or 268
+		local buttonHeight = isMobile and 115 or 140
+		local textSize = isMobile and 20 or 28
+
+		tapButton.Size = UDim2.fromOffset(buttonWidth, buttonHeight)
+		autoButton.Size = UDim2.fromOffset(buttonWidth, buttonHeight)
+		tapVisual.Size = UDim2.fromOffset(visualSize, visualSize)
+		autoVisual.Size = UDim2.fromOffset(visualSize, visualSize)
+
+		-- On phones, move the whole pair above and to the right of the hotbar.
+		tapButton.Position = if isMobile
+			then UDim2.new(0.87, 0, 0.22, 0)
+			else UDim2.new(0.68, 0, 0.50, 0)
+
+		for _, label in ipairs({ tapVisualText, autoVisualText }) do
+			label.AnchorPoint = Vector2.new(0.5, 0.5)
+			label.Position = UDim2.fromScale(0.5, 0.5)
+			label.Size = UDim2.fromScale(0.86, 0.48)
+			label.Font = Enum.Font.GothamBlack
+			label.TextScaled = false
+			label.TextSize = textSize
+			label.TextWrapped = false
+			label.TextXAlignment = Enum.TextXAlignment.Center
+			label.TextYAlignment = Enum.TextYAlignment.Center
+		end
+		autoVisualTextConstraint.MinTextSize = 16
+		autoVisualTextConstraint.MaxTextSize = textSize
+		tapVisualTextConstraint.MinTextSize = 16
+		tapVisualTextConstraint.MaxTextSize = textSize
+
+		task.defer(positionAutoButton)
+	end
+
 	for _, object in ipairs({ centerControls, tapButton, autoButton }) do
 		object:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
 			task.defer(positionAutoButton)
@@ -186,10 +237,23 @@ function BottomControlsHud.create(deps, refs)
 			task.defer(positionAutoButton)
 		end)
 	end
+	local function bindViewport()
+		if viewportConnection then
+			viewportConnection:Disconnect()
+			viewportConnection = nil
+		end
+		local camera = Workspace.CurrentCamera
+		if camera then
+			viewportConnection = camera:GetPropertyChangedSignal("ViewportSize"):Connect(
+				updateResponsiveButtonLayout
+			)
+		end
+		updateResponsiveButtonLayout()
+	end
 	Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
-		task.defer(positionAutoButton)
+		bindViewport()
 	end)
-	task.defer(positionAutoButton)
+	bindViewport()
 
 	local function setAutoFishVisual(isOn)
 		if isOn then

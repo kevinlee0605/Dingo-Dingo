@@ -54,7 +54,7 @@
 					<XS>0.5</XS>
 					<XO>0</XO>
 					<YS>0.5</YS>
-					<YO>-60</YO>
+					<YO>-29</YO>
 				</UDim2>
 				<UDim2 name="Size">
 					<XS>0</XS>
@@ -350,7 +350,7 @@
 					<float name="BackgroundTransparency">1</float>
 					<int name="BorderSizePixel">0</int>
 					<bool name="ClipsDescendants">false</bool>
-					<token name="Font">26</token>
+					<token name="Font">19</token>
 					<int name="LayoutOrder">0</int>
 					<UDim2 name="Position">
 						<XS>0</XS>
@@ -528,7 +528,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -580,7 +580,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -755,7 +755,7 @@
 							<float name="BackgroundTransparency">1</float>
 							<int name="BorderSizePixel">0</int>
 							<bool name="ClipsDescendants">false</bool>
-							<token name="Font">26</token>
+							<token name="Font">19</token>
 							<int name="LayoutOrder">0</int>
 							<UDim2 name="Position">
 								<XS>0</XS>
@@ -966,7 +966,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -1018,7 +1018,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -1193,7 +1193,7 @@
 							<float name="BackgroundTransparency">1</float>
 							<int name="BorderSizePixel">0</int>
 							<bool name="ClipsDescendants">false</bool>
-							<token name="Font">26</token>
+							<token name="Font">19</token>
 							<int name="LayoutOrder">0</int>
 							<UDim2 name="Position">
 								<XS>0</XS>
@@ -1362,7 +1362,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -1414,7 +1414,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -2029,7 +2029,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>

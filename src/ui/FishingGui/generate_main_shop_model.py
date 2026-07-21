@@ -35,6 +35,7 @@ ASSETS = {
     "CloseButton": "rbxassetid://119322438066977",
     "DecorationCastle": "rbxassetid://120613246130409",
     "SeaStar": "rbxassetid://139079837785295",
+    "AquariumViewerButton": "rbxassetid://114227393517533",
 }
 
 CROPS = {
@@ -47,6 +48,8 @@ CROPS = {
     "GreenButton": ((1254, 1254), (117, 480), (1015, 372)),
     "RedButton": ((1254, 1254), (119, 479), (1011, 375)),
     "ScrollBar": ((1448, 1086), (683, 29), (65, 1021)),
+    "ScrollBarThumb": ((1448, 1086), (701, 77), (30, 825)),
+    "ScrollBarChannel": ((1448, 1086), (701, 914), (30, 90)),
     "CloseButton": ((1187, 1326), (375, 422), (427, 439)),
     "DecorationCastle": ((632, 432), (173, 66), (255, 250)),
 }
@@ -234,7 +237,7 @@ def image_row_template():
         [
             row_art,
             text_node("Title", "Item", 38, (255, 255, 255), True, udim2(0, 228, 0, 24), udim2(1, -520, 0, 48), 216),
-            text_node("Description", "", 23, (178, 194, 235), False, udim2(0, 228, 0, 74), udim2(1, -520, 0, 32), 216),
+            text_node("Description", "", 23, (178, 194, 235), True, udim2(0, 228, 0, 74), udim2(1, -520, 0, 32), 216, stroke_transparency=0.35),
             text_node("Price", "", 24, (255, 216, 59), True, udim2(0, 228, 0, 110), udim2(1, -520, 0, 32), 216),
             action_image_button(),
         ]
@@ -297,7 +300,7 @@ def product_template():
             stroke(20, 128, 255, 3, 0.08),
             icon,
             text_node("Title", "Product", 30, (255, 255, 255), True, udim2(0, 174, 0, 18), udim2(1, -486, 0, 42), 213, wrapped=True, stroke_transparency=0.15),
-            text_node("Description", "", 21, (178, 194, 235), False, udim2(0, 174, 0, 61), udim2(1, -486, 0, 40), 213, valign=0, wrapped=True, stroke_transparency=0.15),
+            text_node("Description", "", 21, (178, 194, 235), True, udim2(0, 174, 0, 61), udim2(1, -486, 0, 40), 213, valign=0, wrapped=True, stroke_transparency=0.35),
             text_node("Value", "", 23, (255, 216, 59), True, udim2(0, 174, 0, 108), udim2(1, -486, 0, 32), 213, wrapped=True, stroke_transparency=0.15),
             action,
         ]
@@ -514,15 +517,39 @@ def legacy_main_panel_templates():
 def make_aquarium_viewer_fallback_button():
     button = legacy_content_button(
         "AquariumViewerFallbackButton",
-        "Open Viewer",
+        "",
         (53, 130, 246),
-        udim2(1, -18, 1, -82),
-        udim2(0, 146, 0, 48),
+        udim2(1, -18, 0, 160),
+        udim2(0, 210, 0, 53),
         text_size=14,
     )
-    button.props["AnchorPoint"] = vec2(1, 1)
+    button.props["AnchorPoint"] = vec2(1, 0)
+    button.props["AutoButtonColor"] = prop("bool", False)
+    button.props["BackgroundTransparency"] = prop("float", 1)
+    button.props["BorderSizePixel"] = prop("int", 0)
     button.props["Visible"] = prop("bool", False)
     button.props["ZIndex"] = prop("int", 31)
+    button.children = [
+        Node(
+            "ImageLabel",
+            "ButtonArtwork",
+            {
+                **gui_props(
+                    position=udim2(0.5, 0, 0.5, 0),
+                    size=udim2(0.94924, 0, 1.01318, 0),
+                    transparency=1,
+                    zindex=31,
+                ),
+                # The Viewer upload has wider transparent edge padding than the
+                # Editor upload. Centering this visual-only correction makes the
+                # two visible outer frames exactly the same size.
+                "AnchorPoint": vec2(0.5, 0.5),
+                "Image": prop("Content", ASSETS["AquariumViewerButton"]),
+                "ImageTransparency": prop("float", 0),
+                "ScaleType": prop("token", 0),
+            },
+        )
+    ]
     return button
 
 
@@ -618,15 +645,19 @@ def make_main_panel():
         position=udim2(0, 1333, 0, 264),
         size=udim2(0, 28, 0, 738),
         background=color(1, 19, 55),
-        transparency=0.04,
+        transparency=1,
         zindex=210,
     )
     scroll_track.props["Active"] = prop("bool", True)
+    scroll_track_art = artwork("ScrollBar")
+    scroll_track_art.props["ZIndex"] = prop("int", 210)
     scroll_track.children.extend(
         [
-            corner(0, 14),
-            stroke(0, 82, 190, 2, 0.25),
-            image_holder("ModernShopScrollThumb", "ScrollBar", udim2(0, 1, 0, 0), udim2(0, 26, 0, 210), 213, button=True),
+            corner(0, 28),
+            stroke(0, 82, 190, 2, 1),
+            scroll_track_art,
+            image_holder("ScrollbarChannel", "ScrollBarChannel", udim2(0.28, 0, 0.05, 0), udim2(0.44, 0, 0.82, 0), 211),
+            image_holder("ModernShopScrollThumb", "ScrollBarThumb", udim2(0, 7, 0, 0), udim2(0, 14, 0, 210), 213, button=True),
         ]
     )
     skin.children.append(scroll_track)

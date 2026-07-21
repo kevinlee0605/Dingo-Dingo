@@ -3,6 +3,7 @@
 -- StarterGui > FishingGui > FishdexVisualPatch
 
 local Players = game:GetService("Players")
+local GuiService = game:GetService("GuiService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
@@ -50,9 +51,9 @@ local TAB_CONFIG = {
 		icon = ASSETS.LilyshoreIslandIcon,
 		selectedImage = ASSETS.IslandTabSelected,
 		unselectedImage = ASSETS.IslandTabUnselected,
-		textX = 0.63,
-		textWidth = 0.60,
-		textSize = 32,
+		textX = 0.62,
+		textWidth = 0.72,
+		textSize = 22,
 		iconX = 0.16,
 		iconSize = UDim2.fromOffset(60, 60),
 	},
@@ -61,9 +62,9 @@ local TAB_CONFIG = {
 		icon = ASSETS.RiverbendIslandIcon,
 		selectedImage = ASSETS.IslandTabSelected,
 		unselectedImage = ASSETS.IslandTabUnselected,
-		textX = 0.63,
-		textWidth = 0.60,
-		textSize = 32,
+		textX = 0.62,
+		textWidth = 0.72,
+		textSize = 22,
 		iconX = 0.16,
 		iconSize = UDim2.fromOffset(60, 60),
 	},
@@ -72,9 +73,9 @@ local TAB_CONFIG = {
 		icon = ASSETS.CoralCoastIslandIcon,
 		selectedImage = ASSETS.IslandTabSelected,
 		unselectedImage = ASSETS.IslandTabUnselected,
-		textX = 0.63,
-		textWidth = 0.62,
-		textSize = 31,
+		textX = 0.62,
+		textWidth = 0.74,
+		textSize = 20,
 		iconX = 0.16,
 		iconSize = UDim2.fromOffset(60, 60),
 	},
@@ -84,6 +85,15 @@ local CARD_WIDTH = 390
 local CARD_HEIGHT = 270
 local CARD_GAP_X = 24
 local CARD_GAP_Y = 22
+
+local RARITY_BADGE_STYLE = {
+	COMMON = { width = 0.54, fill = Color3.fromRGB(82, 92, 112), border = Color3.fromRGB(190, 202, 224) },
+	UNCOMMON = { width = 0.64, fill = Color3.fromRGB(20, 150, 60), border = Color3.fromRGB(83, 255, 112) },
+	RARE = { width = 0.44, fill = Color3.fromRGB(0, 103, 220), border = Color3.fromRGB(0, 207, 255) },
+	EPIC = { width = 0.44, fill = Color3.fromRGB(105, 34, 190), border = Color3.fromRGB(188, 92, 255) },
+	LEGENDARY = { width = 0.66, fill = Color3.fromRGB(205, 100, 0), border = Color3.fromRGB(255, 181, 42) },
+	MYTHIC = { width = 0.51, fill = Color3.fromRGB(185, 25, 90), border = Color3.fromRGB(255, 88, 145) },
+}
 
 local selectedTabName = "AllTab"
 
@@ -96,11 +106,11 @@ local selectedTabName = "AllTab"
 -- The 18px thumb stays centered inside the 30px track with equal side gaps.
 local CUSTOM_SCROLL_X = 1390
 local CUSTOM_SCROLL_Y = 310
-local CUSTOM_SCROLL_WIDTH = 24
+local CUSTOM_SCROLL_WIDTH = 28
 local CUSTOM_SCROLL_HEIGHT = 520
 local CUSTOM_SCROLL_MIN_THUMB_HEIGHT = 90
-local CUSTOM_SCROLL_TRACK_PADDING = 2
-local CUSTOM_SCROLL_THUMB_WIDTH = 20
+local CUSTOM_SCROLL_TRACK_PADDING = 0
+local CUSTOM_SCROLL_THUMB_WIDTH = 14
 
 
 local function findModernFishdex()
@@ -196,7 +206,13 @@ local function patchBase(modernRoot)
 
 	-- 전체 Fishdex UI 위치
 	-- 두 번째 숫자를 줄이면 위로, 키우면 아래로 이동
-	modernRoot.Position = UDim2.fromScale(0.5, 0.43)
+	local topLeftInset, bottomRightInset = GuiService:GetGuiInset()
+	modernRoot.Position = UDim2.new(
+		0.5,
+		math.round((bottomRightInset.X - topLeftInset.X) * 0.5),
+		0.5,
+		math.round((bottomRightInset.Y - topLeftInset.Y) * 0.5)
+	)
 
 	modernRoot.ScaleType = Enum.ScaleType.Stretch
 	modernRoot.BackgroundTransparency = 1
@@ -208,12 +224,13 @@ local function patchHeader(modernRoot)
 	local title = modernRoot:FindFirstChild("FishdexTitle")
 	if title and title:IsA("TextLabel") then
 		title.AnchorPoint = Vector2.new(0.5, 0)
-		title.Position = UDim2.fromOffset(790, 25)
-		title.Size = UDim2.fromOffset(650, 112)
+		-- The 1536px authored canvas center is X=768.
+		title.Position = UDim2.fromOffset(768, 35)
+		title.Size = UDim2.fromOffset(420, 96)
 		title.Text = "FISHDEX"
 		title.TextScaled = false
-		title.TextSize = 132
-		title.Font = Enum.Font.FredokaOne
+		title.TextSize = 72
+		title.Font = Enum.Font.GothamBlack
 		-- 기본 TextStroke는 끄기
 		title.TextStrokeTransparency = 1
 
@@ -228,15 +245,17 @@ local function patchHeader(modernRoot)
 		titleOutline.Thickness = 4
 		titleOutline.Transparency = 0
 		title.TextStrokeTransparency = 0
-		setTextConstraint(title, 38, 88)
+		setTextConstraint(title, 32, 72)
 		title.ZIndex = 210
 	end
 
 	local book = requireAuthoredChild(modernRoot, "ImageLabel", "FishdexHeaderIcon")
 	book.BackgroundTransparency = 1
 	book.AnchorPoint = Vector2.new(0.5, 0)
-	book.Position = UDim2.fromOffset(540, 10)
-	book.Size = UDim2.fromOffset(114, 114)
+	-- Keep the header icon visually grouped with the title on PC/tablet.
+	-- Mobile receives its own compact position in refreshCompactLayout().
+	book.Position = UDim2.fromOffset(563, 30)
+	book.Size = UDim2.fromOffset(94, 94)
 	book.Image = ASSETS.FishdexIcon
 	book.ScaleType = Enum.ScaleType.Fit
 	book.ZIndex = 210
@@ -279,19 +298,22 @@ local function patchHeader(modernRoot)
 		staticVisual.ZIndex = 212
 		staticVisual.ImageColor3 = Color3.new(1, 1, 1)
 
-		-- Press feedback without moving the X button.
-		-- The visual shrinks slightly and darkens while pressed, then springs back.
+		-- Match the Daily Quest X-button press exactly while keeping the invisible
+		-- click target locked in place for the legacy close handler.
 		local pressScale = requireAuthoredChild(
 			staticVisual,
 			"UIScale",
 			"ClosePressScale"
 		)
+		pressScale.Scale = 1
 
 		if not closeButton:GetAttribute("FishdexClosePressFeedbackConnected") then
 			closeButton:SetAttribute("FishdexClosePressFeedbackConnected", true)
 
 			local pressTween = nil
 			local isPressed = false
+			local visualPosition = fixedPosition
+			local visualSize = fixedSize
 
 			local function tweenPressState(pressed)
 				isPressed = pressed
@@ -300,21 +322,25 @@ local function patchHeader(modernRoot)
 				end
 
 				pressTween = TweenService:Create(
-					pressScale,
-					TweenInfo.new(
-						pressed and 0.055 or 0.11,
-						pressed and Enum.EasingStyle.Quad or Enum.EasingStyle.Back,
-						Enum.EasingDirection.Out
-					),
-					{ Scale = pressed and 0.88 or 1 }
+					staticVisual,
+					TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+					{
+						Position = UDim2.new(
+							visualPosition.X.Scale,
+							visualPosition.X.Offset + (pressed and 3 or 0),
+							visualPosition.Y.Scale,
+							visualPosition.Y.Offset + (pressed and 3 or 0)
+						),
+						Size = UDim2.new(
+							visualSize.X.Scale,
+							visualSize.X.Offset - (pressed and 6 or 0),
+							visualSize.Y.Scale,
+							visualSize.Y.Offset - (pressed and 6 or 0)
+						),
+						ImageTransparency = pressed and 0.16 or 0,
+					}
 				)
 				pressTween:Play()
-
-				TweenService:Create(
-					staticVisual,
-					TweenInfo.new(pressed and 0.055 or 0.10, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-					{ ImageColor3 = pressed and Color3.fromRGB(205, 205, 205) or Color3.new(1, 1, 1) }
-				):Play()
 			end
 
 			closeButton.InputBegan:Connect(function(input)
@@ -393,14 +419,14 @@ local function patchTab(button)
 		title.AnchorPoint = Vector2.new(0.5, 0.5)
 		title.Position = UDim2.fromScale(cfg.textX, 0.50)
 		title.Size = UDim2.fromScale(cfg.textWidth, 0.68)
-		title.Font = Enum.Font.FredokaOne
+		title.Font = Enum.Font.GothamBlack
 		title.Text = cfg.label
 		title.TextScaled = true
 		title.TextSize = cfg.textSize
 		title.TextColor3 = Color3.fromRGB(255,255,255)
 		title.TextStrokeColor3 = Color3.fromRGB(0,0,0)
 		title.TextStrokeTransparency = 0
-		setTextConstraint(title, 14, cfg.textSize)
+		setTextConstraint(title, 10, cfg.textSize)
 		title.ZIndex = 208
 	end
 
@@ -410,6 +436,8 @@ local function patchTab(button)
 	icon.Position = UDim2.fromScale(cfg.iconX, 0.5)
 	icon.Size = cfg.iconSize
 	icon.Image = cfg.icon
+	icon.ImageTransparency = 0
+	icon.Visible = true
 	icon.ScaleType = Enum.ScaleType.Fit
 	icon.ZIndex = 208
 	icon.Active = false
@@ -439,7 +467,7 @@ local function patchCollection(modernRoot)
 	checked.BackgroundTransparency = 1
 	checked.AnchorPoint = Vector2.new(0.5, 0.5)
 	checked.Position = UDim2.fromScale(0.20, 0.50)
-	checked.Size = UDim2.fromOffset(78, 78)
+	checked.Size = UDim2.fromOffset(92, 92)
 	checked.Image = ASSETS.CheckedIcon
 	checked.ScaleType = Enum.ScaleType.Fit
 	checked.ZIndex = 208
@@ -449,17 +477,17 @@ local function patchCollection(modernRoot)
 		title.BackgroundTransparency = 1
 		title.AnchorPoint = Vector2.new(0.5, 0.5)
 		title.Position = UDim2.fromScale(0.64, 0.28)
-		title.Size = UDim2.fromScale(0.58, 0.30)
-		title.Font = Enum.Font.FredokaOne
+		title.Size = UDim2.fromScale(0.62, 0.34)
+		title.Font = Enum.Font.GothamBlack
 		title.Text = "Collection"
 		title.TextScaled = false
-		title.TextSize = 30
+		title.TextSize = 28
 		title.TextXAlignment = Enum.TextXAlignment.Center
 		title.TextYAlignment = Enum.TextYAlignment.Center
 		title.TextColor3 = Color3.fromRGB(50, 241, 255)
 		title.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 		title.TextStrokeTransparency = 0
-		setTextConstraint(title, 16, 30)
+		setTextConstraint(title, 16, 28)
 	end
 
 	local count = panel:FindFirstChild("CollectionCount")
@@ -467,17 +495,73 @@ local function patchCollection(modernRoot)
 		count.BackgroundTransparency = 1
 		count.AnchorPoint = Vector2.new(0.5, 0.5)
 		count.Position = UDim2.fromScale(0.64, 0.68)
-		count.Size = UDim2.fromScale(0.54, 0.38)
-		count.Font = Enum.Font.FredokaOne
+		count.Size = UDim2.fromScale(0.66, 0.42)
+		count.Font = Enum.Font.GothamBlack
 		count.TextScaled = false
-		count.TextSize = 38
+		count.TextSize = 34
 		count.TextXAlignment = Enum.TextXAlignment.Center
 		count.TextYAlignment = Enum.TextYAlignment.Center
 		count.TextColor3 = Color3.fromRGB(255, 255, 255)
 		count.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 		count.TextStrokeTransparency = 0
-		setTextConstraint(count, 20, 38)
+		setTextConstraint(count, 20, 34)
 	end
+end
+
+local function styleRarityBadge(badge, rarityText)
+	local rarityName = string.upper(rarityText.Text or "")
+	local style = RARITY_BADGE_STYLE[rarityName] or RARITY_BADGE_STYLE.COMMON
+
+	badge.AnchorPoint = Vector2.new(0.5, 0.5)
+	badge.Position = UDim2.fromScale(0.5, 0.84)
+	badge.Size = UDim2.new(style.width, 0, 0.15, 0)
+	badge.ImageTransparency = 1
+	badge.BackgroundTransparency = 0
+	badge.BackgroundColor3 = style.fill
+	badge.ZIndex = 207
+
+	local corner = badge:FindFirstChild("ReferenceCorner") or Instance.new("UICorner")
+	corner.Name = "ReferenceCorner"
+	corner.CornerRadius = UDim.new(0, 12)
+	corner.Parent = badge
+
+	local border = badge:FindFirstChild("ReferenceBorder") or Instance.new("UIStroke")
+	border.Name = "ReferenceBorder"
+	border.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	border.Color = style.border
+	border.Thickness = 3
+	border.Transparency = 0
+	border.Parent = badge
+
+	local gradient = badge:FindFirstChild("ReferenceGradient") or Instance.new("UIGradient")
+	gradient.Name = "ReferenceGradient"
+	gradient.Color = ColorSequence.new(
+		Color3.fromRGB(255, 255, 255),
+		Color3.fromRGB(190, 200, 220)
+	)
+	-- Keep the entire rarity plate opaque. The former high transparency made
+	-- the badge read as an outline instead of a filled rarity colour.
+	gradient.Transparency = NumberSequence.new(0)
+	gradient.Rotation = 90
+	gradient.Parent = badge
+
+	rarityText.AnchorPoint = Vector2.new(0.5, 0.5)
+	rarityText.Position = UDim2.fromScale(0.5, 0.5)
+	rarityText.Size = UDim2.fromScale(0.88, 0.72)
+	rarityText.BackgroundTransparency = 1
+	rarityText.Font = Enum.Font.GothamBlack
+	rarityText.TextScaled = true
+	rarityText.TextXAlignment = Enum.TextXAlignment.Center
+	rarityText.TextYAlignment = Enum.TextYAlignment.Center
+	-- Tier text must remain subordinate to the fish name (max 25 px).
+	setTextConstraint(rarityText, 9, 18)
+	rarityText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	rarityText.TextStrokeTransparency = 0
+	rarityText.ZIndex = 208
+end
+
+local function patchMobileRarityBadge(badge, rarityText)
+	styleRarityBadge(badge, rarityText)
 end
 
 local function patchFishCard(card)
@@ -487,8 +571,43 @@ local function patchFishCard(card)
 
 	card.ScaleType = Enum.ScaleType.Stretch
 	card.Image = ASSETS.FishyBackGround
-	card.BackgroundTransparency = 1
+	card.ImageTransparency = 1
+	card.BackgroundTransparency = 0
+	card.BackgroundColor3 = Color3.fromRGB(2, 31, 82)
 	card.ZIndex = 206
+
+	local cardCorner = card:FindFirstChild("ReferenceCardCorner") or Instance.new("UICorner")
+	cardCorner.Name = "ReferenceCardCorner"
+	cardCorner.CornerRadius = UDim.new(0, 18)
+	cardCorner.Parent = card
+
+	local cardBorder = card:FindFirstChild("ReferenceCardBorder") or Instance.new("UIStroke")
+	cardBorder.Name = "ReferenceCardBorder"
+	cardBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	cardBorder.Color = Color3.fromRGB(10, 112, 255)
+	cardBorder.Thickness = 3
+	cardBorder.Transparency = 0
+	cardBorder.Parent = card
+
+	local innerBorder = card:FindFirstChild("ReferenceInnerBorder") or Instance.new("Frame")
+	innerBorder.Name = "ReferenceInnerBorder"
+	innerBorder.BackgroundTransparency = 1
+	innerBorder.BorderSizePixel = 0
+	innerBorder.Position = UDim2.fromOffset(8, 8)
+	innerBorder.Size = UDim2.new(1, -16, 1, -16)
+	innerBorder.ZIndex = 206
+	innerBorder.Parent = card
+	local innerCorner = innerBorder:FindFirstChild("ReferenceInnerCorner") or Instance.new("UICorner")
+	innerCorner.Name = "ReferenceInnerCorner"
+	innerCorner.CornerRadius = UDim.new(0, 14)
+	innerCorner.Parent = innerBorder
+	local innerStroke = innerBorder:FindFirstChild("ReferenceInnerStroke") or Instance.new("UIStroke")
+	innerStroke.Name = "ReferenceInnerStroke"
+	innerStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	innerStroke.Color = Color3.fromRGB(7, 76, 181)
+	innerStroke.Thickness = 2
+	innerStroke.Transparency = 0.18
+	innerStroke.Parent = innerBorder
 
 	local fishImage = card:FindFirstChild("FishImage")
 	if fishImage and fishImage:IsA("ImageLabel") then
@@ -503,10 +622,10 @@ local function patchFishCard(card)
 	local fishName = card:FindFirstChild("FishName")
 	if fishName and fishName:IsA("TextLabel") then
 		fishName.AnchorPoint = Vector2.new(0.5, 0.5)
-		fishName.Position = UDim2.new(0.5, 0, 0.67, 0)
+		fishName.Position = UDim2.new(0.5, 0, 0.64, 0)
 		fishName.Size = UDim2.new(0.92, 0, 0.16, 0)
 		fishName.BackgroundTransparency = 1
-		fishName.Font = Enum.Font.FredokaOne
+		fishName.Font = Enum.Font.GothamBlack
 		fishName.TextScaled = true
 		setTextConstraint(fishName, 12, 25)
 		fishName.TextColor3 = Color3.fromRGB(255,255,255)
@@ -522,42 +641,58 @@ local function patchFishCard(card)
 
 		-- 원본 배지 이미지에는 투명 여백이 있어서 ImageLabel 자체를 크게 잡아야
 		-- 실제로 보이는 색상 탭이 참고 이미지와 비슷한 크기가 된다.
-		badge.Size = UDim2.new(0.84, 0, 0.28, 0)
+		-- The rarity artwork contains transparent padding. Enlarge the artwork,
+		-- not the font, so the visible colour plate contains the full label.
+		badge.Size = UDim2.new(0.98, 0, 0.34, 0)
 		badge.ScaleType = Enum.ScaleType.Stretch
 		badge.ZIndex = 207
 
 		local rarityText = badge:FindFirstChild("RarityText")
 		if rarityText and rarityText:IsA("TextLabel") then
 			local rarityName = string.upper(rarityText.Text or "")
-			local rarityTextWidth = 0.30
-			local rarityTextMaxSize = 17
+			local rarityTextWidth = 0.70
+			local rarityTextMaxSize = 15
 
 			if rarityName == "UNCOMMON" then
 				-- UNCOMMON은 글자가 길고 원본 배지 이미지에 투명 여백이 많아서
 				-- 배지 자체를 별도로 더 크게 잡아 글자 주변 여백을 확보한다.
-				badge.Size = UDim2.new(1.02, 0, 0.34, 0)
-				rarityTextWidth = 0.38
+				badge.Size = UDim2.new(1.14, 0, 0.38, 0)
+				rarityTextWidth = 0.84
 				rarityTextMaxSize = 15
 			elseif rarityName == "LEGENDARY" then
-				rarityTextWidth = 0.45
+				badge.Size = UDim2.new(1.16, 0, 0.38, 0)
+				rarityTextWidth = 0.84
+				rarityTextMaxSize = 15
 			elseif rarityName == "COMMON" then
-				rarityTextWidth = 0.34
+				rarityTextWidth = 0.78
 			elseif rarityName == "MYTHIC" then
-				rarityTextWidth = 0.32
+				rarityTextWidth = 0.68
 			elseif rarityName == "RARE" or rarityName == "EPIC" then
-				rarityTextWidth = 0.25
+				rarityTextWidth = 0.58
 			end
 
+			local rarityTextY = 0.5
+			if rarityName == "EPIC" then
+				rarityTextY = 0.47
+			elseif rarityName == "LEGENDARY" then
+				rarityTextY = 0.47
+			end
 			rarityText.AnchorPoint = Vector2.new(0.5, 0.5)
-			rarityText.Position = UDim2.fromScale(0.5, 0.5)
-			rarityText.Size = UDim2.new(rarityTextWidth, 0, 0.34, 0)
+			rarityText.Position = UDim2.fromScale(0.5, rarityTextY)
+			rarityText.Size = UDim2.new(rarityTextWidth, 0, 0.50, 0)
 			rarityText.BackgroundTransparency = 1
-			rarityText.Font = Enum.Font.FredokaOne
+			rarityText.Font = Enum.Font.GothamBlack
 			rarityText.TextScaled = true
+			-- Cloned cards can retain alignment values from older templates.
+			-- Explicitly center every rarity label, including Epic/Legendary.
+			rarityText.TextXAlignment = Enum.TextXAlignment.Center
+			rarityText.TextYAlignment = Enum.TextYAlignment.Center
 			setTextConstraint(rarityText, 8, rarityTextMaxSize)
 			rarityText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 			rarityText.TextStrokeTransparency = 0
 			rarityText.ZIndex = 208
+			styleRarityBadge(badge, rarityText)
+			patchMobileRarityBadge(badge, rarityText)
 		end
 	end
 
@@ -614,10 +749,10 @@ local function patchCustomScrollbar(modernRoot, cardsScroll)
 		cardsScroll:GetPropertyChangedSignal("ScrollBarImageTransparency"):Connect(hideNativeScrollbar)
 	end
 
-	-- One single dark track. There is no inner slot/frame.
+	-- Use the exact Daily Quest scrollbar crop for the Fishdex track.
 	local track = requireAuthoredChild(modernRoot, "Frame", "FishdexCustomScrollTrack")
-	track.BackgroundColor3 = Color3.fromRGB(3, 22, 62)
-	track.BackgroundTransparency = 0
+	track.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	track.BackgroundTransparency = 1
 	track.BorderSizePixel = 0
 	track.Position = UDim2.fromOffset(CUSTOM_SCROLL_X, CUSTOM_SCROLL_Y)
 	track.Size = UDim2.fromOffset(CUSTOM_SCROLL_WIDTH, CUSTOM_SCROLL_HEIGHT)
@@ -625,6 +760,24 @@ local function patchCustomScrollbar(modernRoot, cardsScroll)
 	track.ClipsDescendants = true
 	track.Visible = true
 	track.ZIndex = 214
+	local trackArtwork = requireAuthoredChild(track, "ImageLabel", "QuestScrollbarTrackArt")
+	trackArtwork.Image = ASSETS.CustomScrollBar
+	trackArtwork.ImageRectOffset = Vector2.new(683, 29)
+	trackArtwork.ImageRectSize = Vector2.new(65, 1021)
+	trackArtwork.Position = UDim2.fromScale(0, 0)
+	trackArtwork.Size = UDim2.fromScale(1, 1)
+	trackArtwork.ScaleType = Enum.ScaleType.Stretch
+	trackArtwork.ImageTransparency = 0
+	trackArtwork.ZIndex = 215
+	local scrollbarChannel = requireAuthoredChild(track, "Frame", "ScrollbarChannel")
+	local channelArtwork = requireAuthoredChild(scrollbarChannel, "ImageLabel", "Artwork")
+	channelArtwork.Image = ASSETS.CustomScrollBar
+	channelArtwork.ImageRectOffset = Vector2.new(701, 914)
+	channelArtwork.ImageRectSize = Vector2.new(30, 90)
+	channelArtwork.Position = UDim2.fromScale(0, 0)
+	channelArtwork.Size = UDim2.fromScale(1, 1)
+	channelArtwork.ScaleType = Enum.ScaleType.Stretch
+	channelArtwork.ImageTransparency = 0
 
 	local trackCorner = requireAuthoredChild(track, "UICorner", "TrackCorner")
 	trackCorner.CornerRadius = UDim.new(1, 0)
@@ -632,7 +785,7 @@ local function patchCustomScrollbar(modernRoot, cardsScroll)
 	local trackStroke = requireAuthoredChild(track, "UIStroke", "TrackStroke")
 	trackStroke.Color = Color3.fromRGB(18, 93, 245)
 	trackStroke.Thickness = 2
-	trackStroke.Transparency = 0.08
+	trackStroke.Transparency = 1
 
 	local trackGradient = requireAuthoredChild(track, "UIGradient", "TrackGradient")
 	trackGradient.Rotation = 0
@@ -642,13 +795,16 @@ local function patchCustomScrollbar(modernRoot, cardsScroll)
 		ColorSequenceKeypoint.new(1, Color3.fromRGB(8, 39, 101)),
 	})
 
-	-- The glowing thumb is a direct child of the track, centered horizontally.
+	-- The moving thumb uses the matching Daily Quest thumb crop.
 	local thumb = requireAuthoredChild(track, "ImageButton", "FishdexCustomScrollThumb")
 	thumb.AnchorPoint = Vector2.new(0.5, 0)
-	thumb.BackgroundColor3 = Color3.fromRGB(0, 118, 255)
-	thumb.BackgroundTransparency = 0
+	thumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	thumb.BackgroundTransparency = 1
 	thumb.BorderSizePixel = 0
-	thumb.Image = ""
+	thumb.Image = ASSETS.CustomScrollBar
+	thumb.ImageRectOffset = Vector2.new(701, 77)
+	thumb.ImageRectSize = Vector2.new(30, 825)
+	thumb.ScaleType = Enum.ScaleType.Stretch
 	thumb.AutoButtonColor = false
 	thumb.Active = true
 	thumb.Selectable = false
@@ -658,25 +814,23 @@ local function patchCustomScrollbar(modernRoot, cardsScroll)
 	thumbCorner.CornerRadius = UDim.new(1, 0)
 
 	local thumbGradient = requireAuthoredChild(thumb, "UIGradient", "ThumbGradient")
-	thumbGradient.Rotation = 90
-	thumbGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 239, 255)),
-		ColorSequenceKeypoint.new(0.34, Color3.fromRGB(0, 167, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 72, 235)),
-	})
+	thumbGradient.Enabled = false
+	thumbGradient.Rotation = 0
+	thumbGradient.Color = ColorSequence.new(Color3.new(1, 1, 1))
 
 	local thumbStroke = requireAuthoredChild(thumb, "UIStroke", "ThumbGlowStroke")
 	thumbStroke.Color = Color3.fromRGB(0, 235, 255)
 	thumbStroke.Thickness = 2
-	thumbStroke.Transparency = 0
+	thumbStroke.Transparency = 1
 
 	local thumbHighlight = requireAuthoredChild(thumb, "Frame", "ThumbHighlight")
 	thumbHighlight.BackgroundColor3 = Color3.fromRGB(188, 252, 255)
-	thumbHighlight.BackgroundTransparency = 0.43
+	thumbHighlight.BackgroundTransparency = 1
 	thumbHighlight.BorderSizePixel = 0
 	thumbHighlight.Position = UDim2.fromScale(0.18, 0.04)
 	thumbHighlight.Size = UDim2.fromScale(0.18, 0.92)
 	thumbHighlight.Active = false
+	thumbHighlight.Visible = false
 	thumbHighlight.ZIndex = 217
 
 	local highlightCorner = requireAuthoredChild(
@@ -695,9 +849,9 @@ local function patchCustomScrollbar(modernRoot, cardsScroll)
 
 		local canvasHeight = math.max(cardsScroll.AbsoluteCanvasSize.Y, viewportHeight)
 		local scrollRange = math.max(0, canvasHeight - viewportHeight)
-		local visibleRatio = canvasHeight > 0
+		local visibleRatio = scrollRange > 0
 			and math.clamp(viewportHeight / canvasHeight, 0, 1)
-			or 1
+			or 0.72
 
 		local minimumHeight = math.min(CUSTOM_SCROLL_MIN_THUMB_HEIGHT, usableHeight)
 		local thumbHeight = math.clamp(usableHeight * visibleRatio, minimumHeight, usableHeight)
@@ -847,7 +1001,7 @@ local function patchCards(modernRoot)
 	end
 
 	cardsScroll.Position = UDim2.fromOffset(125, 300)
-	cardsScroll.Size = UDim2.fromOffset(1275, 610)
+	cardsScroll.Size = UDim2.fromOffset(1286, 610)
 	cardsScroll.BackgroundTransparency = 1
 	cardsScroll.ZIndex = 205
 	cardsScroll.ScrollBarThickness = 0
@@ -857,11 +1011,17 @@ local function patchCards(modernRoot)
 	if not cardsHolder then
 		return
 	end
+	-- Leave enough room for the card UIStroke to render on every outer edge.
+	-- Centering the holder also prevents the first column from being clipped by
+	-- the ScrollingFrame's left boundary.
+	cardsHolder.Position = UDim2.fromOffset(3, 3)
+	cardsHolder.Size = UDim2.new(1, -6, 0, 0)
 
 	local grid = cardsHolder:FindFirstChildOfClass("UIGridLayout")
 	if grid then
 		grid.CellSize = UDim2.fromOffset(CARD_WIDTH, CARD_HEIGHT)
 		grid.CellPadding = UDim2.fromOffset(CARD_GAP_X, CARD_GAP_Y)
+		grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	end
 
 	for _, child in ipairs(cardsHolder:GetChildren()) do
@@ -1011,5 +1171,67 @@ end
 
 local modernRoot = findModernFishdex()
 patchModernFishdex(modernRoot)
+
+local function refreshCompactLayout()
+	if not modernRoot.Parent then
+		return
+	end
+	patchHeader(modernRoot)
+	patchCollection(modernRoot)
+	refreshTabs(modernRoot)
+	patchCards(modernRoot)
+
+	local camera = workspace.CurrentCamera
+	local viewport = camera and camera.ViewportSize or Vector2.new(1920, 1080)
+	if math.min(viewport.X, viewport.Y) <= 600 then
+		local title = requireAuthoredChild(modernRoot, "TextLabel", "FishdexTitle")
+		title.Position = UDim2.fromOffset(768, 41)
+		title.Size = UDim2.fromOffset(320, 76)
+		title.TextSize = 52
+		setTextConstraint(title, 26, 52)
+
+		local book = requireAuthoredChild(modernRoot, "ImageLabel", "FishdexHeaderIcon")
+		book.Position = UDim2.fromOffset(545, 35)
+		book.Size = UDim2.fromOffset(90, 90)
+
+		-- The whole panel is intentionally larger on phones, so counter-scale
+		-- card typography and stretch the padded badge artwork to keep rarity
+		-- labels centered inside their visible colour plates.
+		local cardsScroll = requireAuthoredChild(
+			modernRoot,
+			"ScrollingFrame",
+			"FishCardsScroll"
+		)
+		local cardsHolder = requireAuthoredChild(cardsScroll, "Frame", "CardsHolder")
+		for _, card in ipairs(cardsHolder:GetChildren()) do
+			if card:IsA("ImageLabel") and string.match(card.Name, "Card$") then
+				local badge = card:FindFirstChild("RarityBadge")
+				local rarityText = badge and badge:FindFirstChild("RarityText")
+				if badge and badge:IsA("ImageLabel")
+					and rarityText and rarityText:IsA("TextLabel") then
+					patchMobileRarityBadge(badge, rarityText)
+				end
+			end
+		end
+
+		local panel = requireAuthoredChild(modernRoot, "ImageLabel", "CollectionPanel")
+		panel.Position = UDim2.fromOffset(1150, 850)
+		panel.Size = UDim2.fromOffset(292, 92)
+		local checked = requireAuthoredChild(panel, "ImageLabel", "CheckedIcon")
+		checked.Size = UDim2.fromOffset(62, 62)
+		local collectionTitle = requireAuthoredChild(panel, "TextLabel", "CollectionTitle")
+		collectionTitle.TextSize = 18
+		setTextConstraint(collectionTitle, 11, 18)
+		local collectionCount = requireAuthoredChild(panel, "TextLabel", "CollectionCount")
+		collectionCount.TextSize = 21
+		setTextConstraint(collectionCount, 13, 21)
+	end
+end
+
+refreshCompactLayout()
+local compactCamera = workspace.CurrentCamera
+if compactCamera then
+	compactCamera:GetPropertyChangedSignal("ViewportSize"):Connect(refreshCompactLayout)
+end
 
 print("[FishdexVisualPatch_REDESIGN_v22_ShortTrackThumbFit] Loaded.")

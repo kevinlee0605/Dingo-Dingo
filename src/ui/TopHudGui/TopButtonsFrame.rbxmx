@@ -36,7 +36,7 @@
 		<Item class="UIScale" referent="RBX00000002">
 			<Properties>
 				<string name="Name">TopHudScale</string>
-				<float name="Scale">0.74</float>
+				<float name="Scale">0.86</float>
 			</Properties>
 		</Item>
 		<Item class="UISizeConstraint" referent="RBX00000003">

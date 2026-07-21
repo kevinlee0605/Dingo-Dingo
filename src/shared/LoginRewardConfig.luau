@@ -208,7 +208,9 @@ function LoginRewardConfig.FormatReward(reward)
 	if (reward.resourceCount or 0) > 0 then
 		table.insert(parts, tostring(reward.resourceCount) .. " weighted resources")
 	end
-	if reward.decorationReward then
+	if (reward.decorationFallbackSeaStars or 0) > 0 then
+		table.insert(parts, tostring(reward.decorationFallbackSeaStars) .. " Sea Stars")
+	elseif reward.decorationReward then
 		table.insert(parts, "1 new aquarium decoration (or 10 Sea Stars)")
 	end
 	return table.concat(parts, " • ")

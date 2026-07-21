@@ -311,8 +311,8 @@
 				<UDim2 name="Position">
 					<XS>0.5</XS>
 					<XO>0</XO>
-					<YS>0.4</YS>
-					<YO>0</YO>
+					<YS>0.5</YS>
+					<YO>-29</YO>
 				</UDim2>
 				<UDim2 name="Size">
 					<XS>0</XS>
@@ -326,7 +326,7 @@
 			<Item class="UIScale" referent="RBX0000000F">
 				<Properties>
 					<string name="Name">ModernShopScale</string>
-					<float name="Scale">0.36</float>
+					<float name="Scale">0.432</float>
 				</Properties>
 			</Item>
 			<Item class="Frame" referent="RBX00000010">
@@ -751,9 +751,9 @@
 							<G>0.07450980392156863</G>
 							<B>0.21568627450980393</B>
 						</Color3>
-						<float name="BackgroundTransparency">0.04</float>
+						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
-						<bool name="ClipsDescendants">false</bool>
+						<bool name="ClipsDescendants">true</bool>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -770,6 +770,54 @@
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">210</int>
 					</Properties>
+					<Item class="ImageLabel" referent="RBXSHOPSCROLLTRACKART">
+						<Properties>
+							<string name="Name">Artwork</string>
+							<Vector2 name="AnchorPoint"><X>0</X><Y>0</Y></Vector2>
+							<Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<Content name="Image"><url>rbxassetid://73367138577137</url></Content>
+							<float name="ImageTransparency">0</float>
+							<UDim2 name="Position"><XS>-10.507692307692308</XS><XO>0</XO><YS>-0.02840352595494613</YS><YO>0</YO></UDim2>
+							<token name="ScaleType">0</token>
+							<UDim2 name="Size"><XS>22.276923076923076</XS><XO>0</XO><YS>1.0636630754162586</YS><YO>0</YO></UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">210</int>
+						</Properties>
+					</Item>
+					<Item class="Frame" referent="RBXSHOPSCROLLCHANNEL">
+						<Properties>
+							<string name="Name">ScrollbarChannel</string>
+							<Vector2 name="AnchorPoint"><X>0</X><Y>0</Y></Vector2>
+							<Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">true</bool>
+							<UDim2 name="Position"><XS>0.28</XS><XO>0</XO><YS>0.05</YS><YO>0</YO></UDim2>
+							<UDim2 name="Size"><XS>0.44</XS><XO>0</XO><YS>0.82</YS><YO>0</YO></UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">211</int>
+						</Properties>
+						<Item class="ImageLabel" referent="RBXSHOPSCROLLCHANNELART">
+							<Properties>
+								<string name="Name">Artwork</string>
+								<Vector2 name="AnchorPoint"><X>0</X><Y>0</Y></Vector2>
+								<Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
+								<float name="BackgroundTransparency">1</float>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<Content name="Image"><url>rbxassetid://73367138577137</url></Content>
+								<float name="ImageTransparency">0</float>
+								<UDim2 name="Position"><XS>-23.366666666666667</XS><XO>0</XO><YS>-10.155555555555555</YS><YO>0</YO></UDim2>
+								<token name="ScaleType">0</token>
+								<UDim2 name="Size"><XS>48.266666666666666</XS><XO>0</XO><YS>12.066666666666666</YS><YO>0</YO></UDim2>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">211</int>
+							</Properties>
+						</Item>
+					</Item>
 					<Item class="UICorner" referent="RBX0000001D">
 						<Properties>
 							<string name="Name">UICorner</string>
@@ -814,14 +862,14 @@
 							<int name="LayoutOrder">0</int>
 							<UDim2 name="Position">
 								<XS>0</XS>
-								<XO>1</XO>
+								<XO>7</XO>
 								<YS>0</YS>
 								<YO>0</YO>
 							</UDim2>
 							<bool name="Selectable">true</bool>
 							<UDim2 name="Size">
 								<XS>0</XS>
-								<XO>26</XO>
+								<XO>14</XO>
 								<YS>0</YS>
 								<YO>210</YO>
 							</UDim2>
@@ -849,16 +897,16 @@
 								<float name="ImageTransparency">0</float>
 								<int name="LayoutOrder">0</int>
 								<UDim2 name="Position">
-									<XS>-10.507692307692308</XS>
+									<XS>-23.366666666666667</XS>
 									<XO>0</XO>
-									<YS>-0.02840352595494613</YS>
+									<YS>-0.09333333333333334</YS>
 									<YO>0</YO>
 								</UDim2>
 								<token name="ScaleType">0</token>
 								<UDim2 name="Size">
-									<XS>22.276923076923076</XS>
+									<XS>48.266666666666666</XS>
 									<XO>0</XO>
-									<YS>1.0636630754162586</YS>
+									<YS>1.3163636363636364</YS>
 									<YO>0</YO>
 								</UDim2>
 								<bool name="Visible">true</bool>
@@ -1243,7 +1291,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">17</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -1270,7 +1318,7 @@
 							<G>0.07058823529411765</G>
 							<B>0.17254901960784313</B>
 						</Color3>
-						<float name="TextStrokeTransparency">1</float>
+						<float name="TextStrokeTransparency">0.35</float>
 						<float name="TextTransparency">0</float>
 						<bool name="TextWrapped">false</bool>
 						<token name="TextXAlignment">0</token>
@@ -1685,7 +1733,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">17</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -1712,7 +1760,7 @@
 							<G>0.07058823529411765</G>
 							<B>0.17254901960784313</B>
 						</Color3>
-						<float name="TextStrokeTransparency">0.15</float>
+						<float name="TextStrokeTransparency">0.35</float>
 						<float name="TextTransparency">0</float>
 						<bool name="TextWrapped">true</bool>
 						<token name="TextXAlignment">0</token>

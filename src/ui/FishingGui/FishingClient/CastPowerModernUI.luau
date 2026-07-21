@@ -5,6 +5,7 @@
 -- and moving white marker. Input and server logic remain in FishingClient.
 
 local CastPowerModernUI = {}
+local UserInputService = game:GetService("UserInputService")
 
 -- Instruction text styling
 local RELEASE_TEXT_COLOR_HEX = "#043FD0"
@@ -28,6 +29,9 @@ end
 local UI_SCALE_MULTIPLIER = 0.55
 local UI_X = 0.50
 local UI_Y = 0.64
+local MOBILE_UI_Y = 0.50
+local DESKTOP_INSTRUCTION_Y = -640
+local MOBILE_INSTRUCTION_Y = -190
 local BASE_WIDTH = 1280
 local BASE_HEIGHT = 340
 
@@ -98,6 +102,10 @@ function CastPowerModernUI.updateResponsiveScale()
 	local viewport = camera
 		and camera.ViewportSize
 		or Vector2.new(1920, 1080)
+	local shortest = math.min(viewport.X, viewport.Y)
+	local longest = math.max(viewport.X, viewport.Y)
+	local isMobile = UserInputService.TouchEnabled
+		and (shortest <= 600 or longest / math.max(shortest, 1) >= 1.75)
 
 	local fit = math.min(
 		(viewport.X * 0.92) / BASE_WIDTH,
@@ -114,11 +122,16 @@ function CastPowerModernUI.updateResponsiveScale()
 		ui.sparkleScale.Scale = responsiveScale
 	end
 
-	ui.content.Position =
-		UDim2.fromScale(UI_X, UI_Y)
+	local positionY = isMobile and MOBILE_UI_Y or UI_Y
+	ui.content.Position = UDim2.fromScale(UI_X, positionY)
 	if ui.sparkleLayer then
-		ui.sparkleLayer.Position =
-			UDim2.fromScale(UI_X, UI_Y)
+		ui.sparkleLayer.Position = UDim2.fromScale(UI_X, positionY)
+	end
+	if ui.title then
+		ui.title.Position = UDim2.fromOffset(
+			0,
+			isMobile and MOBILE_INSTRUCTION_Y or DESKTOP_INSTRUCTION_Y
+		)
 	end
 end
 

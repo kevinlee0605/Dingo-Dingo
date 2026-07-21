@@ -54,7 +54,7 @@
 					<XS>0.5</XS>
 					<XO>0</XO>
 					<YS>0.5</YS>
-					<YO>-70</YO>
+					<YO>0</YO>
 				</UDim2>
 				<UDim2 name="Size">
 					<XS>0</XS>
@@ -158,7 +158,7 @@
 					<float name="BackgroundTransparency">1</float>
 					<int name="BorderSizePixel">0</int>
 					<bool name="ClipsDescendants">false</bool>
-					<token name="Font">26</token>
+					<token name="Font">19</token>
 					<int name="LayoutOrder">0</int>
 					<UDim2 name="Position">
 						<XS>0</XS>
@@ -283,7 +283,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -379,7 +379,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -475,7 +475,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -571,7 +571,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -651,15 +651,15 @@
 						<B>1.0</B>
 					</Color3>
 					<float name="ScrollBarImageTransparency">0</float>
-					<int name="ScrollBarThickness">7</int>
+					<int name="ScrollBarThickness">0</int>
 					<token name="ScrollingDirection">2</token>
 					<UDim2 name="Size">
 						<XS>0</XS>
-						<XO>1316</XO>
+						<XO>1324</XO>
 						<YS>0</YS>
 						<YO>712</YO>
 					</UDim2>
-					<token name="VerticalScrollBarInset">1</token>
+					<token name="VerticalScrollBarInset">0</token>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">304</int>
 				</Properties>
@@ -676,11 +676,11 @@
 						</UDim>
 						<UDim name="PaddingRight">
 							<S>0</S>
-							<O>30</O>
+							<O>2</O>
 						</UDim>
 						<UDim name="PaddingTop">
 							<S>0</S>
-							<O>2</O>
+							<O>18</O>
 						</UDim>
 					</Properties>
 				</Item>
@@ -697,6 +697,95 @@
 						<token name="VerticalAlignment">1</token>
 					</Properties>
 				</Item>
+			</Item>
+			<Item class="Frame" referent="RBX00000047">
+				<Properties>
+					<string name="Name">BagScrollbarTrack</string>
+					<bool name="Active">true</bool>
+					<Vector2 name="AnchorPoint"><X>0</X><Y>0</Y></Vector2>
+					<Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">true</bool>
+					<UDim2 name="Position"><XS>0</XS><XO>1363</XO><YS>0</YS><YO>286</YO></UDim2>
+					<UDim2 name="Size"><XS>0</XS><XO>28</XO><YS>0</YS><YO>712</YO></UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">308</int>
+				</Properties>
+				<Item class="ImageLabel" referent="RBX00000048">
+					<Properties>
+						<string name="Name">Artwork</string>
+						<Vector2 name="AnchorPoint"><X>0</X><Y>0</Y></Vector2>
+						<Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<Content name="Image"><url>rbxassetid://73367138577137</url></Content>
+						<Vector2 name="ImageRectOffset"><X>683</X><Y>29</Y></Vector2>
+						<Vector2 name="ImageRectSize"><X>65</X><Y>1021</Y></Vector2>
+						<float name="ImageTransparency">0</float>
+						<UDim2 name="Position"><XS>0</XS><XO>0</XO><YS>0</YS><YO>0</YO></UDim2>
+						<token name="ScaleType">0</token>
+						<UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO></UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">308</int>
+					</Properties>
+				</Item>
+				<Item class="Frame" referent="RBXBAGSCROLLCHANNEL">
+					<Properties>
+						<string name="Name">ScrollbarChannel</string>
+						<Vector2 name="AnchorPoint"><X>0</X><Y>0</Y></Vector2>
+						<Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">true</bool>
+						<UDim2 name="Position"><XS>0.28</XS><XO>0</XO><YS>0.05</YS><YO>0</YO></UDim2>
+						<UDim2 name="Size"><XS>0.44</XS><XO>0</XO><YS>0.82</YS><YO>0</YO></UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">308</int>
+					</Properties>
+					<Item class="ImageLabel" referent="RBXBAGSCROLLCHANNELART">
+						<Properties>
+							<string name="Name">Artwork</string>
+							<Vector2 name="AnchorPoint"><X>0</X><Y>0</Y></Vector2>
+							<Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<Content name="Image"><url>rbxassetid://73367138577137</url></Content>
+							<Vector2 name="ImageRectOffset"><X>701</X><Y>914</Y></Vector2>
+							<Vector2 name="ImageRectSize"><X>30</X><Y>90</Y></Vector2>
+							<float name="ImageTransparency">0</float>
+							<UDim2 name="Position"><XS>0</XS><XO>0</XO><YS>0</YS><YO>0</YO></UDim2>
+							<token name="ScaleType">0</token>
+							<UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO></UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">308</int>
+						</Properties>
+					</Item>
+				</Item>
+			</Item>
+			<Item class="ImageButton" referent="RBX00000049">
+				<Properties>
+					<string name="Name">BagScrollbarThumb</string>
+					<bool name="Active">true</bool>
+					<Vector2 name="AnchorPoint"><X>0</X><Y>0</Y></Vector2>
+					<bool name="AutoButtonColor">false</bool>
+					<Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<Content name="Image"><url>rbxassetid://73367138577137</url></Content>
+					<Vector2 name="ImageRectOffset"><X>701</X><Y>77</Y></Vector2>
+					<Vector2 name="ImageRectSize"><X>30</X><Y>825</Y></Vector2>
+					<float name="ImageTransparency">0</float>
+					<UDim2 name="Position"><XS>0</XS><XO>1370</XO><YS>0</YS><YO>286</YO></UDim2>
+					<token name="ScaleType">0</token>
+					<bool name="Selectable">false</bool>
+					<UDim2 name="Size"><XS>0</XS><XO>14</XO><YS>0</YS><YO>180</YO></UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">309</int>
+				</Properties>
 			</Item>
 		</Item>
 		<Item class="Folder" referent="RBX00000017">
@@ -1054,7 +1143,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -1106,7 +1195,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -1158,7 +1247,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -1210,7 +1299,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -1262,7 +1351,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -1314,7 +1403,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -1366,7 +1455,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -1418,7 +1507,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -1470,7 +1559,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -1522,7 +1611,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -1583,7 +1672,7 @@
 						<float name="BackgroundTransparency">0</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>1</XS>
@@ -1720,7 +1809,7 @@
 							<float name="BackgroundTransparency">1</float>
 							<int name="BorderSizePixel">0</int>
 							<bool name="ClipsDescendants">false</bool>
-							<token name="Font">26</token>
+							<token name="Font">19</token>
 							<int name="LayoutOrder">0</int>
 							<UDim2 name="Position">
 								<XS>0</XS>
@@ -1772,7 +1861,7 @@
 							<float name="BackgroundTransparency">1</float>
 							<int name="BorderSizePixel">0</int>
 							<bool name="ClipsDescendants">false</bool>
-							<token name="Font">26</token>
+							<token name="Font">19</token>
 							<int name="LayoutOrder">0</int>
 							<UDim2 name="Position">
 								<XS>1</XS>
@@ -1878,7 +1967,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -2059,7 +2148,7 @@
 							<float name="BackgroundTransparency">1</float>
 							<int name="BorderSizePixel">0</int>
 							<bool name="ClipsDescendants">false</bool>
-							<token name="Font">26</token>
+							<token name="Font">19</token>
 							<int name="LayoutOrder">0</int>
 							<UDim2 name="Position">
 								<XS>0</XS>
@@ -2112,7 +2201,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -2164,7 +2253,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -2216,7 +2305,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>
@@ -2321,7 +2410,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<int name="LayoutOrder">0</int>
 						<UDim2 name="Position">
 							<XS>0</XS>

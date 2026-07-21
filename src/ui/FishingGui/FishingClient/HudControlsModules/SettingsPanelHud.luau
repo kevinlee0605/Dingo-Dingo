@@ -3,12 +3,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local GuiService = game:GetService("GuiService")
 
 local SettingsPanelHud = {}
 
 local BASE_WIDTH = 1448
 local BASE_HEIGHT = 1086
 local SETTINGS_SIZE_MULTIPLIER = 0.85
+local MOBILE_SETTINGS_SIZE_MULTIPLIER = 1.05
 
 local MIN_SPEED = 8
 local MAX_SPEED = 24
@@ -144,14 +146,26 @@ function SettingsPanelHud.create(deps, refs)
 	local function updateScale()
 		local camera = workspace.CurrentCamera
 		local viewport = camera and camera.ViewportSize or Vector2.new(1920, 1080)
+		local mobileLayout = UserInputService.TouchEnabled
+			and math.min(viewport.X, viewport.Y) <= 600
 		local fitScale = math.min(
 			viewport.X * 0.74 / BASE_WIDTH,
 			viewport.Y * 0.74 / BASE_HEIGHT
 		)
 		responsiveScale.Scale = math.clamp(
-			fitScale * SETTINGS_SIZE_MULTIPLIER,
-			0.25,
-			0.75
+			fitScale * (mobileLayout
+				and MOBILE_SETTINGS_SIZE_MULTIPLIER
+				or SETTINGS_SIZE_MULTIPLIER),
+			0.10,
+			mobileLayout and 0.90 or 0.75
+		)
+
+		local topLeftInset, bottomRightInset = GuiService:GetGuiInset()
+		canvas.Position = UDim2.new(
+			0.5,
+			math.round((bottomRightInset.X - topLeftInset.X) * 0.5),
+			0.5,
+			math.round((bottomRightInset.Y - topLeftInset.Y) * 0.5)
 		)
 	end
 
@@ -181,7 +195,7 @@ function SettingsPanelHud.create(deps, refs)
 
 	local closePosition = UDim2.fromOffset(1270, 60)
 	local closeSize = UDim2.fromOffset(100, 100)
-	local closeBusy = false
+	local closePressed = false
 
 	local function resetCloseButton(animated)
 		if not animated then
@@ -194,32 +208,57 @@ function SettingsPanelHud.create(deps, refs)
 			closeButton.Size = closeSize
 			closeButton.Rotation = 0
 			closeButton.ImageColor3 = Color3.new(1, 1, 1)
+			closeButton.ImageTransparency = 0
 			return
 		end
 
-		playTween(closeButton, RELEASE_TWEEN, {
+		playTween(closeButton, PRESS_TWEEN, {
 			Position = closePosition,
 			Size = closeSize,
 			Rotation = 0,
 			ImageColor3 = Color3.new(1, 1, 1),
+			ImageTransparency = 0,
 		})
 	end
 
-	closeButton.MouseEnter:Connect(function()
-		if closeBusy then
+	local function setClosePressed(pressed)
+		if closePressed == pressed then
 			return
 		end
-		playTween(closeButton, TOGGLE_FADE_TWEEN, {
-			Position = UDim2.fromOffset(1257, 49),
-			Size = UDim2.fromOffset(106, 106),
-			ImageColor3 = Color3.fromRGB(255, 244, 190),
+		closePressed = pressed
+		playTween(closeButton, PRESS_TWEEN, {
+			Position = UDim2.new(
+				closePosition.X.Scale,
+				closePosition.X.Offset + (pressed and 3 or 0),
+				closePosition.Y.Scale,
+				closePosition.Y.Offset + (pressed and 3 or 0)
+			),
+			Size = UDim2.new(
+				closeSize.X.Scale,
+				closeSize.X.Offset - (pressed and 6 or 0),
+				closeSize.Y.Scale,
+				closeSize.Y.Offset - (pressed and 6 or 0)
+			),
+			Rotation = 0,
+			ImageColor3 = Color3.new(1, 1, 1),
+			ImageTransparency = pressed and 0.16 or 0,
 		})
-	end)
+	end
 
-	closeButton.MouseLeave:Connect(function()
-		if not closeBusy then
-			resetCloseButton(true)
+	closeButton.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+			setClosePressed(true)
 		end
+	end)
+	closeButton.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+			setClosePressed(false)
+		end
+	end)
+	closeButton.MouseLeave:Connect(function()
+		setClosePressed(false)
 	end)
 
 	local musicEnabled = true
@@ -506,7 +545,7 @@ function SettingsPanelHud.create(deps, refs)
 	refs.setSettingsVisible = function(visible)
 		overlay.Visible = visible == true
 		if overlay.Visible then
-			closeBusy = false
+			closePressed = false
 			teleportBusy = false
 			teleportScale.Scale = 1
 			resetCloseButton(false)
@@ -517,31 +556,8 @@ function SettingsPanelHud.create(deps, refs)
 	end
 
 	closeButton.Activated:Connect(function()
-		if closeBusy then
-			return
-		end
-		closeBusy = true
-		playTween(closeButton, PRESS_TWEEN, {
-			Position = UDim2.fromOffset(1268, 60),
-			Size = UDim2.fromOffset(84, 84),
-			Rotation = -7,
-			ImageColor3 = Color3.fromRGB(255, 223, 100),
-		})
-		task.delay(0.075, function()
-			playTween(closeButton, RELEASE_TWEEN, {
-				Position = UDim2.fromOffset(1257, 49),
-				Size = UDim2.fromOffset(106, 106),
-				Rotation = 3,
-				ImageColor3 = Color3.new(1, 1, 1),
-			})
-			task.delay(0.12, function()
-				resetCloseButton(true)
-				task.delay(0.055, function()
-					refs.setSettingsVisible(false)
-					closeBusy = false
-				end)
-			end)
-		end)
+		setClosePressed(false)
+		refs.setSettingsVisible(false)
 	end)
 
 	SoundService.DescendantAdded:Connect(function(object)

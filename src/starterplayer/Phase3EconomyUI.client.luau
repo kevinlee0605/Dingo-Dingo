@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
+local GuiService = game:GetService("GuiService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -50,8 +51,9 @@ local DAILY_REWARD_CANVAS_SIZE = Vector2.new(1400, 1050)
 local DAILY_GRID_COLUMNS = 4
 local DAILY_GRID_CELL_HEIGHT = 168
 local DAILY_GRID_ROW_GAP = 12
-local DAILY_SCROLLBAR_THUMB_WIDTH = 22
-local DAILY_SCROLLBAR_MIN_THUMB_HEIGHT = 76
+local DAILY_SCROLLBAR_THUMB_WIDTH = 14
+local DAILY_SCROLLBAR_MIN_THUMB_HEIGHT = 90
+local DAILY_SCROLLBAR_IDLE_THUMB_RATIO = 0.72
 
 local function findAuthoredGui()
 	local ancestor = script:FindFirstAncestor("Phase3EconomyGui")
@@ -101,10 +103,21 @@ loginGrid.ClipsDescendants = true
 loginGrid.Active = true
 loginGrid.ScrollingEnabled = true
 local gridLayout = loginGrid:WaitForChild("DailyRewardGridLayout")
+-- Keep all four columns inside the authored inner panel. Four 296px cells
+-- plus the three 12px gaps exactly fill this 1220px viewport, leaving the
+-- same visible inset on the left and right at every responsive scale.
+loginGrid.Position = UDim2.fromOffset(90, 218)
+loginGrid.Size = UDim2.fromOffset(1220, 700)
+gridLayout.CellSize = UDim2.fromOffset(296, 168)
 local scrollbarFrame = loginPanel:WaitForChild("DailyRewardCustomScrollbar")
 local loginScrollbarArt = scrollbarFrame:WaitForChild("DailyRewardScrollbarArt")
 local scrollSlot = scrollbarFrame:WaitForChild("DailyRewardScrollLane")
 local loginScrollThumb = scrollSlot:WaitForChild("DailyRewardMovingThumb")
+-- The interaction lane must cover the whole authored track. A stale saved
+-- zero-width lane left the thumb visible but unable to receive clicks/drags.
+scrollSlot.Position = UDim2.fromScale(0, 0)
+scrollSlot.Size = UDim2.fromScale(1, 1)
+scrollSlot.Active = true
 local loginStatus = loginPanel:WaitForChild("LoginStatus")
 local claimButton = loginPanel:WaitForChild("ClaimButton")
 local claimButtonArt = claimButton:WaitForChild("ClaimButtonArt")
@@ -116,7 +129,9 @@ local milestoneRewardLineTemplate = templates:WaitForChild("MilestoneRewardLineT
 local claimedIconTemplate = templates:WaitForChild("ClaimedIconTemplate")
 
 local closePressTweenInfo = TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local closeReleaseTweenInfo = TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local loginCloseOriginalPosition = loginClose.Position
+local loginCloseOriginalSize = loginClose.Size
+loginClosePressScale.Scale = 1
 local loginClosePressed = false
 
 local function setLoginClosePressed(pressed)
@@ -125,9 +140,23 @@ local function setLoginClosePressed(pressed)
 	end
 	loginClosePressed = pressed
 	TweenService:Create(
-		loginClosePressScale,
-		pressed and closePressTweenInfo or closeReleaseTweenInfo,
-		{ Scale = pressed and 0.86 or 1 }
+		loginClose,
+		closePressTweenInfo,
+		{
+			Position = UDim2.new(
+				loginCloseOriginalPosition.X.Scale,
+				loginCloseOriginalPosition.X.Offset + (pressed and 3 or 0),
+				loginCloseOriginalPosition.Y.Scale,
+				loginCloseOriginalPosition.Y.Offset + (pressed and 3 or 0)
+			),
+			Size = UDim2.new(
+				loginCloseOriginalSize.X.Scale,
+				loginCloseOriginalSize.X.Offset - (pressed and 6 or 0),
+				loginCloseOriginalSize.Y.Scale,
+				loginCloseOriginalSize.Y.Offset - (pressed and 6 or 0)
+			),
+			ImageTransparency = pressed and 0.16 or 0,
+		}
 	):Play()
 end
 
@@ -165,19 +194,44 @@ applyVirtualCrop(loginScrollbarArt, TRIMMED_IMAGE_SIZES.ScrollBar, {
 	Offset = Vector2.new(683, 29),
 	Size = Vector2.new(65, 1021),
 })
+loginScrollThumb.Image = "rbxassetid://73367138577137"
+loginScrollThumb.ImageRectOffset = Vector2.new(701, 77)
+loginScrollThumb.ImageRectSize = Vector2.new(30, 825)
+loginScrollThumb.ScaleType = Enum.ScaleType.Stretch
+loginScrollThumb.BackgroundTransparency = 1
+loginScrollThumb.AutoButtonColor = false
+loginScrollThumb.Active = true
+loginScrollThumb:WaitForChild("ThumbGradient").Enabled = false
+loginScrollThumb:WaitForChild("UIStroke").Transparency = 1
+loginScrollThumb:WaitForChild("ThumbHighlight").Visible = false
 
-loginTitle.Font = Enum.Font.FredokaOne
-claimButtonLabel.Font = Enum.Font.FredokaOne
+loginTitle.Font = Enum.Font.GothamBlack
+claimButtonLabel.Font = Enum.Font.GothamBlack
 
 local function updateLoginResponsiveScale()
 	local camera = Workspace.CurrentCamera
 	local viewport = camera and camera.ViewportSize or DAILY_REWARD_CANVAS_SIZE
+	local topLeftInset, bottomRightInset = GuiService:GetGuiInset()
+	local usableViewport = Vector2.new(
+		math.max(1, viewport.X - topLeftInset.X - bottomRightInset.X),
+		math.max(1, viewport.Y - topLeftInset.Y - bottomRightInset.Y)
+	)
+	-- The authored canvas has generous internal margins. Phones can render it a
+	-- little beyond the conservative safe-area fit without clipping its frame,
+	-- making the rewards and their multi-line text easier to read.
+	local phoneScaleFactor = math.min(viewport.X, viewport.Y) <= 600 and 1.06 or 0.94
 	local scale = math.min(
-		(viewport.X * 0.94) / DAILY_REWARD_CANVAS_SIZE.X,
-		(viewport.Y * 0.94) / DAILY_REWARD_CANVAS_SIZE.Y,
+		(usableViewport.X * phoneScaleFactor) / DAILY_REWARD_CANVAS_SIZE.X,
+		(usableViewport.Y * phoneScaleFactor) / DAILY_REWARD_CANVAS_SIZE.Y,
 		1
 	)
-	loginScale.Scale = math.clamp(scale, 0.18, 1)
+	loginScale.Scale = math.clamp(scale, 0.1, 1)
+	loginPanel.Position = UDim2.new(
+		0.5,
+		math.round((bottomRightInset.X - topLeftInset.X) * 0.5),
+		0.5,
+		math.round((bottomRightInset.Y - topLeftInset.Y) * 0.5)
+	)
 end
 
 local function bindCamera(camera)
@@ -211,7 +265,9 @@ local function getLoginScrollMetrics()
 	local scrollRange = math.max(0, contentHeight - viewHeight)
 	local scale = math.max(loginScale.Scale, 0.001)
 	local slotHeight = scrollSlot.AbsoluteSize.Y / scale
-	local visibleRatio = contentHeight > 0 and math.clamp(viewHeight / contentHeight, 0, 1) or 1
+	local visibleRatio = scrollRange > 0
+		and math.clamp(viewHeight / contentHeight, 0, 1)
+		or DAILY_SCROLLBAR_IDLE_THUMB_RATIO
 	local thumbHeight = math.clamp(
 		slotHeight * visibleRatio,
 		math.min(DAILY_SCROLLBAR_MIN_THUMB_HEIGHT, slotHeight),
@@ -222,7 +278,8 @@ end
 
 local function updateLoginScrollbarThumb()
 	local scrollRange, thumbHeight, thumbTravel = getLoginScrollMetrics()
-	loginScrollThumb.Visible = scrollRange > 0
+	loginScrollThumb.Visible = true
+	loginScrollThumb.Active = scrollRange > 0
 	loginScrollThumb.Size = UDim2.fromOffset(DAILY_SCROLLBAR_THUMB_WIDTH, thumbHeight)
 	if scrollRange <= 0 then
 		loginScrollThumb.Position = UDim2.new(0.5, 0, 0, 0)
@@ -369,15 +426,25 @@ local function addStandardRewardLine(card, line, index)
 	icon.Image = line.Icon
 	local textLabel = rewardLine:WaitForChild("RewardText")
 	textLabel.Text = line.Text
+	textLabel.TextSize = 22
 	rewardLine.Parent = card
 end
 
-local function addMilestoneRewardLine(card, line, index, verticalOffset)
+local function addMilestoneRewardLine(card, line, index, verticalOffset, horizontalOffset, lineStep)
 	local rewardLine = milestoneRewardLineTemplate:Clone()
 	rewardLine.Name = "MilestoneRewardLine" .. tostring(index)
-	rewardLine.Position = UDim2.fromOffset(108, 54 + (index - 1) * 21 + (verticalOffset or 0))
+	horizontalOffset = horizontalOffset or 0
+	rewardLine.Position = UDim2.fromOffset(
+		108 + horizontalOffset,
+		54 + (index - 1) * (lineStep or 24) + (verticalOffset or 0)
+	)
+	-- Preserve the original right edge when final-day text moves left, giving
+	-- longer rewards the extra width instead of clipping them.
+	rewardLine.Size = UDim2.fromOffset(177 - horizontalOffset, 24)
 	rewardLine.Visible = true
-	rewardLine:WaitForChild("RewardText").Text = line.Text
+	local textLabel = rewardLine:WaitForChild("RewardText")
+	textLabel.Text = line.Text
+	textLabel.TextSize = 20
 	rewardLine.Parent = card
 end
 
@@ -428,15 +495,30 @@ local function renderLogin()
 		applyVirtualCrop(cardImage, TRIMMED_IMAGE_SIZES.DayTab, crop)
 		local dayLabel = card:WaitForChild("DayLabel")
 		dayLabel.Text = "Day " .. tostring(day)
-		dayLabel.Font = Enum.Font.FredokaOne
-		card:WaitForChild("MilestoneIcon").Visible = isMilestone or isFinalDay
+		dayLabel.Font = Enum.Font.GothamBlack
+		local milestoneIcon = card:WaitForChild("MilestoneIcon")
+		milestoneIcon.Visible = isMilestone or isFinalDay
+		if isFinalDay then
+			milestoneIcon.Position = UDim2.fromOffset(10, 58)
+		elseif isMilestone then
+			milestoneIcon.Position = UDim2.fromOffset(14, 66)
+		end
 
 		local summaryLines = rewardLinesFromSummary(slot.Summary)
 		if isMilestone or isFinalDay then
-			local rewardTextOffset = isFinalDay and -8 or 0
+			local rewardTextOffset = isFinalDay and -13 or 0
+			local rewardTextHorizontalOffset = isFinalDay and -12 or -8
+			local rewardLineStep = isFinalDay and 23 or 24
 			for index, line in ipairs(summaryLines) do
 				if index > 5 then break end
-				addMilestoneRewardLine(card, line, index, rewardTextOffset)
+				addMilestoneRewardLine(
+					card,
+					line,
+					index,
+					rewardTextOffset,
+					rewardTextHorizontalOffset,
+					rewardLineStep
+				)
 			end
 		else
 			for index, line in ipairs(summaryLines) do

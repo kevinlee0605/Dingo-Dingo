@@ -101,12 +101,35 @@ local function getScaledZoneTransform(sourceRoot, targetRoot, sourceZone)
 	return targetCFrame, targetSizeValue
 end
 
+local function getFishingWaterSurfaceY(zone)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { zone }
+	params.IgnoreWater = false
+
+	local topY = zone.Position.Y + zone.Size.Y * 0.5
+	local origin = Vector3.new(zone.Position.X, topY + 50, zone.Position.Z)
+	local result = workspace:Raycast(origin, Vector3.new(0, -(zone.Size.Y + 150), 0), params)
+	if result then
+		return result.Position.Y + 0.05
+	end
+
+	return topY
+end
+
 local function ensureFishingZone(island, compatibility)
 	local existing = island:FindFirstChild("LilyshoreFishingZone", true)
 	if existing and existing:IsA("BasePart") then
 		CollectionService:AddTag(existing, "FishingZone")
 		existing:SetAttribute("IslandId", ISLAND_NAME)
 		existing:SetAttribute("BiomeId", ISLAND_NAME)
+		-- The imported Lilyshore pond has no raycastable part named/materialed as
+		-- water. Expose the original pond water plane through the invisible zone
+		-- so shared client/server fishing checks can use it without changing the map.
+		existing:SetAttribute(
+			"FishingWaterSurfaceY",
+			getFishingWaterSurfaceY(existing)
+		)
 		return existing
 	end
 
@@ -137,6 +160,10 @@ local function ensureFishingZone(island, compatibility)
 	zone:SetAttribute("IslandId", ISLAND_NAME)
 	zone:SetAttribute("BiomeId", ISLAND_NAME)
 	zone:SetAttribute("LegacyBiomeId", LEGACY_AREA_NAME)
+	zone:SetAttribute(
+		"FishingWaterSurfaceY",
+		getFishingWaterSurfaceY(zone)
+	)
 	copyTags(sourceZone, zone)
 	copyAttributes(sourceZone, zone)
 	CollectionService:AddTag(zone, "FishingZone")

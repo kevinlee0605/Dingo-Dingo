@@ -23,7 +23,7 @@ local MonetizationConfig = require(
 -- =============================================================
 -- WHOLE UI SIZE / POSITION
 -- =============================================================
-local EDITOR_SCALE_MULTIPLIER = 0.7
+local EDITOR_SCALE_MULTIPLIER = 1
 local EDITOR_X = 0.50
 local EDITOR_Y = 0.50
 
@@ -42,6 +42,7 @@ local COLORS = {
 	ArrowFill = Color3.fromRGB(9, 58, 132),
 }
 local DEPTH_LEVEL_COUNT = 7
+local BUTTON_LABEL_TEXT_SIZE = 18
 
 local WHEEL_CAPTURE_ACTION = "ModernAquariumEditorWheelCapture"
 local PINCH_CAPTURE_ACTION = "ModernAquariumEditorPinchCapture"
@@ -50,7 +51,26 @@ local PINCH_CAPTURE_ACTION = "ModernAquariumEditorPinchCapture"
 -- PROVIDED ROBLOX ASSET IDS
 -- =============================================================
 local ASSETS = {
-	AquariumBackbone = "rbxassetid://87835784646088",
+	-- Approved 1672x941 reference uploaded as one atlas. Roblox downsizes it
+	-- to 1024x576, so the reference pieces below share this source image.
+	ReferenceTopBorder = "rbxassetid://78119100190793",
+	ReferenceHeaderDivider = "rbxassetid://78119100190793",
+	ReferenceLeftRail = "rbxassetid://78119100190793",
+	ReferenceRightRail = "rbxassetid://78119100190793",
+	ReferenceBottomRail = "rbxassetid://78119100190793",
+	ReferencePreview = "rbxassetid://78119100190793",
+	ReferenceThemesPanel = "rbxassetid://78119100190793",
+	ReferenceDecorPanel = "rbxassetid://78119100190793",
+	ReferenceAdjustmentsPanel = "rbxassetid://78119100190793",
+	ReferenceThemeUnselected = "rbxassetid://78119100190793",
+	ReferenceThemeSelected = "rbxassetid://78119100190793",
+	ReferenceDecorUnselected = "rbxassetid://78119100190793",
+	ReferenceDecorSelected = "rbxassetid://78119100190793",
+	ReferenceDepthLeft = "rbxassetid://78119100190793",
+	ReferenceDepthRight = "rbxassetid://78119100190793",
+	ReferencePreviewButton = "rbxassetid://78119100190793",
+	ReferenceRemoveButton = "rbxassetid://78119100190793",
+	ReferenceApplyButton = "rbxassetid://78119100190793",
 	MainDisplay = "rbxassetid://73798557079455",
 	-- Same source, cropped/zoomed to represent the server's real X/Y bounds.
 	MappedMainDisplay = "rbxassetid://73798557079455",
@@ -77,6 +97,7 @@ local ASSETS = {
 	PreviewButton = "rbxassetid://110797697720551",
 	RemoveButton = "rbxassetid://97923557167562",
 	ApplyButton = "rbxassetid://96038949706970",
+	BackToEditorButton = "rbxassetid://102092913278079",
 
 	Coral = "rbxassetid://79407993106959",
 	Seaweed = "rbxassetid://110865882368376",
@@ -91,9 +112,28 @@ local ASSETS = {
 -- The uploaded PNGs contain transparent margins. These ImageRect values make
 -- each asset fill its intended Roblox UI element without being tiny or offset.
 local CROPS = {
-	-- Keep only the artwork up to the outer cyan frame.
-	-- This removes the opaque black rectangle outside the frame.
-	AquariumBackbone = { 5, 4, 1014, 562 },
+	-- Exact crops from the approved 1672x941 reference after Roblox's
+	-- proportional 1024x576 texture conversion.
+	ReferenceTopBorder = { 0, 0, 1024, 20 },
+	ReferenceHeaderDivider = { 0, 73, 1024, 6 },
+	ReferenceLeftRail = { 0, 0, 25, 576 },
+	ReferenceRightRail = { 999, 0, 25, 576 },
+	ReferenceBottomRail = { 0, 548, 1024, 28 },
+	ReferencePreview = { 22, 76, 523, 462 },
+	ReferenceThemesPanel = { 551, 73, 448, 96 },
+	ReferenceDecorPanel = { 551, 173, 448, 227 },
+	ReferenceAdjustmentsPanel = { 551, 407, 448, 82 },
+	-- Reusable button rims and fixed action buttons cut directly from the same
+	-- approved reference atlas as the editor shell.
+	ReferenceThemeUnselected = { 668, 95, 101, 32 },
+	ReferenceThemeSelected = { 562, 95, 101, 32 },
+	ReferenceDecorUnselected = { 772, 199, 105, 64 },
+	ReferenceDecorSelected = { 662, 199, 106, 64 },
+	ReferenceDepthLeft = { 562, 439, 35, 35 },
+	ReferenceDepthRight = { 948, 439, 35, 35 },
+	ReferencePreviewButton = { 552, 499, 141, 45 },
+	ReferenceRemoveButton = { 704, 499, 141, 45 },
+	ReferenceApplyButton = { 855, 499, 141, 45 },
 
 	MainDisplay = { 41, 57, 941, 870 },
 	-- The real placement limits are x=-0.42..0.42 and y=0.08..0.82.
@@ -200,6 +240,27 @@ local ui = {
 	depthButtons = {},
 }
 
+local function isAquariumViewerOpen()
+	local viewerGui = playerGui:FindFirstChild("AquariumViewerGui")
+	if not viewerGui or not viewerGui:IsA("ScreenGui") or not viewerGui.Enabled then
+		return false
+	end
+
+	local viewerRoot = viewerGui:FindFirstChild("Root") or viewerGui:FindFirstChild("Interface")
+	return viewerRoot ~= nil
+		and viewerRoot:IsA("GuiObject")
+		and viewerRoot.Visible
+end
+
+local function hideAquariumViewerAccessButton()
+	local fishingGui = playerGui:FindFirstChild("FishingGui")
+	local viewerButton = fishingGui
+		and fishingGui:FindFirstChild("AquariumViewerFallbackButton", true)
+	if viewerButton and viewerButton:IsA("GuiObject") then
+		viewerButton.Visible = false
+	end
+end
+
 local function applyCrop(imageObject, crop)
 	if crop then
 		imageObject.ImageRectOffset = Vector2.new(crop[1], crop[2])
@@ -244,20 +305,85 @@ local function makeImageButton(parent, name, assetKey, position, size, zIndex)
 	return button
 end
 
+local MODERN_BUTTON_GRADIENTS = {
+	Unselected = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 76, 176)),
+		ColorSequenceKeypoint.new(0.48, Color3.fromRGB(5, 42, 111)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(2, 20, 61)),
+	}),
+	Selected = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(13, 153, 61)),
+		ColorSequenceKeypoint.new(0.48, Color3.fromRGB(4, 100, 39)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(1, 49, 23)),
+	}),
+}
+
+local function addModernButtonInterior(button, cornerRadius)
+	local interior = Instance.new("Frame")
+	interior.Name = "ModernButtonInterior"
+	interior.BackgroundColor3 = Color3.new(1, 1, 1)
+	interior.BorderSizePixel = 0
+	interior.Position = UDim2.fromOffset(5, 5)
+	interior.Size = UDim2.new(1, -10, 1, -10)
+	interior.ZIndex = button.ZIndex + 1
+	interior.Parent = button
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, cornerRadius)
+	corner.Parent = interior
+
+	local gradient = Instance.new("UIGradient")
+	gradient.Name = "ModernGradient"
+	gradient.Color = MODERN_BUTTON_GRADIENTS.Unselected
+	gradient.Rotation = 90
+	gradient.Parent = interior
+
+	local innerStroke = Instance.new("UIStroke")
+	innerStroke.Name = "ModernInnerStroke"
+	innerStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	innerStroke.Color = Color3.fromRGB(67, 178, 255)
+	innerStroke.Thickness = 1
+	innerStroke.Transparency = 0.35
+	innerStroke.Parent = interior
+	return interior
+end
+
+local function setModernButtonSelected(button, selected, kind)
+	setImageAsset(
+		button,
+		if kind == "Theme"
+			then (selected and "ReferenceThemeSelected" or "ReferenceThemeUnselected")
+			else (selected and "ReferenceDecorSelected" or "ReferenceDecorUnselected")
+	)
+
+	local interior = button:FindFirstChild("ModernButtonInterior")
+	local gradient = interior and interior:FindFirstChild("ModernGradient")
+	local innerStroke = interior and interior:FindFirstChild("ModernInnerStroke")
+	if gradient and gradient:IsA("UIGradient") then
+		gradient.Color = selected
+			and MODERN_BUTTON_GRADIENTS.Selected
+			or MODERN_BUTTON_GRADIENTS.Unselected
+	end
+	if innerStroke and innerStroke:IsA("UIStroke") then
+		innerStroke.Color = selected
+			and Color3.fromRGB(128, 255, 125)
+			or Color3.fromRGB(67, 178, 255)
+		innerStroke.Transparency = selected and 0.12 or 0.35
+	end
+end
+
 local function addPressedButtonFeedback(button, pressYOffset)
 	local originalPosition = button.Position
 	local originalSize = button.Size
-	local originalImageColor = button.ImageColor3
-	local offsetY = tonumber(pressYOffset) or 4
+	local originalImageTransparency = button.ImageTransparency
 	local activeTween = nil
 	local isPressed = false
 
-	local function makePosition(yOffset)
+	local function makePosition(pressed)
 		return UDim2.new(
 			originalPosition.X.Scale,
-			originalPosition.X.Offset + (yOffset > 0 and 2 or 0),
+			originalPosition.X.Offset + (pressed and 3 or 0),
 			originalPosition.Y.Scale,
-			originalPosition.Y.Offset + yOffset
+			originalPosition.Y.Offset + (pressed and 3 or 0)
 		)
 	end
 
@@ -283,21 +409,13 @@ local function addPressedButtonFeedback(button, pressYOffset)
 
 		activeTween = TweenService:Create(
 			button,
-			TweenInfo.new(
-				pressed and 0.055 or 0.075,
-				Enum.EasingStyle.Quad,
-				Enum.EasingDirection.Out
-			),
+			TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 			{
-				Position = pressed
-					and makePosition(offsetY)
-					or originalPosition,
+				Position = makePosition(pressed),
 				Size = pressed
-					and makeSize(4)
+					and makeSize(6)
 					or originalSize,
-				ImageColor3 = pressed
-					and Color3.fromRGB(205, 205, 205)
-					or originalImageColor,
+				ImageTransparency = pressed and 0.16 or originalImageTransparency,
 			}
 		)
 		activeTween:Play()
@@ -692,15 +810,31 @@ panelScale.Scale = 1
 panelScale.Parent = panel
 ui.panelScale = panelScale
 
-makeImage(panel, "AquariumBackbone", "AquariumBackbone", UDim2.fromOffset(0, 0), UDim2.fromOffset(BASE_WIDTH, BASE_HEIGHT), 10)
-makeImage(panel, "LeftDecoration", "LeftMainDecoration", UDim2.fromOffset(45, 28), UDim2.fromOffset(104, 110), 20)
+local shellFill = Instance.new("Frame")
+shellFill.Name = "ShellFill"
+shellFill.BackgroundColor3 = Color3.fromRGB(0, 14, 38)
+shellFill.BorderSizePixel = 0
+shellFill.Position = UDim2.fromOffset(27, 18)
+shellFill.Size = UDim2.fromOffset(1618, 904)
+shellFill.ZIndex = 9
+shellFill.Parent = panel
+addCorner(shellFill, 22)
+
+-- The old backbone belonged to a different mockup. These atlas slices retain
+-- the approved end caps and border geometry without baking the controls.
+makeImage(panel, "ReferenceTopBorder", "ReferenceTopBorder", UDim2.fromOffset(0, 0), UDim2.fromOffset(1672, 31), 11)
+makeImage(panel, "ReferenceHeaderDivider", "ReferenceHeaderDivider", UDim2.fromOffset(0, 118), UDim2.fromOffset(1672, 10), 11)
+makeImage(panel, "ReferenceLeftRail", "ReferenceLeftRail", UDim2.fromOffset(0, 0), UDim2.fromOffset(40, 941), 12)
+makeImage(panel, "ReferenceRightRail", "ReferenceRightRail", UDim2.fromOffset(1632, 0), UDim2.fromOffset(40, 941), 12)
+makeImage(panel, "ReferenceBottomRail", "ReferenceBottomRail", UDim2.fromOffset(0, 895), UDim2.fromOffset(1672, 46), 12)
+makeImage(panel, "LeftDecoration", "LeftMainDecoration", UDim2.fromOffset(51, 29), UDim2.fromOffset(82, 88), 20)
 
 ui.title = makeLabel(
 	panel,
 	"Title",
 	"Aquarium Decor Editor",
-	UDim2.fromOffset(155, 30),
-	UDim2.fromOffset(900, 62),
+	UDim2.fromOffset(150, 31),
+	UDim2.fromOffset(700, 54),
 	43,
 	Color3.fromRGB(255, 255, 255),
 	Enum.TextXAlignment.Left,
@@ -711,8 +845,8 @@ ui.subtitle = makeLabel(
 	panel,
 	"Subtitle",
 	UserInputService.TouchEnabled and "Pinch to Scale" or "Scroll to Scale",
-	UDim2.fromOffset(157, 88),
-	UDim2.fromOffset(720, 36),
+	UDim2.fromOffset(151, 82),
+	UDim2.fromOffset(620, 32),
 	22,
 	Color3.fromRGB(47, 236, 255),
 	Enum.TextXAlignment.Left,
@@ -724,17 +858,17 @@ ui.closeButton = makeImageButton(
 	panel,
 	"CloseButton",
 	"CloseButton",
-	UDim2.fromOffset(1515, 30),
-	UDim2.fromOffset(92, 94),
+	UDim2.fromOffset(1548, 31),
+	UDim2.fromOffset(68, 68),
 	30
 )
 
 ui.mainDisplay = makeImage(
 	panel,
-	"MainDisplay",
-	"MainDisplay",
-	UDim2.fromOffset(29, 143),
-	UDim2.fromOffset(880, 752),
+	"ReferencePreview",
+	"ReferencePreview",
+	UDim2.fromOffset(36, 124),
+	UDim2.fromOffset(854, 755),
 	18
 )
 
@@ -745,11 +879,12 @@ ui.mappedMainDisplay = makeImage(
 	panel,
 	"MappedMainDisplay",
 	"MappedMainDisplay",
-	UDim2.fromOffset(61, 183),
-	UDim2.fromOffset(814, 665),
+	UDim2.fromOffset(47, 134),
+	UDim2.fromOffset(832, 735),
 	20
 )
 ui.mappedMainDisplay.ScaleType = Enum.ScaleType.Stretch
+addCorner(ui.mappedMainDisplay, 18)
 
 ui.decorStage = Instance.new("Frame")
 ui.decorStage.Name = "DecorStage"
@@ -757,78 +892,80 @@ ui.decorStage.BackgroundTransparency = 1
 ui.decorStage.BorderSizePixel = 0
 -- Exact editable area inside the blue aquarium picture.
 -- Decorations are now constrained fully inside this rectangle.
-ui.decorStage.Position = UDim2.fromOffset(61, 183)
-ui.decorStage.Size = UDim2.fromOffset(814, 665)
+ui.decorStage.Position = UDim2.fromOffset(47, 134)
+ui.decorStage.Size = UDim2.fromOffset(832, 735)
 ui.decorStage.ClipsDescendants = true
 ui.decorStage.Active = true
 ui.decorStage.ZIndex = 22
 ui.decorStage.Parent = panel
+addCorner(ui.decorStage, 18)
 
--- Right panel artwork.
-makeImage(panel, "ThemesPanel", "ThemesPanel", UDim2.fromOffset(920, 142), UDim2.fromOffset(694, 168), 17)
-makeImage(panel, "DecorPanel", "DecorPanel", UDim2.fromOffset(920, 316), UDim2.fromOffset(694, 330), 17)
-makeImage(panel, "AdjustmentsPanel", "AdjustmentsBig", UDim2.fromOffset(920, 648), UDim2.fromOffset(694, 140), 17)
-makeImage(panel, "AdjustmentsInner", "AdjustmentsSmall", UDim2.fromOffset(938, 698), UDim2.fromOffset(658, 76), 18)
+-- Whole authored section slices preserve the exact approved rims, headings,
+-- spacing, and dark-blue surface. Functional buttons remain separate above.
+makeImage(panel, "ThemesPanel", "ReferenceThemesPanel", UDim2.fromOffset(899, 119), UDim2.fromOffset(732, 156), 17)
+makeImage(panel, "DecorPanel", "ReferenceDecorPanel", UDim2.fromOffset(899, 283), UDim2.fromOffset(732, 371), 17)
+makeImage(panel, "AdjustmentsPanel", "ReferenceAdjustmentsPanel", UDim2.fromOffset(899, 664), UDim2.fromOffset(732, 134), 17)
 
-makeLabel(panel, "ThemesHeader", "✦ Themes ✦", UDim2.fromOffset(943, 145), UDim2.fromOffset(640, 38), 22, Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Left, 24)
-makeLabel(panel, "DecorHeader", "✦ Decor", UDim2.fromOffset(943, 321), UDim2.fromOffset(155, 36), 22, Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Left, 24)
-local decorHint = makeLabel(panel, "DecorHint", "← Tap a decor to place it", UDim2.fromOffset(1083, 325), UDim2.fromOffset(360, 31), 14, Color3.fromRGB(47, 236, 255), Enum.TextXAlignment.Left, 24)
-decorHint.Font = Enum.Font.GothamBold
-decorHint.TextStrokeTransparency = 1
-makeLabel(panel, "AdjustmentsHeader", "✦ Adjustments ✦", UDim2.fromOffset(943, 652), UDim2.fromOffset(640, 37), 22, Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Left, 24)
+-- The reference atlas contains example controls. Mask only those content
+-- regions so the real interactive controls do not render over baked copies.
+local themesContentMask = Instance.new("Frame")
+themesContentMask.Name = "ThemesContentMask"
+themesContentMask.BackgroundColor3 = Color3.fromRGB(1, 15, 42)
+themesContentMask.BorderSizePixel = 0
+themesContentMask.Position = UDim2.fromOffset(908, 151)
+themesContentMask.Size = UDim2.fromOffset(714, 116)
+themesContentMask.ZIndex = 18
+themesContentMask.Parent = panel
+addCorner(themesContentMask, 10)
+
+local decorContentMask = Instance.new("Frame")
+decorContentMask.Name = "DecorContentMask"
+decorContentMask.BackgroundColor3 = Color3.fromRGB(1, 16, 44)
+decorContentMask.BorderSizePixel = 0
+decorContentMask.Position = UDim2.fromOffset(908, 322)
+decorContentMask.Size = UDim2.fromOffset(714, 324)
+decorContentMask.ZIndex = 18
+decorContentMask.Parent = panel
+addCorner(decorContentMask, 10)
 
 ui.themeGrid = Instance.new("Frame")
 ui.themeGrid.Name = "ThemeGrid"
 ui.themeGrid.BackgroundTransparency = 1
-ui.themeGrid.Position = UDim2.fromOffset(935, 184)
-ui.themeGrid.Size = UDim2.fromOffset(665, 112)
+ui.themeGrid.Position = UDim2.fromOffset(919, 155)
+ui.themeGrid.Size = UDim2.fromOffset(690, 110)
 ui.themeGrid.ZIndex = 25
 ui.themeGrid.Parent = panel
 
 local themeGridLayout = Instance.new("UIGridLayout")
 themeGridLayout.FillDirection = Enum.FillDirection.Horizontal
 themeGridLayout.FillDirectionMaxCells = 4
-themeGridLayout.CellSize = UDim2.fromOffset(158, 52)
-themeGridLayout.CellPadding = UDim2.fromOffset(8, 8)
+themeGridLayout.CellSize = UDim2.fromOffset(160, 50)
+themeGridLayout.CellPadding = UDim2.fromOffset(10, 8)
 themeGridLayout.SortOrder = Enum.SortOrder.LayoutOrder
 themeGridLayout.Parent = ui.themeGrid
 
 ui.decorGrid = Instance.new("Frame")
 ui.decorGrid.Name = "DecorGrid"
 ui.decorGrid.BackgroundTransparency = 1
-ui.decorGrid.Position = UDim2.fromOffset(934, 360)
-ui.decorGrid.Size = UDim2.fromOffset(666, 268)
+ui.decorGrid.Position = UDim2.fromOffset(914, 327)
+ui.decorGrid.Size = UDim2.fromOffset(696, 318)
 ui.decorGrid.ZIndex = 25
 ui.decorGrid.Parent = panel
 
 local decorGridLayout = Instance.new("UIGridLayout")
 decorGridLayout.FillDirection = Enum.FillDirection.Horizontal
 decorGridLayout.FillDirectionMaxCells = 4
-decorGridLayout.CellSize = UDim2.fromOffset(158, 79)
+decorGridLayout.CellSize = UDim2.fromOffset(168, 100)
 decorGridLayout.CellPadding = UDim2.fromOffset(8, 9)
 decorGridLayout.SortOrder = Enum.SortOrder.LayoutOrder
 decorGridLayout.Parent = ui.decorGrid
 
-ui.depthLabel = makeLabel(
-	panel,
-	"DepthLabel",
-	"Depth (Forward / Backward)",
-	UDim2.fromOffset(1001, 693),
-	UDim2.fromOffset(520, 29),
-	16,
-	Color3.fromRGB(255, 255, 255),
-	Enum.TextXAlignment.Left,
-	27
-)
-ui.depthLabel.Font = Enum.Font.GothamBold
-ui.depthLabel.TextStrokeTransparency = 1
-
 ui.depthLeftButton = makeImageButton(
 	panel,
 	"DepthLeft",
-	"LeftDirection",
-	UDim2.fromOffset(946, 716),
-	UDim2.fromOffset(42, 42),
+	"ReferenceDepthLeft",
+	UDim2.fromOffset(918, 716),
+	UDim2.fromOffset(56, 56),
 	29
 )
 ui.depthLeftButton.ScaleType = Enum.ScaleType.Stretch
@@ -836,29 +973,28 @@ ui.depthLeftButton.ScaleType = Enum.ScaleType.Stretch
 ui.depthRightButton = makeImageButton(
 	panel,
 	"DepthRight",
-	"LeftDirection",
-	UDim2.fromOffset(1546, 716),
-	UDim2.fromOffset(42, 42),
+	"ReferenceDepthRight",
+	UDim2.fromOffset(1548, 716),
+	UDim2.fromOffset(56, 56),
 	29
 )
 ui.depthRightButton.ScaleType = Enum.ScaleType.Stretch
-ui.depthRightButton.Rotation = 180
 
 ui.depthTrackLine = Instance.new("Frame")
 ui.depthTrackLine.Name = "DepthTrackLine"
 ui.depthTrackLine.BackgroundColor3 = Color3.fromRGB(108, 172, 255)
 ui.depthTrackLine.BackgroundTransparency = 0.38
 ui.depthTrackLine.BorderSizePixel = 0
-ui.depthTrackLine.Position = UDim2.fromOffset(1007, 741)
-ui.depthTrackLine.Size = UDim2.fromOffset(520, 2)
+ui.depthTrackLine.Position = UDim2.fromOffset(1001, 744)
+ui.depthTrackLine.Size = UDim2.fromOffset(515, 2)
 ui.depthTrackLine.ZIndex = 28
 ui.depthTrackLine.Parent = panel
 
 ui.depthDots = Instance.new("Frame")
 ui.depthDots.Name = "DepthDots"
 ui.depthDots.BackgroundTransparency = 1
-ui.depthDots.Position = UDim2.fromOffset(1007, 727)
-ui.depthDots.Size = UDim2.fromOffset(520, 32)
+ui.depthDots.Position = UDim2.fromOffset(1001, 730)
+ui.depthDots.Size = UDim2.fromOffset(515, 32)
 ui.depthDots.ZIndex = 29
 ui.depthDots.Parent = panel
 
@@ -879,25 +1015,25 @@ end
 ui.previewButton = makeImageButton(
 	panel,
 	"PreviewButton",
-	"PreviewButton",
-	UDim2.fromOffset(925, 808),
-	UDim2.fromOffset(208, 72),
+	"ReferencePreviewButton",
+	UDim2.fromOffset(903, 815),
+	UDim2.fromOffset(228, 72),
 	29
 )
 ui.removeButton = makeImageButton(
 	panel,
 	"RemoveButton",
-	"RemoveButton",
-	UDim2.fromOffset(1149, 808),
-	UDim2.fromOffset(208, 72),
+	"ReferenceRemoveButton",
+	UDim2.fromOffset(1150, 815),
+	UDim2.fromOffset(228, 72),
 	29
 )
 ui.applyButton = makeImageButton(
 	panel,
 	"ApplyButton",
-	"ApplyButton",
-	UDim2.fromOffset(1373, 808),
-	UDim2.fromOffset(224, 72),
+	"ReferenceApplyButton",
+	UDim2.fromOffset(1397, 815),
+	UDim2.fromOffset(228, 72),
 	29
 )
 
@@ -911,25 +1047,84 @@ ui.openButton = Instance.new("TextButton")
 ui.openButton.Name = "OpenAquariumDecorEditor"
 ui.openButton.AnchorPoint = Vector2.new(1, 1)
 ui.openButton.Position = UDim2.new(1, -18, 1, -24)
-ui.openButton.Size = UDim2.fromOffset(148, 48)
+ui.openButton.Size = UserInputService.TouchEnabled and UDim2.fromOffset(240, 60) or UDim2.fromOffset(300, 75)
 ui.openButton.BackgroundColor3 = Color3.fromRGB(14, 94, 190)
 ui.openButton.BorderSizePixel = 0
-ui.openButton.Font = Enum.Font.FredokaOne
+ui.openButton.Font = Enum.Font.GothamBlack
 ui.openButton.Text = "Decor Editor"
 ui.openButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 ui.openButton.TextSize = 18
 ui.openButton.Visible = false
 ui.openButton.ZIndex = 100
 ui.openButton.Parent = gui
-addCorner(ui.openButton, 12)
-addStroke(ui.openButton, Color3.fromRGB(42, 218, 255), 2, 0.05)
 
 ui.backButton = ui.openButton:Clone()
 ui.backButton.Name = "BackToAquariumEditor"
-ui.backButton.Text = "Back to Editor"
+ui.backButton.AutoButtonColor = false
+ui.backButton.BackgroundTransparency = 1
+ui.backButton.Text = ""
 ui.backButton.Size = UDim2.fromOffset(168, 48)
 ui.backButton.Visible = false
 ui.backButton.Parent = gui
+
+local backButtonArtwork = Instance.new("ImageLabel")
+backButtonArtwork.Name = "ButtonArtwork"
+backButtonArtwork.Active = false
+backButtonArtwork.BackgroundTransparency = 1
+backButtonArtwork.BorderSizePixel = 0
+backButtonArtwork.Position = UDim2.fromScale(0, 0)
+backButtonArtwork.Size = UDim2.fromScale(1, 1)
+backButtonArtwork.Image = ASSETS.BackToEditorButton
+-- Crop the transparent padding retained by Roblox around the uploaded artwork.
+backButtonArtwork.ImageRectOffset = Vector2.new(52, 57)
+backButtonArtwork.ImageRectSize = Vector2.new(919, 288)
+backButtonArtwork.ScaleType = Enum.ScaleType.Stretch
+backButtonArtwork.ZIndex = ui.backButton.ZIndex
+backButtonArtwork.Parent = ui.backButton
+
+ui.openButton.AutoButtonColor = false
+ui.openButton.BackgroundTransparency = 1
+ui.openButton.Text = ""
+
+local openButtonArtwork = Instance.new("ImageLabel")
+openButtonArtwork.Name = "ButtonArtwork"
+openButtonArtwork.Active = false
+openButtonArtwork.BackgroundTransparency = 1
+openButtonArtwork.BorderSizePixel = 0
+openButtonArtwork.Position = UDim2.fromScale(0, 0)
+openButtonArtwork.Size = UDim2.fromScale(1, 1)
+openButtonArtwork.Image = "rbxassetid://109693126647431"
+openButtonArtwork.ScaleType = Enum.ScaleType.Fit
+openButtonArtwork.ZIndex = ui.openButton.ZIndex
+openButtonArtwork.Parent = ui.openButton
+
+local function updateAquariumAccessButtonLayout(viewport)
+	local compactLayout = UserInputService.TouchEnabled
+		or math.min(viewport.X, viewport.Y) <= 700
+	local buttonWidth = compactLayout and 168 or 210
+	local buttonHeight = compactLayout and 42 or 53
+	local fishingGui = playerGui:FindFirstChild("FishingGui")
+	local seaStarsHud = fishingGui and fishingGui:FindFirstChild("SeaStarsHud")
+
+	ui.openButton.AnchorPoint = Vector2.new(1, 0)
+	ui.openButton.Size = UDim2.fromOffset(buttonWidth, buttonHeight)
+	if seaStarsHud and seaStarsHud:IsA("GuiObject") then
+		local origin = ui.dimmer.AbsolutePosition
+		local rightEdge = seaStarsHud.AbsolutePosition.X + seaStarsHud.AbsoluteSize.X - origin.X
+		local topEdge = seaStarsHud.AbsolutePosition.Y
+			+ seaStarsHud.AbsoluteSize.Y
+			+ 6
+			+ buttonHeight
+			+ 6
+			- origin.Y
+		ui.openButton.Position = UDim2.fromOffset(
+			math.floor(rightEdge + 0.5),
+			math.floor(topEdge + 0.5)
+		)
+	else
+		ui.openButton.Position = UDim2.new(1, -18, 0, 219)
+	end
+end
 
 local function updateResponsiveScale()
 	local camera = workspace.CurrentCamera
@@ -938,6 +1133,7 @@ local function updateResponsiveScale()
 	local scaleY = math.max(0.1, (viewport.Y - 18) / BASE_HEIGHT)
 	ui.panelScale.Scale = math.clamp(math.min(scaleX, scaleY) * EDITOR_SCALE_MULTIPLIER, 0.35, 1.20)
 	ui.panel.Position = UDim2.fromScale(EDITOR_X, EDITOR_Y)
+	updateAquariumAccessButtonLayout(viewport)
 end
 
 -- =============================================================
@@ -949,7 +1145,7 @@ for order, themeId in ipairs(designerConfig.themeOrder or {}) do
 		local button = makeImageButton(
 			ui.themeGrid,
 			themeId .. "ThemeButton",
-			"ThemeTabUnselected",
+			"ReferenceThemeUnselected",
 			UDim2.fromOffset(0, 0),
 			UDim2.fromScale(1, 1),
 			27
@@ -958,12 +1154,9 @@ for order, themeId in ipairs(designerConfig.themeOrder or {}) do
 		button.BackgroundTransparency = 1
 		button.ImageColor3 = Color3.new(1, 1, 1)
 		button.ScaleType = Enum.ScaleType.Stretch
-		local label = makeLabel(button, "Label", theme.name, UDim2.fromScale(0.05, 0.08), UDim2.fromScale(0.90, 0.84), 16, Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Center, 30)
-		label.TextScaled = true
-		local textConstraint = Instance.new("UITextSizeConstraint")
-		textConstraint.MinTextSize = 10
-		textConstraint.MaxTextSize = 18
-		textConstraint.Parent = label
+		addModernButtonInterior(button, 7)
+		local label = makeLabel(button, "Label", theme.name, UDim2.fromScale(0.05, 0.08), UDim2.fromScale(0.90, 0.84), BUTTON_LABEL_TEXT_SIZE, Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Center, 30)
+		label.TextScaled = false
 		ui.themeButtons[themeId] = {
 			button = button,
 			label = label,
@@ -978,7 +1171,7 @@ local function createDecorButton(decorationId, layoutOrder, displayName, assetKe
 	local button = makeImageButton(
 		ui.decorGrid,
 		decorationId .. "DecorButton",
-		"DecorTabUnselected",
+		"ReferenceDecorUnselected",
 		UDim2.fromOffset(0, 0),
 		UDim2.fromScale(1, 1),
 		27
@@ -987,16 +1180,13 @@ local function createDecorButton(decorationId, layoutOrder, displayName, assetKe
 	button.BackgroundTransparency = 1
 	button.ImageColor3 = Color3.new(1, 1, 1)
 	button.ScaleType = Enum.ScaleType.Stretch
+	addModernButtonInterior(button, 8)
 
 	local icon = makeImage(button, "Icon", assetKey, UDim2.fromScale(0.23, 0.08), UDim2.fromScale(0.54, 0.56), 30)
 	icon.ScaleType = Enum.ScaleType.Fit
 
-	local label = makeLabel(button, "Label", displayName, UDim2.fromScale(0.04, 0.60), UDim2.fromScale(0.92, 0.34), 14, Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Center, 31)
-	label.TextScaled = true
-	local constraint = Instance.new("UITextSizeConstraint")
-	constraint.MinTextSize = 9
-	constraint.MaxTextSize = 15
-	constraint.Parent = label
+	local label = makeLabel(button, "Label", displayName, UDim2.fromScale(0.04, 0.60), UDim2.fromScale(0.92, 0.34), BUTTON_LABEL_TEXT_SIZE, Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Center, 31)
+	label.TextScaled = false
 
 	local check = Instance.new("Frame")
 	check.Name = "InstalledCheck"
@@ -1276,10 +1466,7 @@ local refreshPreviewMarkers
 local function refreshThemeButtons()
 	for themeId, entry in pairs(ui.themeButtons) do
 		local isSelected = (themeId == runtime.selectedThemeId)
-		setImageAsset(
-			entry.button,
-			isSelected and "ThemeTabSelected" or "ThemeTabUnselected"
-		)
+		setModernButtonSelected(entry.button, isSelected, "Theme")
 		entry.button.BackgroundTransparency = 1
 		entry.label.TextColor3 = Color3.fromRGB(255, 255, 255)
 		entry.label.TextStrokeTransparency = isSelected and 0.05 or 0.28
@@ -1288,10 +1475,7 @@ end
 
 refreshDecorButtons = function()
 	local backdrop = ui.decorButtons.Backdrop
-	setImageAsset(
-		backdrop.button,
-		runtime.backdropEnabled and "DecorTabSelected" or "DecorTabUnselected"
-	)
+	setModernButtonSelected(backdrop.button, runtime.backdropEnabled, "Decor")
 	backdrop.button.BackgroundTransparency = 1
 	backdrop.label.Text = runtime.backdropEnabled and "Backdrop On" or "Backdrop Off"
 	backdrop.label.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1301,21 +1485,13 @@ refreshDecorButtons = function()
 		if decorationId ~= "Backdrop" then
 			local workingIndex = findEditorItemIndex(decorationId)
 			local workingPlaced = workingIndex ~= nil
-			local selected = workingPlaced
-				and runtime.selectedIndex == workingIndex
-				and runtime.selectedDecorationId == decorationId
-
-			setImageAsset(
-				entry.button,
-				workingPlaced and "DecorTabSelected" or "DecorTabUnselected"
-			)
+			setModernButtonSelected(entry.button, workingPlaced, "Decor")
 			entry.button.BackgroundTransparency = 1
 
-			-- Saved/installed decorations show a check unless that decoration
-			-- is currently selected for editing.
+			-- Applied decorations show their installed check immediately, including
+			-- the decoration that remains selected for editing.
 			entry.check.Visible = workingPlaced
 				and runtime.savedInstalled[decorationId] == true
-				and not selected
 		end
 	end
 end
@@ -1347,10 +1523,6 @@ refreshDepthGauge = function()
 	ui.depthRightButton.Active = item ~= nil
 	ui.depthLeftButton.ImageTransparency = item and 0 or 0.55
 	ui.depthRightButton.ImageTransparency = item and 0 or 0.55
-	ui.depthLabel.TextColor3 = item
-		and Color3.fromRGB(255, 255, 255)
-		or Color3.fromRGB(130, 150, 180)
-
 	ui.removeButton.Active = item ~= nil
 	ui.removeButton.ImageTransparency = item and 0 or 0.55
 end
@@ -1714,6 +1886,7 @@ local function sendAquariumDesign(actionName)
 end
 
 local function showEditorWithoutReload()
+	hideAquariumViewerAccessButton()
 	ui.panel.Visible = true
 	ui.dimmer.Visible = true
 	ui.openButton.Visible = false
@@ -1810,8 +1983,13 @@ RunService.RenderStepped:Connect(function(deltaTime)
 		return
 	end
 
-	ui.backButton.Visible = runtime.previewMode and not ui.panel.Visible
-	ui.openButton.Visible = not ui.panel.Visible and not ui.backButton.Visible
+	local viewerOpen = isAquariumViewerOpen()
+	ui.backButton.Visible = not viewerOpen
+		and runtime.previewMode
+		and not ui.panel.Visible
+	ui.openButton.Visible = not viewerOpen
+		and not ui.panel.Visible
+		and not ui.backButton.Visible
 end)
 
 print("[AquariumFreePlacementEditor] Modern image UI v13 UI-coordinate match loaded.")

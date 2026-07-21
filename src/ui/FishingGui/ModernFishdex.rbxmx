@@ -26,7 +26,7 @@
 				<Content name="Image"><url>rbxassetid://89231191992466</url></Content>
 				<Color3 name="ImageColor3"><R>1</R><G>1</G><B>1</B></Color3>
 				<float name="ImageTransparency">0</float>
-				<UDim2 name="Position"><XS>0.5</XS><XO>0</XO><YS>0.43</YS><YO>0</YO></UDim2>
+				<UDim2 name="Position"><XS>0.5</XS><XO>0</XO><YS>0.5</YS><YO>0</YO></UDim2>
 				<token name="ScaleType">0</token>
 				<UDim2 name="Size"><XS>0</XS><XO>1536</XO><YS>0</YS><YO>1024</YO></UDim2>
 				<bool name="Visible">false</bool>
@@ -46,13 +46,13 @@
 					<float name="BackgroundTransparency">1</float>
 					<int name="BorderSizePixel">0</int>
 					<bool name="ClipsDescendants">false</bool>
-					<token name="Font">26</token>
-					<UDim2 name="Position"><XS>0</XS><XO>790</XO><YS>0</YS><YO>25</YO></UDim2>
-					<UDim2 name="Size"><XS>0</XS><XO>650</XO><YS>0</YS><YO>112</YO></UDim2>
+					<token name="Font">19</token>
+					<UDim2 name="Position"><XS>0</XS><XO>768</XO><YS>0</YS><YO>35</YO></UDim2>
+					<UDim2 name="Size"><XS>0</XS><XO>420</XO><YS>0</YS><YO>96</YO></UDim2>
 					<string name="Text">FISHDEX</string>
 					<Color3 name="TextColor3"><R>1</R><G>1</G><B>1</B></Color3>
 					<bool name="TextScaled">false</bool>
-					<float name="TextSize">100</float>
+					<float name="TextSize">72</float>
 					<Color3 name="TextStrokeColor3"><R>0</R><G>0</G><B>0</B></Color3>
 					<float name="TextStrokeTransparency">0</float>
 					<float name="TextTransparency">0</float>
@@ -73,8 +73,8 @@
 				<Item class="UITextSizeConstraint" referent="RBX00000006">
 					<Properties>
 						<string name="Name">UITextSizeConstraint</string>
-						<int name="MaxTextSize">88</int>
-						<int name="MinTextSize">38</int>
+						<int name="MaxTextSize">72</int>
+						<int name="MinTextSize">32</int>
 					</Properties>
 				</Item>
 			</Item>
@@ -89,9 +89,9 @@
 					<Content name="Image"><url>rbxassetid://126888363962311</url></Content>
 					<Color3 name="ImageColor3"><R>1</R><G>1</G><B>1</B></Color3>
 					<float name="ImageTransparency">0</float>
-					<UDim2 name="Position"><XS>0</XS><XO>540</XO><YS>0</YS><YO>10</YO></UDim2>
+					<UDim2 name="Position"><XS>0</XS><XO>563</XO><YS>0</YS><YO>30</YO></UDim2>
 					<token name="ScaleType">3</token>
-					<UDim2 name="Size"><XS>0</XS><XO>114</XO><YS>0</YS><YO>114</YO></UDim2>
+					<UDim2 name="Size"><XS>0</XS><XO>94</XO><YS>0</YS><YO>94</YO></UDim2>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">210</int>
 				</Properties>
@@ -125,7 +125,7 @@
 					<bool name="ClipsDescendants">false</bool>
 					<Content name="Image"><url>rbxassetid://119322438066977</url></Content>
 					<Color3 name="ImageColor3"><R>1</R><G>1</G><B>1</B></Color3>
-					<float name="ImageTransparency">1</float>
+					<float name="ImageTransparency">0</float>
 					<UDim2 name="Position"><XS>0</XS><XO>1290</XO><YS>0</YS><YO>-20</YO></UDim2>
 					<token name="ScaleType">3</token>
 					<UDim2 name="Size"><XS>0</XS><XO>250</XO><YS>0</YS><YO>250</YO></UDim2>
@@ -195,11 +195,11 @@
 					<Properties>
 						<string name="Name">TabTitle</string>
 						<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
-						<Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
-						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BackgroundColor3"><R>0.3215686274509804</R><G>0.3607843137254902</G><B>0.4392156862745098</B></Color3>
+						<float name="BackgroundTransparency">0</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<UDim2 name="Position"><XS>0.7</XS><XO>0</XO><YS>0.5</YS><YO>0</YO></UDim2>
 						<UDim2 name="Size"><XS>0.28</XS><XO>0</XO><YS>0.68</YS><YO>0</YO></UDim2>
 						<string name="Text">All</string>
@@ -281,13 +281,13 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
-						<UDim2 name="Position"><XS>0.63</XS><XO>0</XO><YS>0.5</YS><YO>0</YO></UDim2>
-						<UDim2 name="Size"><XS>0.6</XS><XO>0</XO><YS>0.68</YS><YO>0</YO></UDim2>
+						<token name="Font">19</token>
+						<UDim2 name="Position"><XS>0.62</XS><XO>0</XO><YS>0.5</YS><YO>0</YO></UDim2>
+						<UDim2 name="Size"><XS>0.72</XS><XO>0</XO><YS>0.68</YS><YO>0</YO></UDim2>
 						<string name="Text">Lilyshore Island</string>
 						<Color3 name="TextColor3"><R>1</R><G>1</G><B>1</B></Color3>
 						<bool name="TextScaled">true</bool>
-						<float name="TextSize">32</float>
+						<float name="TextSize">22</float>
 						<Color3 name="TextStrokeColor3"><R>0</R><G>0</G><B>0</B></Color3>
 						<float name="TextStrokeTransparency">0</float>
 						<float name="TextTransparency">0</float>
@@ -299,8 +299,8 @@
 					<Item class="UITextSizeConstraint" referent="RBX00000015">
 						<Properties>
 							<string name="Name">UITextSizeConstraint</string>
-							<int name="MaxTextSize">32</int>
-							<int name="MinTextSize">14</int>
+							<int name="MaxTextSize">22</int>
+							<int name="MinTextSize">10</int>
 						</Properties>
 					</Item>
 				</Item>
@@ -363,13 +363,13 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
-						<UDim2 name="Position"><XS>0.63</XS><XO>0</XO><YS>0.5</YS><YO>0</YO></UDim2>
-						<UDim2 name="Size"><XS>0.6</XS><XO>0</XO><YS>0.68</YS><YO>0</YO></UDim2>
+						<token name="Font">19</token>
+						<UDim2 name="Position"><XS>0.62</XS><XO>0</XO><YS>0.5</YS><YO>0</YO></UDim2>
+						<UDim2 name="Size"><XS>0.72</XS><XO>0</XO><YS>0.68</YS><YO>0</YO></UDim2>
 						<string name="Text">Riverbend Island</string>
 						<Color3 name="TextColor3"><R>1</R><G>1</G><B>1</B></Color3>
 						<bool name="TextScaled">true</bool>
-						<float name="TextSize">32</float>
+						<float name="TextSize">22</float>
 						<Color3 name="TextStrokeColor3"><R>0</R><G>0</G><B>0</B></Color3>
 						<float name="TextStrokeTransparency">0</float>
 						<float name="TextTransparency">0</float>
@@ -381,8 +381,8 @@
 					<Item class="UITextSizeConstraint" referent="RBX0000001B">
 						<Properties>
 							<string name="Name">UITextSizeConstraint</string>
-							<int name="MaxTextSize">32</int>
-							<int name="MinTextSize">14</int>
+							<int name="MaxTextSize">22</int>
+							<int name="MinTextSize">10</int>
 						</Properties>
 					</Item>
 				</Item>
@@ -445,13 +445,13 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
-						<UDim2 name="Position"><XS>0.63</XS><XO>0</XO><YS>0.5</YS><YO>0</YO></UDim2>
-						<UDim2 name="Size"><XS>0.62</XS><XO>0</XO><YS>0.68</YS><YO>0</YO></UDim2>
+						<token name="Font">19</token>
+						<UDim2 name="Position"><XS>0.62</XS><XO>0</XO><YS>0.5</YS><YO>0</YO></UDim2>
+						<UDim2 name="Size"><XS>0.74</XS><XO>0</XO><YS>0.68</YS><YO>0</YO></UDim2>
 						<string name="Text">Coral Coast Island</string>
 						<Color3 name="TextColor3"><R>1</R><G>1</G><B>1</B></Color3>
 						<bool name="TextScaled">true</bool>
-						<float name="TextSize">31</float>
+						<float name="TextSize">20</float>
 						<Color3 name="TextStrokeColor3"><R>0</R><G>0</G><B>0</B></Color3>
 						<float name="TextStrokeTransparency">0</float>
 						<float name="TextTransparency">0</float>
@@ -463,8 +463,8 @@
 					<Item class="UITextSizeConstraint" referent="RBX00000021">
 						<Properties>
 							<string name="Name">UITextSizeConstraint</string>
-							<int name="MaxTextSize">31</int>
-							<int name="MinTextSize">14</int>
+							<int name="MaxTextSize">20</int>
+							<int name="MinTextSize">10</int>
 						</Properties>
 					</Item>
 				</Item>
@@ -519,7 +519,7 @@
 					<int name="ScrollBarThickness">0</int>
 					<token name="ScrollingDirection">2</token>
 					<bool name="ScrollingEnabled">true</bool>
-					<UDim2 name="Size"><XS>0</XS><XO>1275</XO><YS>0</YS><YO>610</YO></UDim2>
+					<UDim2 name="Size"><XS>0</XS><XO>1286</XO><YS>0</YS><YO>610</YO></UDim2>
 					<Content name="TopImage"><url></url></Content>
 					<token name="VerticalScrollBarInset">0</token>
 					<bool name="Visible">true</bool>
@@ -534,8 +534,8 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<UDim2 name="Position"><XS>0</XS><XO>0</XO><YS>0</YS><YO>0</YO></UDim2>
-						<UDim2 name="Size"><XS>1</XS><XO>-8</XO><YS>0</YS><YO>0</YO></UDim2>
+						<UDim2 name="Position"><XS>0</XS><XO>3</XO><YS>0</YS><YO>3</YO></UDim2>
+						<UDim2 name="Size"><XS>1</XS><XO>-6</XO><YS>0</YS><YO>0</YO></UDim2>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">202</int>
 					</Properties>
@@ -546,7 +546,7 @@
 							<UDim2 name="CellSize"><XS>0</XS><XO>390</XO><YS>0</YS><YO>270</YO></UDim2>
 							<token name="FillDirection">0</token>
 							<int name="FillDirectionMaxCells">3</int>
-							<token name="HorizontalAlignment">1</token>
+							<token name="HorizontalAlignment">0</token>
 							<token name="SortOrder">2</token>
 						</Properties>
 					</Item>
@@ -582,7 +582,7 @@
 						<float name="ImageTransparency">0</float>
 						<UDim2 name="Position"><XS>0.2</XS><XO>0</XO><YS>0.5</YS><YO>0</YO></UDim2>
 						<token name="ScaleType">3</token>
-						<UDim2 name="Size"><XS>0</XS><XO>78</XO><YS>0</YS><YO>78</YO></UDim2>
+						<UDim2 name="Size"><XS>0</XS><XO>92</XO><YS>0</YS><YO>92</YO></UDim2>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">208</int>
 					</Properties>
@@ -595,13 +595,13 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<UDim2 name="Position"><XS>0.64</XS><XO>0</XO><YS>0.28</YS><YO>0</YO></UDim2>
-						<UDim2 name="Size"><XS>0.58</XS><XO>0</XO><YS>0.3</YS><YO>0</YO></UDim2>
+						<UDim2 name="Size"><XS>0.62</XS><XO>0</XO><YS>0.34</YS><YO>0</YO></UDim2>
 						<string name="Text">Collection</string>
 						<Color3 name="TextColor3"><R>0.19607843137254902</R><G>0.9450980392156862</G><B>1</B></Color3>
 						<bool name="TextScaled">false</bool>
-						<float name="TextSize">30</float>
+						<float name="TextSize">28</float>
 						<Color3 name="TextStrokeColor3"><R>0</R><G>0</G><B>0</B></Color3>
 						<float name="TextStrokeTransparency">0</float>
 						<float name="TextTransparency">0</float>
@@ -613,7 +613,7 @@
 					<Item class="UITextSizeConstraint" referent="RBX0000002B">
 						<Properties>
 							<string name="Name">UITextSizeConstraint</string>
-							<int name="MaxTextSize">30</int>
+							<int name="MaxTextSize">28</int>
 							<int name="MinTextSize">16</int>
 						</Properties>
 					</Item>
@@ -626,13 +626,13 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<UDim2 name="Position"><XS>0.64</XS><XO>0</XO><YS>0.68</YS><YO>0</YO></UDim2>
-						<UDim2 name="Size"><XS>0.54</XS><XO>0</XO><YS>0.38</YS><YO>0</YO></UDim2>
+						<UDim2 name="Size"><XS>0.66</XS><XO>0</XO><YS>0.42</YS><YO>0</YO></UDim2>
 						<string name="Text">0 / 0</string>
 						<Color3 name="TextColor3"><R>1</R><G>1</G><B>1</B></Color3>
 						<bool name="TextScaled">false</bool>
-						<float name="TextSize">38</float>
+						<float name="TextSize">34</float>
 						<Color3 name="TextStrokeColor3"><R>0</R><G>0</G><B>0</B></Color3>
 						<float name="TextStrokeTransparency">0</float>
 						<float name="TextTransparency">0</float>
@@ -644,7 +644,7 @@
 					<Item class="UITextSizeConstraint" referent="RBX0000002D">
 						<Properties>
 							<string name="Name">UITextSizeConstraint</string>
-							<int name="MaxTextSize">38</int>
+							<int name="MaxTextSize">34</int>
 							<int name="MinTextSize">20</int>
 						</Properties>
 					</Item>
@@ -656,14 +656,66 @@
 					<bool name="Active">true</bool>
 					<Vector2 name="AnchorPoint"><X>0</X><Y>0</Y></Vector2>
 					<Color3 name="BackgroundColor3"><R>0.011764705882352941</R><G>0.08627450980392157</G><B>0.24313725490196078</B></Color3>
-					<float name="BackgroundTransparency">0</float>
+					<float name="BackgroundTransparency">1</float>
 					<int name="BorderSizePixel">0</int>
 					<bool name="ClipsDescendants">true</bool>
 					<UDim2 name="Position"><XS>0</XS><XO>1390</XO><YS>0</YS><YO>310</YO></UDim2>
-					<UDim2 name="Size"><XS>0</XS><XO>24</XO><YS>0</YS><YO>520</YO></UDim2>
+					<UDim2 name="Size"><XS>0</XS><XO>28</XO><YS>0</YS><YO>520</YO></UDim2>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">214</int>
 				</Properties>
+				<Item class="ImageLabel" referent="RBX0000003F">
+					<Properties>
+						<string name="Name">QuestScrollbarTrackArt</string>
+						<Vector2 name="AnchorPoint"><X>0</X><Y>0</Y></Vector2>
+						<Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<Content name="Image"><url>rbxassetid://73367138577137</url></Content>
+						<Vector2 name="ImageRectOffset"><X>683</X><Y>29</Y></Vector2>
+						<Vector2 name="ImageRectSize"><X>65</X><Y>1021</Y></Vector2>
+						<float name="ImageTransparency">0</float>
+						<UDim2 name="Position"><XS>0</XS><XO>0</XO><YS>0</YS><YO>0</YO></UDim2>
+						<token name="ScaleType">0</token>
+						<UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO></UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">215</int>
+					</Properties>
+				</Item>
+				<Item class="Frame" referent="RBXFISHDEXSCROLLCHANNEL">
+					<Properties>
+						<string name="Name">ScrollbarChannel</string>
+						<Vector2 name="AnchorPoint"><X>0</X><Y>0</Y></Vector2>
+						<Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">true</bool>
+						<UDim2 name="Position"><XS>0.28</XS><XO>0</XO><YS>0.05</YS><YO>0</YO></UDim2>
+						<UDim2 name="Size"><XS>0.44</XS><XO>0</XO><YS>0.82</YS><YO>0</YO></UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">215</int>
+					</Properties>
+					<Item class="ImageLabel" referent="RBXFISHDEXSCROLLCHANNELART">
+						<Properties>
+							<string name="Name">Artwork</string>
+							<Vector2 name="AnchorPoint"><X>0</X><Y>0</Y></Vector2>
+							<Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
+							<float name="BackgroundTransparency">1</float>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<Content name="Image"><url>rbxassetid://73367138577137</url></Content>
+							<Vector2 name="ImageRectOffset"><X>701</X><Y>914</Y></Vector2>
+							<Vector2 name="ImageRectSize"><X>30</X><Y>90</Y></Vector2>
+							<float name="ImageTransparency">0</float>
+							<UDim2 name="Position"><XS>0</XS><XO>0</XO><YS>0</YS><YO>0</YO></UDim2>
+							<token name="ScaleType">0</token>
+							<UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO></UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">215</int>
+						</Properties>
+					</Item>
+				</Item>
 				<Item class="UICorner" referent="RBX0000002F">
 					<Properties>
 						<string name="Name">TrackCorner</string>
@@ -675,7 +727,7 @@
 						<string name="Name">TrackStroke</string>
 						<Color3 name="Color"><R>0.07058823529411765</R><G>0.36470588235294116</G><B>0.9607843137254902</B></Color3>
 						<float name="Thickness">2</float>
-						<float name="Transparency">0.08</float>
+						<float name="Transparency">1</float>
 					</Properties>
 				</Item>
 				<Item class="UIGradient" referent="RBX00000031">
@@ -692,16 +744,18 @@
 						<Vector2 name="AnchorPoint"><X>0.5</X><Y>0</Y></Vector2>
 						<bool name="AutoButtonColor">false</bool>
 						<Color3 name="BackgroundColor3"><R>0</R><G>0.4627450980392157</G><B>1</B></Color3>
-						<float name="BackgroundTransparency">0</float>
+						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<Content name="Image"><url></url></Content>
+						<Content name="Image"><url>rbxassetid://73367138577137</url></Content>
+						<Vector2 name="ImageRectOffset"><X>701</X><Y>77</Y></Vector2>
+						<Vector2 name="ImageRectSize"><X>30</X><Y>825</Y></Vector2>
 						<Color3 name="ImageColor3"><R>1</R><G>1</G><B>1</B></Color3>
 						<float name="ImageTransparency">0</float>
-						<UDim2 name="Position"><XS>0.5</XS><XO>0</XO><YS>0</YS><YO>2</YO></UDim2>
+						<UDim2 name="Position"><XS>0.5</XS><XO>0</XO><YS>0</YS><YO>0</YO></UDim2>
 						<token name="ScaleType">0</token>
 						<bool name="Selectable">false</bool>
-						<UDim2 name="Size"><XS>0</XS><XO>20</XO><YS>0</YS><YO>516</YO></UDim2>
+						<UDim2 name="Size"><XS>0</XS><XO>14</XO><YS>0</YS><YO>374</YO></UDim2>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">216</int>
 					</Properties>
@@ -723,7 +777,7 @@
 							<string name="Name">ThumbGlowStroke</string>
 							<Color3 name="Color"><R>0</R><G>0.9215686274509803</G><B>1</B></Color3>
 							<float name="Thickness">2</float>
-							<float name="Transparency">0</float>
+							<float name="Transparency">1</float>
 						</Properties>
 					</Item>
 					<Item class="Frame" referent="RBX00000036">
@@ -737,7 +791,7 @@
 							<bool name="ClipsDescendants">false</bool>
 							<UDim2 name="Position"><XS>0.18</XS><XO>0</XO><YS>0.04</YS><YO>0</YO></UDim2>
 							<UDim2 name="Size"><XS>0.18</XS><XO>0</XO><YS>0.92</YS><YO>0</YO></UDim2>
-							<bool name="Visible">true</bool>
+							<bool name="Visible">false</bool>
 							<int name="ZIndex">217</int>
 						</Properties>
 						<Item class="UICorner" referent="RBX00000037">
@@ -753,13 +807,13 @@
 				<Properties>
 					<string name="Name">FishCardTemplate</string>
 					<Vector2 name="AnchorPoint"><X>0</X><Y>0</Y></Vector2>
-					<Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
-					<float name="BackgroundTransparency">1</float>
+					<Color3 name="BackgroundColor3"><R>0.00784313725490196</R><G>0.12156862745098039</G><B>0.3215686274509804</B></Color3>
+					<float name="BackgroundTransparency">0</float>
 					<int name="BorderSizePixel">0</int>
 					<bool name="ClipsDescendants">false</bool>
 					<Content name="Image"><url>rbxassetid://77909229815890</url></Content>
 					<Color3 name="ImageColor3"><R>1</R><G>1</G><B>1</B></Color3>
-					<float name="ImageTransparency">0</float>
+					<float name="ImageTransparency">1</float>
 					<int name="LayoutOrder">0</int>
 					<UDim2 name="Position"><XS>0</XS><XO>0</XO><YS>0</YS><YO>0</YO></UDim2>
 					<token name="ScaleType">0</token>
@@ -767,6 +821,39 @@
 					<bool name="Visible">false</bool>
 					<int name="ZIndex">206</int>
 				</Properties>
+				<Item class="UICorner" referent="RBXFISHCARDREFCORNER">
+					<Properties>
+						<string name="Name">ReferenceCardCorner</string>
+						<UDim name="CornerRadius"><S>0</S><O>18</O></UDim>
+					</Properties>
+				</Item>
+				<Item class="UIStroke" referent="RBXFISHCARDREFSTROKE">
+					<Properties>
+						<string name="Name">ReferenceCardBorder</string>
+						<token name="ApplyStrokeMode">0</token>
+						<Color3 name="Color"><R>0.0392156862745098</R><G>0.4392156862745098</G><B>1</B></Color3>
+						<float name="Thickness">3</float>
+						<float name="Transparency">0</float>
+					</Properties>
+				</Item>
+				<Item class="Frame" referent="RBXFISHCARDINNER">
+					<Properties>
+						<string name="Name">ReferenceInnerBorder</string>
+						<Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<UDim2 name="Position"><XS>0</XS><XO>8</XO><YS>0</YS><YO>8</YO></UDim2>
+						<UDim2 name="Size"><XS>1</XS><XO>-16</XO><YS>1</YS><YO>-16</YO></UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">206</int>
+					</Properties>
+					<Item class="UICorner" referent="RBXFISHCARDINNERCORNER">
+						<Properties><string name="Name">ReferenceInnerCorner</string><UDim name="CornerRadius"><S>0</S><O>14</O></UDim></Properties>
+					</Item>
+					<Item class="UIStroke" referent="RBXFISHCARDINNERSTROKE">
+						<Properties><string name="Name">ReferenceInnerStroke</string><token name="ApplyStrokeMode">0</token><Color3 name="Color"><R>0.027450980392156862</R><G>0.2980392156862745</G><B>0.7098039215686275</B></Color3><float name="Thickness">2</float><float name="Transparency">0.18</float></Properties>
+					</Item>
+				</Item>
 				<Item class="ImageLabel" referent="RBX00000039">
 					<Properties>
 						<string name="Name">FishImage</string>
@@ -793,7 +880,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<UDim2 name="Position"><XS>0.5</XS><XO>0</XO><YS>0.67</YS><YO>0</YO></UDim2>
 						<UDim2 name="Size"><XS>0.92</XS><XO>0</XO><YS>0.16</YS><YO>0</YO></UDim2>
 						<string name="Text">???</string>
@@ -820,19 +907,33 @@
 					<Properties>
 						<string name="Name">RarityBadge</string>
 						<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>
-						<Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
-						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BackgroundColor3"><R>0.17647058823529413</R><G>0.21568627450980393</G><B>0.28627450980392155</B></Color3>
+						<float name="BackgroundTransparency">0</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
 						<Content name="Image"><url></url></Content>
 						<Color3 name="ImageColor3"><R>1</R><G>1</G><B>1</B></Color3>
-						<float name="ImageTransparency">0</float>
+						<float name="ImageTransparency">1</float>
 						<UDim2 name="Position"><XS>0.5</XS><XO>0</XO><YS>0.84</YS><YO>0</YO></UDim2>
 						<token name="ScaleType">0</token>
-						<UDim2 name="Size"><XS>0.84</XS><XO>0</XO><YS>0.28</YS><YO>0</YO></UDim2>
+						<UDim2 name="Size"><XS>0.62</XS><XO>0</XO><YS>0.18</YS><YO>0</YO></UDim2>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">207</int>
 					</Properties>
+					<Item class="UICorner" referent="RBXRARITYREFCORNER">
+						<Properties><string name="Name">ReferenceCorner</string><UDim name="CornerRadius"><S>0</S><O>12</O></UDim></Properties>
+					</Item>
+					<Item class="UIStroke" referent="RBXRARITYREFSTROKE">
+						<Properties><string name="Name">ReferenceBorder</string><token name="ApplyStrokeMode">0</token><Color3 name="Color"><R>0.7450980392156863</R><G>0.792156862745098</G><B>0.8784313725490196</B></Color3><float name="Thickness">3</float><float name="Transparency">0</float></Properties>
+					</Item>
+					<Item class="UIGradient" referent="RBXRARITYREFGRADIENT">
+						<Properties>
+							<string name="Name">ReferenceGradient</string>
+							<ColorSequence name="Color">0 1 1 1 0 1 0.7450980392156863 0.7843137254901961 0.8627450980392157 0</ColorSequence>
+							<NumberSequence name="Transparency">0 0 0 1 0 0</NumberSequence>
+							<float name="Rotation">90</float>
+						</Properties>
+					</Item>
 					<Item class="TextLabel" referent="RBX0000003D">
 						<Properties>
 							<string name="Name">RarityText</string>
@@ -841,13 +942,13 @@
 							<float name="BackgroundTransparency">1</float>
 							<int name="BorderSizePixel">0</int>
 							<bool name="ClipsDescendants">false</bool>
-							<token name="Font">26</token>
+							<token name="Font">19</token>
 							<UDim2 name="Position"><XS>0.5</XS><XO>0</XO><YS>0.5</YS><YO>0</YO></UDim2>
-							<UDim2 name="Size"><XS>0.34</XS><XO>0</XO><YS>0.34</YS><YO>0</YO></UDim2>
+							<UDim2 name="Size"><XS>0.88</XS><XO>0</XO><YS>0.72</YS><YO>0</YO></UDim2>
 							<string name="Text">COMMON</string>
 							<Color3 name="TextColor3"><R>1</R><G>1</G><B>1</B></Color3>
 							<bool name="TextScaled">true</bool>
-							<float name="TextSize">17</float>
+							<float name="TextSize">22</float>
 							<Color3 name="TextStrokeColor3"><R>0</R><G>0</G><B>0</B></Color3>
 							<float name="TextStrokeTransparency">0</float>
 							<float name="TextTransparency">0</float>
@@ -859,8 +960,8 @@
 						<Item class="UITextSizeConstraint" referent="RBX0000003E">
 							<Properties>
 								<string name="Name">UITextSizeConstraint</string>
-								<int name="MaxTextSize">17</int>
-								<int name="MinTextSize">8</int>
+								<int name="MaxTextSize">22</int>
+								<int name="MinTextSize">10</int>
 							</Properties>
 						</Item>
 					</Item>

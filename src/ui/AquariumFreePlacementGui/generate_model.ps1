@@ -79,7 +79,7 @@ function New-Label([string]$Name, [string]$Text, $Position, $Size, [int]$TextSiz
     if ($null -eq $TextColor) { $TextColor = ColorValue 235 242 255 }
     $props = CommonGuiProps $Position $Size (ColorValue 255 255 255) 1 $ZIndex
     $props.Text = Prop "string" $Text
-    $props.Font = Prop "token" 19
+    $props.Font = Prop "token" 26
     $props.TextColor3 = $TextColor
     $props.TextScaled = Prop "bool" $false
     $props.TextSize = Prop "float" $TextSize
@@ -94,7 +94,7 @@ function New-Label([string]$Name, [string]$Text, $Position, $Size, [int]$TextSiz
 function New-Button([string]$Name, [string]$Text, $Position, $Size, $Background, [int]$TextSize = 13, [int]$ZIndex = 3) {
     $props = CommonGuiProps $Position $Size $Background 0 $ZIndex
     $props.AutoButtonColor = Prop "bool" $true
-    $props.Font = Prop "token" 19
+    $props.Font = Prop "token" 26
     $props.Text = Prop "string" $Text
     $props.TextColor3 = ColorValue 255 255 255
     $props.TextScaled = Prop "bool" $false
@@ -163,7 +163,15 @@ $root = New-Frame "Interface" (UDim2Value 0 0 0 0) (UDim2Value 1 0 1 0) $transpa
 # Recovered version-1636 image assets and exact crops. The UI is authored here
 # so Studio Edit mode and Play mode render the same hierarchy and artwork.
 $assets = @{
-    AquariumBackbone = @("rbxassetid://87835784646088", @(5, 4, 1014, 562))
+    ReferenceTopBorder = @("rbxassetid://78119100190793", @(0, 0, 1024, 20))
+    ReferenceHeaderDivider = @("rbxassetid://78119100190793", @(0, 73, 1024, 6))
+    ReferenceLeftRail = @("rbxassetid://78119100190793", @(0, 0, 25, 576))
+    ReferenceRightRail = @("rbxassetid://78119100190793", @(999, 0, 25, 576))
+    ReferenceBottomRail = @("rbxassetid://78119100190793", @(0, 548, 1024, 28))
+    ReferencePreview = @("rbxassetid://78119100190793", @(22, 76, 523, 462))
+    ReferenceThemesPanel = @("rbxassetid://78119100190793", @(551, 73, 448, 96))
+    ReferenceDecorPanel = @("rbxassetid://78119100190793", @(551, 173, 448, 227))
+    ReferenceAdjustmentsPanel = @("rbxassetid://78119100190793", @(551, 407, 448, 82))
     MainDisplay = @("rbxassetid://73798557079455", @(41, 57, 941, 870))
     MappedMainDisplay = @("rbxassetid://73798557079455", @(106, 180, 815, 665))
     LeftDecoration = @("rbxassetid://91056388997818", @(170, 56, 78, 83))
@@ -199,30 +207,41 @@ $panel = Add-Child $root (New-Frame "Panel" (UDim2Value 0.5 0 0.5 0) (UDim2Value
 $panel.Properties.AnchorPoint = Vector2Value 0.5 0.5
 $panel.Properties.Active = Prop "bool" $true
 $panel.Properties.Visible = Prop "bool" $false
-Add-Child $panel (New-Node "UIScale" "ResponsiveScale" @{ Scale = Prop "float" 0.7 }) | Out-Null
+Add-Child $panel (New-Node "UIScale" "ResponsiveScale" @{ Scale = Prop "float" 1 }) | Out-Null
 Add-Child $panel (New-Node "UISizeConstraint" "PanelSizeConstraint" @{
     MinSize = Vector2Value 1672 941
     MaxSize = Vector2Value 1672 941
 }) | Out-Null
 
-$backboneInfo = $assets.AquariumBackbone
-Add-Child $panel (New-ImageVisual "ImageLabel" "AquariumBackbone" $backboneInfo[0] $backboneInfo[1] (UDim2Value 0 0 0 0) (UDim2Value 0 1672 0 941) 10) | Out-Null
+$shellFill = Add-Child $panel (New-Frame "ShellFill" (UDim2Value 0 27 0 18) (UDim2Value 0 1618 0 904) (ColorValue 0 14 38) 0 9)
+Add-Corner $shellFill 22
+foreach ($slice in @(
+    @("ReferenceTopBorder", 0, 0, 1672, 31, 11),
+    @("ReferenceHeaderDivider", 0, 118, 1672, 10, 11),
+    @("ReferenceLeftRail", 0, 0, 40, 941, 12),
+    @("ReferenceRightRail", 1632, 0, 40, 941, 12),
+    @("ReferenceBottomRail", 0, 895, 1672, 46, 12)
+)) {
+    $sliceInfo = $assets[$slice[0]]
+    Add-Child $panel (New-ImageVisual "ImageLabel" $slice[0] $sliceInfo[0] $sliceInfo[1] (UDim2Value 0 $slice[1] 0 $slice[2]) (UDim2Value 0 $slice[3] 0 $slice[4]) $slice[5]) | Out-Null
+}
 $leftInfo = $assets.LeftDecoration
-Add-Child $panel (New-ImageVisual "ImageLabel" "LeftDecoration" $leftInfo[0] $leftInfo[1] (UDim2Value 0 45 0 28) (UDim2Value 0 104 0 110) 20) | Out-Null
+Add-Child $panel (New-ImageVisual "ImageLabel" "LeftDecoration" $leftInfo[0] $leftInfo[1] (UDim2Value 0 51 0 29) (UDim2Value 0 82 0 88) 20) | Out-Null
 
 $titleRow = Add-Child $panel (New-Frame "TitleRow" (UDim2Value 0 0 0 0) (UDim2Value 1 0 1 0) $transparent 1 21)
-$title = Add-Child $titleRow (New-Label "Title" "Aquarium Decor Editor" (UDim2Value 0 155 0 30) (UDim2Value 0 900 0 62) 43 (ColorValue 255 255 255) 25)
-$status = Add-Child $titleRow (New-Label "StatusLabel" "Scroll to Scale" (UDim2Value 0 157 0 88) (UDim2Value 0 720 0 36) 22 (ColorValue 47 236 255) 25)
-$closeButton = Add-Child $titleRow (New-Button "CloseButton" "" (UDim2Value 0 1515 0 30) (UDim2Value 0 92 0 94) $transparent 0 30)
+$title = Add-Child $titleRow (New-Label "Title" "Aquarium Decor Editor" (UDim2Value 0 150 0 31) (UDim2Value 0 700 0 54) 43 (ColorValue 255 255 255) 25)
+$status = Add-Child $titleRow (New-Label "StatusLabel" "Scroll to Scale" (UDim2Value 0 151 0 82) (UDim2Value 0 620 0 32) 22 (ColorValue 47 236 255) 25)
+$closeButton = Add-Child $titleRow (New-Button "CloseButton" "" (UDim2Value 0 1548 0 31) (UDim2Value 0 68 0 68) $transparent 0 30)
 $closeButton.Properties.BackgroundTransparency = Prop "float" 1
 $closeInfo = $assets.CloseButton
 Add-Child $closeButton (New-ImageVisual "ImageLabel" "Visual" $closeInfo[0] $closeInfo[1] (UDim2Value 0 0 0 0) (UDim2Value 1 0 1 0) 29) | Out-Null
 
-$mainDisplayInfo = $assets.MainDisplay
-Add-Child $panel (New-ImageVisual "ImageLabel" "MainDisplay" $mainDisplayInfo[0] $mainDisplayInfo[1] (UDim2Value 0 29 0 143) (UDim2Value 0 880 0 752) 18) | Out-Null
-$preview = Add-Child $panel (New-Frame "PreviewFrame" (UDim2Value 0 61 0 183) (UDim2Value 0 814 0 665) (ColorValue 8 45 92) 1 22)
+$mainDisplayInfo = $assets.ReferencePreview
+Add-Child $panel (New-ImageVisual "ImageLabel" "ReferencePreview" $mainDisplayInfo[0] $mainDisplayInfo[1] (UDim2Value 0 36 0 124) (UDim2Value 0 854 0 755) 18) | Out-Null
+$preview = Add-Child $panel (New-Frame "PreviewFrame" (UDim2Value 0 47 0 134) (UDim2Value 0 832 0 735) (ColorValue 8 45 92) 1 22)
 $preview.Properties.Active = Prop "bool" $true
 $preview.Properties.ClipsDescendants = Prop "bool" $true
+Add-Corner $preview 18
 $water = Add-Child $preview (New-Frame "PreviewWater" (UDim2Value 0 0 0 0) (UDim2Value 1 0 1 0) (ColorValue 44 151 212) 1 22)
 $mappedInfo = $assets.MappedMainDisplay
 Add-Child $water (New-ImageVisual "ImageLabel" "MappedMainDisplay" $mappedInfo[0] $mappedInfo[1] (UDim2Value 0 0 0 0) (UDim2Value 1 0 1 0) 20) | Out-Null
@@ -231,32 +250,29 @@ $ghost = Add-Child $preview (New-Frame "GhostMarker" (UDim2Value 0.5 0 0.5 0) (U
 $ghost.Properties.AnchorPoint = Vector2Value 0.5 0.5
 $ghost.Properties.Visible = Prop "bool" $false
 
-$themesInfo = $assets.ThemesPanel
-Add-Child $panel (New-ImageVisual "ImageLabel" "ThemesPanel" $themesInfo[0] $themesInfo[1] (UDim2Value 0 920 0 142) (UDim2Value 0 694 0 168) 17) | Out-Null
-$headingStar = [char]0x2726
-$leftArrowText = [char]0x2190
-$themeHeader = Add-Child $panel (New-Label "ThemesHeader" ("$headingStar Themes $headingStar") (UDim2Value 0 943 0 145) (UDim2Value 0 640 0 38) 22 (ColorValue 255 255 255) 24)
-$themeGrid = Add-Child $panel (New-Frame "ThemeGrid" (UDim2Value 0 935 0 184) (UDim2Value 0 665 0 112) $transparent 1 25)
+$themesInfo = $assets.ReferenceThemesPanel
+Add-Child $panel (New-ImageVisual "ImageLabel" "ThemesPanel" $themesInfo[0] $themesInfo[1] (UDim2Value 0 899 0 119) (UDim2Value 0 732 0 156) 17) | Out-Null
+$themesContentMask = Add-Child $panel (New-Frame "ThemesContentMask" (UDim2Value 0 908 0 151) (UDim2Value 0 714 0 116) (ColorValue 1 15 42) 0 18)
+Add-Corner $themesContentMask 10
+$themeGrid = Add-Child $panel (New-Frame "ThemeGrid" (UDim2Value 0 919 0 155) (UDim2Value 0 690 0 110) $transparent 1 25)
 $themeGrid.Properties.ClipsDescendants = Prop "bool" $true
 Add-Child $themeGrid (New-Node "UIGridLayout" "Layout" @{
-    CellPadding = UDim2Value 0 8 0 8
-    CellSize = UDim2Value 0 158 0 52
+    CellPadding = UDim2Value 0 10 0 8
+    CellSize = UDim2Value 0 160 0 50
     FillDirection = Prop "token" 0
     FillDirectionMaxCells = Prop "int" 4
     SortOrder = Prop "token" 2
 }) | Out-Null
 
-$decorInfo = $assets.DecorPanel
-Add-Child $panel (New-ImageVisual "ImageLabel" "DecorPanel" $decorInfo[0] $decorInfo[1] (UDim2Value 0 920 0 316) (UDim2Value 0 694 0 330) 17) | Out-Null
-$decorHeader = Add-Child $panel (New-Label "DecorHeader" ("$headingStar Decor") (UDim2Value 0 943 0 321) (UDim2Value 0 155 0 36) 22 (ColorValue 255 255 255) 24)
-$decorHint = Add-Child $panel (New-Label "DecorHint" ("$leftArrowText Tap a decor to place it") (UDim2Value 0 1083 0 325) (UDim2Value 0 360 0 31) 14 (ColorValue 47 236 255) 24)
-$decorHint.Properties.Font = Prop "token" 18
-$decorHint.Properties.TextStrokeTransparency = Prop "float" 1
-$decorGrid = Add-Child $panel (New-Frame "DecorGrid" (UDim2Value 0 934 0 360) (UDim2Value 0 666 0 268) $transparent 1 25)
+$decorInfo = $assets.ReferenceDecorPanel
+Add-Child $panel (New-ImageVisual "ImageLabel" "DecorPanel" $decorInfo[0] $decorInfo[1] (UDim2Value 0 899 0 283) (UDim2Value 0 732 0 371) 17) | Out-Null
+$decorContentMask = Add-Child $panel (New-Frame "DecorContentMask" (UDim2Value 0 908 0 322) (UDim2Value 0 714 0 324) (ColorValue 1 16 44) 0 18)
+Add-Corner $decorContentMask 10
+$decorGrid = Add-Child $panel (New-Frame "DecorGrid" (UDim2Value 0 914 0 327) (UDim2Value 0 696 0 318) $transparent 1 25)
 $decorGrid.Properties.ClipsDescendants = Prop "bool" $true
 Add-Child $decorGrid (New-Node "UIGridLayout" "Layout" @{
     CellPadding = UDim2Value 0 8 0 9
-    CellSize = UDim2Value 0 158 0 79
+    CellSize = UDim2Value 0 168 0 100
     FillDirection = Prop "token" 0
     FillDirectionMaxCells = Prop "int" 4
     SortOrder = Prop "token" 2
@@ -269,28 +285,23 @@ Add-Child $backdrop (New-ImageVisual "ImageLabel" "Visual" $decorNormal[0] $deco
 $backdropInfo = $assets.Backdrop
 $backdropIcon = Add-Child $backdrop (New-ImageVisual "ImageLabel" "DecorIcon" $backdropInfo[0] $backdropInfo[1] (UDim2Value 0.23 0 0.08 0) (UDim2Value 0.54 0 0.56 0) 30)
 $backdropIcon.Properties.ScaleType = Prop "token" 3
-$backdropLabel = Add-Child $backdrop (New-Label "Label" "Backdrop On" (UDim2Value 0.04 0 0.60 0) (UDim2Value 0.92 0 0.34 0) 14 (ColorValue 255 255 255) 31)
-$backdropLabel.Properties.TextScaled = Prop "bool" $true
+$backdropLabel = Add-Child $backdrop (New-Label "Label" "Backdrop On" (UDim2Value 0.04 0 0.60 0) (UDim2Value 0.92 0 0.34 0) 18 (ColorValue 255 255 255) 31)
+$backdropLabel.Properties.TextScaled = Prop "bool" $false
 $backdropLabel.Properties.TextXAlignment = Prop "token" 1
-Add-TextConstraint $backdropLabel 9 15
 Add-Stroke $backdrop (ColorValue 95 255 132) 1 "SelectionStroke"
 
-$adjustInfo = $assets.AdjustmentsBig
-Add-Child $panel (New-ImageVisual "ImageLabel" "AdjustmentsPanel" $adjustInfo[0] $adjustInfo[1] (UDim2Value 0 920 0 648) (UDim2Value 0 694 0 140) 17) | Out-Null
-$adjustSmall = $assets.AdjustmentsSmall
-Add-Child $panel (New-ImageVisual "ImageLabel" "AdjustmentsInner" $adjustSmall[0] $adjustSmall[1] (UDim2Value 0 938 0 698) (UDim2Value 0 658 0 76) 18) | Out-Null
-$adjustmentHeader = Add-Child $panel (New-Label "AdjustmentsHeader" ("$headingStar Adjustments $headingStar") (UDim2Value 0 943 0 652) (UDim2Value 0 640 0 37) 22 (ColorValue 255 255 255) 24)
-$adjustment = Add-Child $panel (New-Frame "AdjustmentGrid" (UDim2Value 0 938 0 698) (UDim2Value 0 658 0 76) $transparent 1 26)
-$depthLabel = Add-Child $adjustment (New-Label "DepthLabel" "Depth (Forward / Backward)" (UDim2Value 0 63 0 -5) (UDim2Value 0 520 0 29) 16 (ColorValue 255 255 255) 27)
-$depthLeft = Add-Child $adjustment (New-Button "DepthLeftButton" "" (UDim2Value 0 8 0 18) (UDim2Value 0 42 0 42) $transparent 0 29)
+$adjustInfo = $assets.ReferenceAdjustmentsPanel
+Add-Child $panel (New-ImageVisual "ImageLabel" "AdjustmentsPanel" $adjustInfo[0] $adjustInfo[1] (UDim2Value 0 899 0 664) (UDim2Value 0 732 0 134) 17) | Out-Null
+$adjustment = Add-Child $panel (New-Frame "AdjustmentGrid" (UDim2Value 0 918 0 704) (UDim2Value 0 694 0 76) $transparent 1 26)
+$depthLeft = Add-Child $adjustment (New-Button "DepthLeftButton" "" (UDim2Value 0 0 0 12) (UDim2Value 0 56 0 56) $transparent 0 29)
 $depthLeft.Properties.BackgroundTransparency = Prop "float" 1
 $leftArrow = $assets.LeftDirection
 Add-Child $depthLeft (New-ImageVisual "ImageLabel" "Visual" $leftArrow[0] $leftArrow[1] (UDim2Value 0 0 0 0) (UDim2Value 1 0 1 0) 28) | Out-Null
-$depthRight = Add-Child $adjustment (New-Button "DepthRightButton" "" (UDim2Value 0 608 0 18) (UDim2Value 0 42 0 42) $transparent 0 29)
+$depthRight = Add-Child $adjustment (New-Button "DepthRightButton" "" (UDim2Value 0 630 0 12) (UDim2Value 0 56 0 56) $transparent 0 29)
 $depthRight.Properties.BackgroundTransparency = Prop "float" 1
 $rightVisual = Add-Child $depthRight (New-ImageVisual "ImageLabel" "Visual" $leftArrow[0] $leftArrow[1] (UDim2Value 0 0 0 0) (UDim2Value 1 0 1 0) 28)
 $rightVisual.Properties.Rotation = Prop "float" 180
-$depthTrack = Add-Child $adjustment (New-Frame "DepthTrack" (UDim2Value 0 69 0 43) (UDim2Value 0 520 0 2) (ColorValue 108 172 255) 0.38 28)
+$depthTrack = Add-Child $adjustment (New-Frame "DepthTrack" (UDim2Value 0 83 0 40) (UDim2Value 0 515 0 2) (ColorValue 108 172 255) 0.38 28)
 for ($level = 1; $level -le 7; $level++) {
     $alpha = ($level - 1) / 6.0
     $dot = Add-Child $depthTrack (New-Button ("DepthLevel" + $level) "" (UDim2Value $alpha -11 0.5 -11) (UDim2Value 0 22 0 22) $transparent 0 30)
@@ -302,12 +313,12 @@ for ($level = 1; $level -le 7; $level++) {
 
 $actions = Add-Child $panel (New-Frame "ActionRow" (UDim2Value 0 0 0 0) (UDim2Value 1 0 1 0) $transparent 1 29)
 $actionSpecs = @(
-    @("PreviewButton", "Preview", 925, 208, "PreviewButton"),
-    @("RemoveButton", "Remove", 1149, 208, "RemoveButton"),
-    @("ApplyButton", "Apply", 1373, 224, "ApplyButton")
+    @("PreviewButton", "Preview", 903, 228, "PreviewButton"),
+    @("RemoveButton", "Remove", 1150, 228, "RemoveButton"),
+    @("ApplyButton", "Apply", 1397, 228, "ApplyButton")
 )
 foreach ($spec in $actionSpecs) {
-    $action = Add-Child $actions (New-Button $spec[0] "" (UDim2Value 0 $spec[2] 0 808) (UDim2Value 0 $spec[3] 0 72) $transparent 0 30)
+    $action = Add-Child $actions (New-Button $spec[0] "" (UDim2Value 0 $spec[2] 0 815) (UDim2Value 0 $spec[3] 0 72) $transparent 0 30)
     $action.Properties.BackgroundTransparency = Prop "float" 1
     $assetInfo = $assets[$spec[4]]
     Add-Child $action (New-ImageVisual "ImageLabel" "Visual" $assetInfo[0] $assetInfo[1] (UDim2Value 0 0 0 0) (UDim2Value 1 0 1 0) 29) | Out-Null
@@ -319,10 +330,9 @@ $themeTemplate.Properties.BackgroundTransparency = Prop "float" 1
 $themeTemplate.Properties.Visible = Prop "bool" $false
 $themeNormal = $assets.ThemeNormal
 Add-Child $themeTemplate (New-ImageVisual "ImageLabel" "Visual" $themeNormal[0] $themeNormal[1] (UDim2Value 0 0 0 0) (UDim2Value 1 0 1 0) 26) | Out-Null
-$themeTemplateLabel = Add-Child $themeTemplate (New-Label "Label" "Theme" (UDim2Value 0.05 0 0.08 0) (UDim2Value 0.90 0 0.84 0) 16 (ColorValue 255 255 255) 30)
-$themeTemplateLabel.Properties.TextScaled = Prop "bool" $true
+$themeTemplateLabel = Add-Child $themeTemplate (New-Label "Label" "Theme" (UDim2Value 0.05 0 0.08 0) (UDim2Value 0.90 0 0.84 0) 18 (ColorValue 255 255 255) 30)
+$themeTemplateLabel.Properties.TextScaled = Prop "bool" $false
 $themeTemplateLabel.Properties.TextXAlignment = Prop "token" 1
-Add-TextConstraint $themeTemplateLabel 10 18
 Add-Stroke $themeTemplate (ColorValue 35 160 255) 0 "SelectionStroke"
 $themeLockProps = CommonGuiProps (UDim2Value 0 0 0 0) (UDim2Value 1 0 1 0) (ColorValue 32 37 52) 0.05 31
 $themeLockProps.AutoButtonColor = Prop "bool" $true
@@ -345,10 +355,9 @@ $decorTemplate.Properties.Visible = Prop "bool" $false
 Add-Child $decorTemplate (New-ImageVisual "ImageLabel" "Visual" $decorNormal[0] $decorNormal[1] (UDim2Value 0 0 0 0) (UDim2Value 1 0 1 0) 26) | Out-Null
 $decorTemplateIcon = Add-Child $decorTemplate (New-ImageVisual "ImageLabel" "DecorIcon" "" @(0, 0, 0, 0) (UDim2Value 0.23 0 0.08 0) (UDim2Value 0.54 0 0.56 0) 30)
 $decorTemplateIcon.Properties.ScaleType = Prop "token" 3
-$decorTemplateLabel = Add-Child $decorTemplate (New-Label "Label" "Decor" (UDim2Value 0.04 0 0.60 0) (UDim2Value 0.92 0 0.34 0) 14 (ColorValue 255 255 255) 31)
-$decorTemplateLabel.Properties.TextScaled = Prop "bool" $true
+$decorTemplateLabel = Add-Child $decorTemplate (New-Label "Label" "Decor" (UDim2Value 0.04 0 0.60 0) (UDim2Value 0.92 0 0.34 0) 18 (ColorValue 255 255 255) 31)
+$decorTemplateLabel.Properties.TextScaled = Prop "bool" $false
 $decorTemplateLabel.Properties.TextXAlignment = Prop "token" 1
-Add-TextConstraint $decorTemplateLabel 9 15
 Add-InstalledCheck $decorTemplate
 Add-Stroke $decorTemplate (ColorValue 35 160 255) 0 "SelectionStroke"
 

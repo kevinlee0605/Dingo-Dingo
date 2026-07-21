@@ -20,7 +20,7 @@
 			<UDim2 name="Position">
 				<XS>0.5</XS>
 				<XO>0</XO>
-				<YS>0.43</YS>
+				<YS>0.5</YS>
 				<YO>0</YO>
 			</UDim2>
 			<UDim2 name="Size">
@@ -269,7 +269,7 @@
 				<float name="BackgroundTransparency">1</float>
 				<int name="BorderSizePixel">0</int>
 				<bool name="ClipsDescendants">false</bool>
-				<token name="Font">26</token>
+				<token name="Font">19</token>
 				<UDim2 name="Position">
 					<XS>0</XS>
 					<XO>250</XO>
@@ -522,7 +522,7 @@
 							<XS>0</XS>
 							<XO>55</XO>
 							<YS>0</YS>
-							<YO>7</YO>
+							<YO>10</YO>
 						</UDim2>
 						<UDim2 name="Size">
 							<XS>0</XS>
@@ -590,12 +590,12 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<UDim2 name="Position">
 							<XS>0</XS>
 							<XO>130</XO>
 							<YS>0</YS>
-							<YO>8</YO>
+							<YO>11</YO>
 						</UDim2>
 						<bool name="RichText">false</bool>
 						<UDim2 name="Size">
@@ -729,7 +729,7 @@
 							<XS>0</XS>
 							<XO>61</XO>
 							<YS>0</YS>
-							<YO>7</YO>
+							<YO>10</YO>
 						</UDim2>
 						<UDim2 name="Size">
 							<XS>0</XS>
@@ -797,12 +797,12 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<UDim2 name="Position">
 							<XS>0</XS>
 							<XO>130</XO>
 							<YS>0</YS>
-							<YO>8</YO>
+							<YO>11</YO>
 						</UDim2>
 						<bool name="RichText">false</bool>
 						<UDim2 name="Size">
@@ -874,7 +874,7 @@
 				<bool name="Selectable">true</bool>
 				<UDim2 name="Size">
 					<XS>0</XS>
-					<XO>1252</XO>
+					<XO>1316</XO>
 					<YS>0</YS>
 					<YO>780</YO>
 				</UDim2>
@@ -916,7 +916,7 @@
 					</UDim2>
 					<UDim2 name="Size">
 						<XS>0</XS>
-						<XO>1238</XO>
+						<XO>1316</XO>
 						<YS>0</YS>
 						<YO>164</YO>
 					</UDim2>
@@ -1051,7 +1051,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<UDim2 name="Position">
 							<XS>0</XS>
 							<XO>240</XO>
@@ -1122,7 +1122,7 @@
 							<B>1.0</B>
 						</Color3>
 						<bool name="TextScaled">false</bool>
-						<float name="TextSize">23</float>
+						<float name="TextSize">27</float>
 						<Color3 name="TextStrokeColor3">
 							<R>0.0</R>
 							<G>0.0</G>
@@ -1172,7 +1172,7 @@
 							<B>0.3254901960784314</B>
 						</Color3>
 						<bool name="TextScaled">false</bool>
-						<float name="TextSize">21</float>
+						<float name="TextSize">25</float>
 						<Color3 name="TextStrokeColor3">
 							<R>0.0</R>
 							<G>0.0</G>
@@ -1222,7 +1222,7 @@
 							<B>0.3254901960784314</B>
 						</Color3>
 						<bool name="TextScaled">false</bool>
-						<float name="TextSize">21</float>
+						<float name="TextSize">25</float>
 						<Color3 name="TextStrokeColor3">
 							<R>0.0</R>
 							<G>0.0</G>
@@ -1264,7 +1264,7 @@
 						<float name="ImageTransparency">1</float>
 						<UDim2 name="Position">
 							<XS>0</XS>
-							<XO>930</XO>
+							<XO>1008</XO>
 							<YS>0</YS>
 							<YO>38</YO>
 						</UDim2>
@@ -1272,7 +1272,7 @@
 						<bool name="Selectable">true</bool>
 						<UDim2 name="Size">
 							<XS>0</XS>
-							<XO>252</XO>
+							<XO>276</XO>
 							<YS>0</YS>
 							<YO>88</YO>
 						</UDim2>
@@ -1335,7 +1335,7 @@
 							<float name="BackgroundTransparency">1</float>
 							<int name="BorderSizePixel">0</int>
 							<bool name="ClipsDescendants">false</bool>
-							<token name="Font">26</token>
+							<token name="Font">19</token>
 							<UDim2 name="Position">
 								<XS>0</XS>
 								<XO>0</XO>
@@ -1395,7 +1395,7 @@
 					</UDim2>
 					<UDim2 name="Size">
 						<XS>0</XS>
-						<XO>1238</XO>
+						<XO>1316</XO>
 						<YS>0</YS>
 						<YO>164</YO>
 					</UDim2>
@@ -1530,7 +1530,7 @@
 						<float name="BackgroundTransparency">1</float>
 						<int name="BorderSizePixel">0</int>
 						<bool name="ClipsDescendants">false</bool>
-						<token name="Font">26</token>
+						<token name="Font">19</token>
 						<UDim2 name="Position">
 							<XS>0</XS>
 							<XO>240</XO>
@@ -1601,7 +1601,7 @@
 							<B>1.0</B>
 						</Color3>
 						<bool name="TextScaled">false</bool>
-						<float name="TextSize">25</float>
+						<float name="TextSize">29</float>
 						<Color3 name="TextStrokeColor3">
 							<R>0.0</R>
 							<G>0.0</G>
@@ -1651,7 +1651,7 @@
 							<B>1.0</B>
 						</Color3>
 						<bool name="TextScaled">false</bool>
-						<float name="TextSize">25</float>
+						<float name="TextSize">29</float>
 						<Color3 name="TextStrokeColor3">
 							<R>0.0</R>
 							<G>0.0</G>
@@ -1693,7 +1693,7 @@
 						<float name="ImageTransparency">1</float>
 						<UDim2 name="Position">
 							<XS>0</XS>
-							<XO>930</XO>
+							<XO>1008</XO>
 							<YS>0</YS>
 							<YO>38</YO>
 						</UDim2>
@@ -1701,7 +1701,7 @@
 						<bool name="Selectable">true</bool>
 						<UDim2 name="Size">
 							<XS>0</XS>
-							<XO>252</XO>
+							<XO>276</XO>
 							<YS>0</YS>
 							<YO>88</YO>
 						</UDim2>
@@ -1764,7 +1764,7 @@
 							<float name="BackgroundTransparency">1</float>
 							<int name="BorderSizePixel">0</int>
 							<bool name="ClipsDescendants">false</bool>
-							<token name="Font">26</token>
+							<token name="Font">19</token>
 							<UDim2 name="Position">
 								<XS>0</XS>
 								<XO>0</XO>
@@ -1816,7 +1816,7 @@
 					<float name="BackgroundTransparency">1</float>
 					<int name="BorderSizePixel">0</int>
 					<bool name="ClipsDescendants">false</bool>
-					<token name="Font">26</token>
+					<token name="Font">19</token>
 					<UDim2 name="Position">
 						<XS>0</XS>
 						<XO>0</XO>
@@ -1826,7 +1826,7 @@
 					<bool name="RichText">false</bool>
 					<UDim2 name="Size">
 						<XS>0</XS>
-						<XO>1238</XO>
+						<XO>1316</XO>
 						<YS>0</YS>
 						<YO>100</YO>
 					</UDim2>
@@ -1855,7 +1855,7 @@
 		<Item class="Frame" referent="RBX0000002F">
 			<Properties>
 				<string name="Name">ScrollTrack</string>
-				<bool name="Active">true</bool>
+				<bool name="Active">false</bool>
 				<Vector2 name="AnchorPoint">
 					<X>0</X>
 					<Y>0</Y>
@@ -1865,30 +1865,78 @@
 					<G>0.07450980392156863</G>
 					<B>0.21176470588235294</B>
 				</Color3>
-				<float name="BackgroundTransparency">0.08</float>
+				<float name="BackgroundTransparency">1</float>
 				<int name="BorderSizePixel">0</int>
-				<bool name="ClipsDescendants">false</bool>
+				<bool name="ClipsDescendants">true</bool>
 				<UDim2 name="Position">
 					<XS>0</XS>
-					<XO>1332</XO>
+					<XO>1392</XO>
 					<YS>0</YS>
 					<YO>246</YO>
 				</UDim2>
 				<UDim2 name="Size">
 					<XS>0</XS>
-					<XO>27</XO>
+					<XO>28</XO>
 					<YS>0</YS>
 					<YO>778</YO>
 				</UDim2>
-				<bool name="Visible">true</bool>
+				<bool name="Visible">false</bool>
 				<int name="ZIndex">509</int>
 			</Properties>
+			<Item class="ImageLabel" referent="RBXSUPPLYSCROLLTRACKART">
+				<Properties>
+					<string name="Name">Artwork</string>
+					<Vector2 name="AnchorPoint"><X>0</X><Y>0</Y></Vector2>
+					<Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<Content name="Image"><url>rbxassetid://73367138577137</url></Content>
+					<float name="ImageTransparency">0</float>
+					<UDim2 name="Position"><XS>-10.507692307692308</XS><XO>0</XO><YS>-0.02840352595494613</YS><YO>0</YO></UDim2>
+					<token name="ScaleType">0</token>
+					<UDim2 name="Size"><XS>22.276923076923076</XS><XO>0</XO><YS>1.0636630754162586</YS><YO>0</YO></UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">509</int>
+				</Properties>
+			</Item>
+			<Item class="Frame" referent="RBXSUPPLYSCROLLCHANNEL">
+				<Properties>
+					<string name="Name">ScrollbarChannel</string>
+					<Vector2 name="AnchorPoint"><X>0</X><Y>0</Y></Vector2>
+					<Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
+					<float name="BackgroundTransparency">1</float>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">true</bool>
+					<UDim2 name="Position"><XS>0.28</XS><XO>0</XO><YS>0.05</YS><YO>0</YO></UDim2>
+					<UDim2 name="Size"><XS>0.44</XS><XO>0</XO><YS>0.82</YS><YO>0</YO></UDim2>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">510</int>
+				</Properties>
+				<Item class="ImageLabel" referent="RBXSUPPLYSCROLLCHANNELART">
+					<Properties>
+						<string name="Name">Artwork</string>
+						<Vector2 name="AnchorPoint"><X>0</X><Y>0</Y></Vector2>
+						<Color3 name="BackgroundColor3"><R>1</R><G>1</G><B>1</B></Color3>
+						<float name="BackgroundTransparency">1</float>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<Content name="Image"><url>rbxassetid://73367138577137</url></Content>
+						<float name="ImageTransparency">0</float>
+						<UDim2 name="Position"><XS>-23.366666666666667</XS><XO>0</XO><YS>-10.155555555555555</YS><YO>0</YO></UDim2>
+						<token name="ScaleType">0</token>
+						<UDim2 name="Size"><XS>48.266666666666666</XS><XO>0</XO><YS>12.066666666666666</YS><YO>0</YO></UDim2>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">510</int>
+					</Properties>
+				</Item>
+			</Item>
 			<Item class="UICorner" referent="RBX00000030">
 				<Properties>
 					<string name="Name">TrackCorner</string>
 					<UDim name="CornerRadius">
 						<S>0</S>
-						<O>27</O>
+						<O>28</O>
 					</UDim>
 				</Properties>
 			</Item>
@@ -1920,7 +1968,7 @@
 					<float name="ImageTransparency">1</float>
 					<UDim2 name="Position">
 						<XS>0</XS>
-						<XO>1</XO>
+						<XO>7</XO>
 						<YS>0</YS>
 						<YO>0</YO>
 					</UDim2>
@@ -1928,7 +1976,7 @@
 					<bool name="Selectable">true</bool>
 					<UDim2 name="Size">
 						<XS>0</XS>
-						<XO>25</XO>
+						<XO>14</XO>
 						<YS>0</YS>
 						<YO>220</YO>
 					</UDim2>
@@ -1960,16 +2008,16 @@
 						</Color3>
 						<float name="ImageTransparency">0</float>
 						<UDim2 name="Position">
-							<XS>-10.507692307692308</XS>
+							<XS>-23.366666666666667</XS>
 							<XO>0</XO>
-							<YS>-0.02840352595494613</YS>
+							<YS>-0.09333333333333334</YS>
 							<YO>0</YO>
 						</UDim2>
 						<token name="ScaleType">0</token>
 						<UDim2 name="Size">
-							<XS>22.276923076923076</XS>
+							<XS>48.266666666666666</XS>
 							<XO>0</XO>
-							<YS>1.0636630754162586</YS>
+							<YS>1.3163636363636364</YS>
 							<YO>0</YO>
 						</UDim2>
 						<bool name="Visible">true</bool>
@@ -1977,37 +2025,6 @@
 					</Properties>
 				</Item>
 			</Item>
-		</Item>
-		<Item class="Frame" referent="RBX00000033">
-			<Properties>
-				<string name="Name">ListRightEdgeMask</string>
-				<Vector2 name="AnchorPoint">
-					<X>0</X>
-					<Y>0</Y>
-				</Vector2>
-				<Color3 name="BackgroundColor3">
-					<R>0.00392156862745098</R>
-					<G>0.07058823529411765</G>
-					<B>0.21176470588235294</B>
-				</Color3>
-				<float name="BackgroundTransparency">0</float>
-				<int name="BorderSizePixel">0</int>
-				<bool name="ClipsDescendants">false</bool>
-				<UDim2 name="Position">
-					<XS>0</XS>
-					<XO>1317</XO>
-					<YS>0</YS>
-					<YO>248</YO>
-				</UDim2>
-				<UDim2 name="Size">
-					<XS>0</XS>
-					<XO>7</XO>
-					<YS>0</YS>
-					<YO>780</YO>
-				</UDim2>
-				<bool name="Visible">true</bool>
-				<int name="ZIndex">508</int>
-			</Properties>
 		</Item>
 	</Item>
 </roblox>

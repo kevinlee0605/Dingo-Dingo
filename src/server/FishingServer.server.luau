@@ -133,6 +133,7 @@ local playerData = {}
 playerData.SaveLocks = {}
 playerData.SaveScheduled = {}
 playerData.SaveRevision = {}
+playerData.AquariumLikeCooldowns = {}
 
 function playerData.copyForSave(value)
 	if type(value) ~= "table" then
@@ -438,6 +439,29 @@ function SeaStars.normalizeUnlocks(unlocks)
 	return result
 end
 
+function playerData.normalizeAquariumLikes(aquarium)
+	if type(aquarium) ~= "table" then
+		return {}, 0
+	end
+
+	local normalized = {}
+	for rawUserId, liked in pairs(type(aquarium.LikedBy) == "table" and aquarium.LikedBy or {}) do
+		local userId = math.floor(tonumber(rawUserId) or 0)
+		if liked == true and userId > 0 then
+			normalized[tostring(userId)] = true
+		end
+	end
+
+	local count = 0
+	for _ in pairs(normalized) do
+		count += 1
+	end
+
+	aquarium.LikedBy = normalized
+	aquarium.LikeCount = count
+	return normalized, count
+end
+
 function SeaStars.ensureState(data)
 	data.SeaStars = SeaStars.normalizeBalance(data.SeaStars)
 	data.SeaStarUnlocks = SeaStars.normalizeUnlocks(data.SeaStarUnlocks)
@@ -464,15 +488,24 @@ end
 function SeaStars.normalizeDecorations(decorations)
 	local result = {}
 	local source = type(decorations) == "table" and decorations or {}
-	for decorationId in pairs(Monetization.Config.AquariumDesigner.decorations or {}) do
+	for decorationId, decoration in pairs(Monetization.Config.AquariumDesigner.decorations or {}) do
 		if decorationId ~= "None" then
-			result[decorationId] = math.max(0, math.floor(tonumber(source[decorationId]) or 0))
+			result[decorationId] = decoration.free == true
+				and 1
+				or math.max(0, math.floor(tonumber(source[decorationId]) or 0))
 		end
 	end
 	return result
 end
 
 function SeaStars.ownsDecoration(data, decorationId)
+	local decoration = Monetization.Config.AquariumDesigner.decorations[decorationId]
+	if not decoration or decorationId == "None" then
+		return false
+	end
+	if decoration.free == true then
+		return true
+	end
 	data.AquariumDecorations = SeaStars.normalizeDecorations(data.AquariumDecorations)
 	return (data.AquariumDecorations[decorationId] or 0) > 0
 end
@@ -849,7 +882,9 @@ function LoginRewards.selectFinalDecoration(data, randomObject)
 	data.AquariumDecorations = SeaStars.normalizeDecorations(data.AquariumDecorations)
 	local unowned = {}
 	for _, decorationId in ipairs(LoginRewardConfig.FinalDecorationPool) do
-		if Monetization.Config.AquariumDesigner.decorations[decorationId]
+		local decoration = Monetization.Config.AquariumDesigner.decorations[decorationId]
+		if decoration
+			and decoration.free ~= true
 			and (data.AquariumDecorations[decorationId] or 0) <= 0
 		then
 			table.insert(unowned, decorationId)
@@ -1538,6 +1573,7 @@ local function makeClientState(player, data)
 	local aquarium = type(data.Aquarium) == "table" and data.Aquarium or {}
 	local aquariumLevel = math.clamp(tonumber(aquarium.Level) or 1, 1, 4)
 	local aquariumFish = type(aquarium.Fish) == "table" and aquarium.Fish or {}
+	local _, aquariumLikeCount = playerData.normalizeAquariumLikes(aquarium)
 	local aquariumVisitors = {}
 	local equippedBait = Bait.getEquippedId(data)
 
@@ -1587,6 +1623,7 @@ local function makeClientState(player, data)
 			Capacity = GameConfig.AquariumCapacities[aquariumLevel] or GameConfig.AquariumCapacities[1],
 			UsedCapacity = GameConfig.getAquariumUsedSpace(aquariumFish),
 			Fish = playerData.copyArray(aquariumFish),
+			LikeCount = aquariumLikeCount,
 		},
 		AquariumVisitors = aquariumVisitors,
 		AquariumView = getLoadedAquariumViewState(player),
@@ -1653,6 +1690,7 @@ local function makeDefaultData()
 		Aquarium = {
 			Level = 1,
 			Fish = {},
+			LikedBy = {},
 		},
 		AquariumDecorations = {},
 		AquariumDesign = Monetization.normalizeAquariumDesign(nil),
@@ -1701,6 +1739,7 @@ local function sanitizeLoadedData(loaded)
 	data.Aquarium = type(loaded.Aquarium) == "table" and loaded.Aquarium or data.Aquarium
 	data.Aquarium.Level = math.clamp(tonumber(data.Aquarium.Level) or 1, 1, 4)
 	data.Aquarium.Fish = type(data.Aquarium.Fish) == "table" and data.Aquarium.Fish or {}
+	playerData.normalizeAquariumLikes(data.Aquarium)
 	data.AquariumDecorations = type(loaded.AquariumDecorations) == "table" and loaded.AquariumDecorations or data.AquariumDecorations
 	data.AquariumDesign = Monetization.normalizeAquariumDesign(loaded.AquariumDesign)
 	data.AquariumPreviewDesign = nil
@@ -1912,11 +1951,16 @@ function RuntimeConfig.runEconomyPhase3StudioTests()
 	finalData.LoginRewards.CurrentDay = finalData.LoginRewards.DaysInCycle
 	local seaStarsBeforeFinal = finalData.SeaStars
 	local finalClaimed, _, finalReward = LoginRewards.claim(finalData, { year = 2026, month = 7, day = 31, hour = 1, min = 0, sec = 0 }, Random.new(6))
-	assert(finalClaimed and finalReward.isFinal and finalData.SeaStars == seaStarsBeforeFinal + 105, "Final claim must grant 30 Sea Stars plus the 75 Sea Star cycle reward")
-	assert(finalReward.decorationId and finalData.AquariumDecorations[finalReward.decorationId] == 1, "Final reward must grant one nonduplicate decoration")
+	assert(finalClaimed and finalReward.isFinal and finalData.SeaStars == seaStarsBeforeFinal + 115, "Final claim must grant its Sea Stars plus the free-decoration fallback")
+	assert(finalReward.decorationId == nil and finalReward.decorationFallbackSeaStars == 10, "Free decorations must not be granted as unlock rewards")
+	for decorationId, decoration in pairs(Monetization.Config.AquariumDesigner.decorations) do
+		if decorationId ~= "None" then
+			assert(decoration.free == true and SeaStars.ownsDecoration(finalData, decorationId), decorationId .. " must be free for every player")
+		end
+	end
 	assert(finalData.LoginRewards.CurrentDay == 1 and finalData.LoginRewards.LastClaimDate == "2026-07-31", "Completed cycle must reset sequential day but block a same-date claim")
 
-	print("[FishyFish Economy Phase 3 Test] PASS: Sea Stars, products, free editor, theme ownership, UTC cycles, milestones, resource guarantees, and final decorations")
+	print("[FishyFish Economy Phase 3 Test] PASS: Sea Stars, products, free decor, theme ownership, UTC cycles, milestones, and resource guarantees")
 end
 
 if Services.RunService:IsStudio() then
@@ -2226,6 +2270,9 @@ local function applyCharacterMonetizationVisuals(player)
 	billboard.Name = "FishyFishVipTag"
 	billboard.Adornee = head
 	billboard.AlwaysOnTop = true
+	-- The owner does not need their own overhead title obstructing the camera;
+	-- every other client still sees the VIP Angler tag normally.
+	billboard.PlayerToHideFrom = player
 	billboard.Size = UDim2.new(0, 130, 0, 42)
 	billboard.StudsOffset = Vector3.new(0, 2.45, 0)
 	billboard.Parent = head
@@ -3672,6 +3719,7 @@ getAquariumVisitorsState = function(requestingPlayer)
 			local level = otherData.Aquarium.Level or 1
 			local capacity = GameConfig.AquariumCapacities[level] or GameConfig.AquariumCapacities[1]
 			local fish = otherData.Aquarium.Fish or {}
+			local likedBy, likeCount = playerData.normalizeAquariumLikes(otherData.Aquarium)
 			local totalValue = 0
 			for _, displayedFish in ipairs(fish) do
 				totalValue += math.max(0, tonumber(displayedFish.value) or 0)
@@ -3686,6 +3734,8 @@ getAquariumVisitorsState = function(requestingPlayer)
 				UsedCapacity = GameConfig.getAquariumUsedSpace(fish),
 				Capacity = capacity,
 				TotalValue = totalValue,
+				LikeCount = likeCount,
+				LikedByViewer = likedBy[tostring(requestingPlayer.UserId)] == true,
 				BestCatch = otherData.BestCatch and {
 					id = otherData.BestCatch.id,
 					imageKey = otherData.BestCatch.imageKey,
@@ -8125,7 +8175,6 @@ Remote.BuyRod.OnServerEvent:Connect(function(player, rodId, action)
 		end)
 		sendState(player)
 		playerData.queueSave(player)
-		notify(player, "Equipped " .. rod.displayName .. ".")
 		return
 	end
 
@@ -8209,7 +8258,6 @@ Remote.BaitAction.OnServerEvent:Connect(function(player, action, baitId)
 		data.EquippedBait = baitId
 		sendState(player)
 		playerData.queueSave(player)
-		notify(player, "Equipped " .. bait.displayName .. ".")
 		return
 	end
 
@@ -8539,7 +8587,6 @@ Remote.LoginRewardAction.OnServerEvent:Connect(function(player, action)
 		Message = message,
 		Reward = claimed and reward or nil,
 	})
-	notify(player, message or (claimed and "Login reward claimed." or "Login reward unavailable."))
 end)
 
 Remote.UnlockBiome.OnServerEvent:Connect(function(player, biomeId)
@@ -8799,6 +8846,52 @@ Remote.AquariumAction.OnServerEvent:Connect(function(player, action, fishSerial,
 	local data = playerData[player]
 	local changed = false
 	if not data then
+		return
+	end
+
+	if action == "ToggleLike" then
+		local targetUserId = math.floor(tonumber(fishSerial) or 0)
+		if targetUserId <= 0 then
+			return
+		end
+		if targetUserId == player.UserId then
+			notify(player, "You cannot like your own aquarium.")
+			return
+		end
+
+		local targetPlayer = Services.Players:GetPlayerByUserId(targetUserId)
+		local targetData = targetPlayer and playerData[targetPlayer]
+		if not targetPlayer or not targetData or type(targetData.Aquarium) ~= "table" then
+			notify(player, "That aquarium is no longer available.")
+			return
+		end
+
+		local now = os.clock()
+		if now - (playerData.AquariumLikeCooldowns[player] or 0) < 0.35 then
+			return
+		end
+		playerData.AquariumLikeCooldowns[player] = now
+
+		local likedBy = playerData.normalizeAquariumLikes(targetData.Aquarium)
+		local viewerKey = tostring(player.UserId)
+		local isNowLiked
+		if likedBy[viewerKey] then
+			likedBy[viewerKey] = nil
+			isNowLiked = false
+		else
+			likedBy[viewerKey] = true
+			isNowLiked = true
+		end
+		playerData.normalizeAquariumLikes(targetData.Aquarium)
+
+		playerData.queueSave(targetPlayer)
+		sendStateToAll()
+		notify(
+			player,
+			isNowLiked
+				and ("Liked " .. targetPlayer.DisplayName .. "'s aquarium.")
+				or ("Removed your like from " .. targetPlayer.DisplayName .. "'s aquarium.")
+		)
 		return
 	end
 
@@ -9098,6 +9191,7 @@ Services.Players.PlayerRemoving:Connect(function(player)
 	playerData.SaveLocks[player] = nil
 	playerData.SaveScheduled[player] = nil
 	playerData.SaveRevision[player] = nil
+	playerData.AquariumLikeCooldowns[player] = nil
 	pendingFishing[player] = nil
 	RodPurchase.Locks[player] = nil
 	IslandPurchase.Locks[player] = nil

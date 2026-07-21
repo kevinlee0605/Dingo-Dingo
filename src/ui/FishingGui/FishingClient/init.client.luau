@@ -9,8 +9,10 @@ local Services = {
 	UserInputService = game:GetService("UserInputService"),
 	ContextActionService = game:GetService("ContextActionService"),
 	Lighting = game:GetService("Lighting"),
+	TextService = game:GetService("TextService"),
 	TextChatService = game:GetService("TextChatService"),
 	StarterGui = game:GetService("StarterGui"),
+	GuiService = game:GetService("GuiService"),
 }
 
 local player = Services.Players.LocalPlayer
@@ -1387,12 +1389,85 @@ local toast = assert(
 
 local toastRevision = 0
 
+local toastResponsive = {
+	desktopPosition = toast.Position,
+	desktopSize = toast.Size,
+	desktopTextSize = toast.TextSize,
+	viewportConnection = nil,
+}
+
+function toastResponsive.update()
+	local camera = workspace.CurrentCamera
+	local viewport = camera and camera.ViewportSize or Vector2.new(1920, 1080)
+	local isMobile = math.min(viewport.X, viewport.Y) <= 600
+	local textSize = isMobile and 10 or toastResponsive.desktopTextSize
+	local horizontalPadding = isMobile and 20 or 30
+	local verticalPadding = isMobile and 8 or 12
+	local minimumWidth = isMobile and 220 or toastResponsive.desktopSize.X.Offset
+	local maximumWidth = math.max(minimumWidth, math.floor(viewport.X * 0.84))
+	local message = toast.Text or ""
+
+	-- Measure each notice instead of forcing every fish/bait combination into
+	-- the old fixed 300/520-pixel banner. Long messages expand horizontally;
+	-- on a narrow screen they wrap and the black box grows vertically.
+	local unwrappedBounds = Services.TextService:GetTextSize(
+		message,
+		textSize,
+		toast.Font,
+		Vector2.new(100000, 100000)
+	)
+	local requiredWidth = math.clamp(
+		math.ceil(unwrappedBounds.X + horizontalPadding),
+		minimumWidth,
+		maximumWidth
+	)
+	local wrappedBounds = Services.TextService:GetTextSize(
+		message,
+		textSize,
+		toast.Font,
+		Vector2.new(math.max(1, requiredWidth - horizontalPadding), 100000)
+	)
+	local minimumHeight = isMobile and 24 or toastResponsive.desktopSize.Y.Offset
+	local requiredHeight = math.max(
+		minimumHeight,
+		math.ceil(wrappedBounds.Y + verticalPadding)
+	)
+
+	toast.TextSize = textSize
+	toast.TextWrapped = unwrappedBounds.X + horizontalPadding > maximumWidth
+	toast.Size = UDim2.fromOffset(requiredWidth, requiredHeight)
+	if isMobile then
+		-- Mobile fishing prompts should stay compact and above the action UI.
+		toast.Position = UDim2.new(0.5, 0, 0, 4)
+	else
+		toast.Position = toastResponsive.desktopPosition
+	end
+end
+
+function toastResponsive.bindCamera(camera)
+	if toastResponsive.viewportConnection then
+		toastResponsive.viewportConnection:Disconnect()
+		toastResponsive.viewportConnection = nil
+	end
+	if camera then
+		toastResponsive.viewportConnection = camera:GetPropertyChangedSignal("ViewportSize")
+			:Connect(toastResponsive.update)
+	end
+	toastResponsive.update()
+end
+
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+	toastResponsive.bindCamera(workspace.CurrentCamera)
+end)
+toastResponsive.bindCamera(workspace.CurrentCamera)
+
 function showToast(message, duration)
 	toastRevision += 1
 	local revision = toastRevision
 
 	statusText.Text = message
 	toast.Text = message
+	toastResponsive.update()
 	toast.Visible = true
 
 	-- duration <= 0 keeps the banner visible until the next message replaces it.
@@ -1654,6 +1729,9 @@ function CastPower.run(biomeId)
 	local inputEndedConnection
 
 	CastPower.running = true
+	-- The charge meter replaces the AutoFish interaction until the cast is
+	-- released. refreshCenterControls uses the same state while rendering.
+	centerAutoButton.Visible = false
 	setCastPowerVisible(true)
 	CastPower.title.Text = "Hold to charge. Release to cast."
 	CastPower.status.Text = "Release in the green zone for a Perfect cast."
@@ -1832,7 +1910,7 @@ local function refreshCenterControls()
 	centerControls.Visible = true
 	centerTitle.Visible = false
 	centerCastButton.Visible = true
-	centerAutoButton.Visible = true
+	centerAutoButton.Visible = not CastPower.running
 	centerBaitText.Visible = false
 	centerCastButton.Text = fishingBusy and "Fishing..." or "Tap"
 	centerCastButton.AutoButtonColor = state ~= nil and biomeId ~= nil and not fishingBusy
@@ -2091,14 +2169,58 @@ assert(
 	aquariumViewerFallbackButton:IsA("TextButton"),
 	"FishingGui.AquariumViewerFallbackButton must be a TextButton"
 )
-local aquariumViewerMobileLayout = Services.UserInputService.TouchEnabled
-local aquariumViewerButtonWidth = aquariumViewerMobileLayout and 158 or 146
-local aquariumViewerButtonHeight = aquariumViewerMobileLayout and 52 or 48
-aquariumViewerFallbackButton.AnchorPoint = Vector2.new(1, 1)
-aquariumViewerFallbackButton.Position = UDim2.new(1, -18, 1, -(34 + aquariumViewerButtonHeight))
-aquariumViewerFallbackButton.Size = UDim2.fromOffset(aquariumViewerButtonWidth, aquariumViewerButtonHeight)
+local function updateAquariumViewerFallbackButtonLayout()
+	local camera = workspace.CurrentCamera
+	local viewport = camera and camera.ViewportSize or Vector2.new(1920, 1080)
+	local compactLayout = Services.UserInputService.TouchEnabled
+		or math.min(viewport.X, viewport.Y) <= 700
+	local buttonWidth = compactLayout and 168 or 210
+	local buttonHeight = compactLayout and 42 or 53
+	local seaStarsHud = AuthoredUi.getSurface("SeaStarsHud")
+	local rootSurface = AuthoredUi.getSurface("Root")
+	local origin = rootSurface and rootSurface.AbsolutePosition or Vector2.zero
+
+	aquariumViewerFallbackButton.AnchorPoint = Vector2.new(1, 0)
+	aquariumViewerFallbackButton.Size = UDim2.fromOffset(buttonWidth, buttonHeight)
+	if seaStarsHud then
+		local rightEdge = seaStarsHud.AbsolutePosition.X + seaStarsHud.AbsoluteSize.X - origin.X
+		local topEdge = seaStarsHud.AbsolutePosition.Y + seaStarsHud.AbsoluteSize.Y + 6 - origin.Y
+		aquariumViewerFallbackButton.Position = UDim2.fromOffset(
+			math.floor(rightEdge + 0.5),
+			math.floor(topEdge + 0.5)
+		)
+	else
+		aquariumViewerFallbackButton.Position = UDim2.new(1, -18, 0, 160)
+	end
+end
+
+updateAquariumViewerFallbackButtonLayout()
+do
+	local seaStarsHud = AuthoredUi.getSurface("SeaStarsHud")
+	if seaStarsHud then
+		seaStarsHud:GetPropertyChangedSignal("AbsolutePosition"):Connect(updateAquariumViewerFallbackButtonLayout)
+		seaStarsHud:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateAquariumViewerFallbackButtonLayout)
+	end
+	local rootSurface = AuthoredUi.getSurface("Root")
+	if rootSurface then
+		rootSurface:GetPropertyChangedSignal("AbsolutePosition"):Connect(updateAquariumViewerFallbackButtonLayout)
+		rootSurface:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateAquariumViewerFallbackButtonLayout)
+	end
+end
 aquariumViewerFallbackButton.Visible = false
 aquariumViewerFallbackButton.MouseButton1Click:Connect(openAquariumHub)
+
+local function isAquariumEditorOpen()
+	local editorGui = playerGui:FindFirstChild("AquariumFreePlacementGui")
+	if not editorGui or not editorGui:IsA("ScreenGui") or not editorGui.Enabled then
+		return false
+	end
+
+	local editorPanel = editorGui:FindFirstChild("ModernAquariumEditor", true)
+	local backButton = editorGui:FindFirstChild("BackToAquariumEditor", true)
+	return (editorPanel and editorPanel:IsA("GuiObject") and editorPanel.Visible)
+		or (backButton and backButton:IsA("GuiObject") and backButton.Visible)
+end
 
 local function updateAquariumViewerFallbackButton()
 	local shouldShow = state ~= nil
@@ -2106,6 +2228,7 @@ local function updateAquariumViewerFallbackButton()
 		and not minigameRunning
 		and not CastPower.running
 		and not (AuthoredUi.aquariumController and AuthoredUi.aquariumController:IsVisible())
+		and not isAquariumEditorOpen()
 	aquariumViewerFallbackButton.Visible = shouldShow
 end
 
@@ -2299,6 +2422,9 @@ function fishdexModernUI.getFishdexCollectionCounts()
 end
 
 local FISHDEX_UI_SIZE_MULTIPLIER = 0.68
+-- Fill approximately 89% of a landscape phone's usable width, matching the
+-- approved mobile reference while retaining a safe margin for device edges.
+local FISHDEX_MOBILE_SIZE_MULTIPLIER = 0.98
 
 function fishdexModernUI.updateFishdexResponsiveScale()
 	if not fishdexModernUI.root or not fishdexModernUI.scale then
@@ -2307,15 +2433,31 @@ function fishdexModernUI.updateFishdexResponsiveScale()
 
 	local camera = workspace.CurrentCamera
 	local viewport = camera and camera.ViewportSize or Vector2.new(1536, 1024)
+	local topLeftInset, bottomRightInset = Services.GuiService:GetGuiInset()
+	local usableViewport = Vector2.new(
+		math.max(1, viewport.X - topLeftInset.X - bottomRightInset.X),
+		math.max(1, viewport.Y - topLeftInset.Y - bottomRightInset.Y)
+	)
 	local scale = math.min(
-		(viewport.X * 0.97) / 1536,
-		(viewport.Y * 0.94) / 1024
+		(usableViewport.X * 0.97) / 1536,
+		(usableViewport.Y * 0.94) / 1024
 	)
 
+	local isMobile = math.min(usableViewport.X, usableViewport.Y) <= 600
+	local deviceMultiplier = if isMobile
+		then FISHDEX_MOBILE_SIZE_MULTIPLIER
+		else FISHDEX_UI_SIZE_MULTIPLIER
+
 	fishdexModernUI.scale.Scale = math.clamp(
-		scale * FISHDEX_UI_SIZE_MULTIPLIER,
-		0.28,
+		scale * deviceMultiplier,
+		0.10,
 		1
+	)
+	fishdexModernUI.root.Position = UDim2.new(
+		0.5,
+		math.round((bottomRightInset.X - topLeftInset.X) * 0.5),
+		0.5,
+		math.round((bottomRightInset.Y - topLeftInset.Y) * 0.5)
 	)
 end
 
@@ -2405,7 +2547,7 @@ function fishdexModernUI.makeFishdexCard(fish, layoutOrder)
 	name.AnchorPoint = Vector2.new(0.5, 0)
 	name.Position = UDim2.new(0.5, 0, 0.61, 0)
 	name.Size = UDim2.new(0.88, 0, 0.14, 0)
-	name.Font = Enum.Font.FredokaOne
+	name.Font = Enum.Font.GothamBlack
 	name.Text = discovered and (fish.name or tostring(fish.id)) or "???"
 	name.TextColor3 = Color3.new(1, 1, 1)
 	name.TextStrokeColor3 = Color3.new(0, 0, 0)
@@ -2424,7 +2566,7 @@ function fishdexModernUI.makeFishdexCard(fish, layoutOrder)
 	badge.BackgroundTransparency = 1
 	badge.AnchorPoint = Vector2.new(0.5, 0)
 	badge.Position = UDim2.new(0.5, 0, 0.70, 0)
-	badge.Size = UDim2.new(0.94, 0, 0.34, 0)
+	badge.Size = UDim2.new(1.04, 0, 0.38, 0)
 	badge.Image = fishdexModernUI.getFishdexRarityImage(fish.rarity)
 	badge.ScaleType = Enum.ScaleType.Stretch
 	badge.ZIndex = 204
@@ -2444,12 +2586,14 @@ function fishdexModernUI.makeFishdexCard(fish, layoutOrder)
 	rarity.AnchorPoint = Vector2.new(0.5, 0.5)
 	rarity.Position = UDim2.fromScale(0.5, 0.50)
 	rarity.Size = UDim2.new(rarityTextWidth, 0, 0.42, 0)
-	rarity.Font = Enum.Font.FredokaOne
+	rarity.Font = Enum.Font.GothamBlack
 	rarity.Text = string.upper(rarityName)
 	rarity.TextColor3 = Color3.new(1, 1, 1)
 	rarity.TextStrokeColor3 = Color3.new(0, 0, 0)
 	rarity.TextStrokeTransparency = 0
 	rarity.TextScaled = true
+	rarity.TextXAlignment = Enum.TextXAlignment.Center
+	rarity.TextYAlignment = Enum.TextYAlignment.Center
 	rarity.ZIndex = 205
 	rarity.Parent = badge
 
@@ -2675,7 +2819,7 @@ function fishdexModernUI.buildModernFishdex()
 	title.BackgroundTransparency = 1
 	title.Position = UDim2.fromOffset(598, 20)
 	title.Size = UDim2.fromOffset(410, 100)
-	title.Font = Enum.Font.FredokaOne
+	title.Font = Enum.Font.GothamBlack
 	title.Text = "FISHDEX"
 	title.TextColor3 = Color3.new(1, 1, 1)
 	title.TextStrokeColor3 = Color3.new(0, 0, 0)
@@ -2738,7 +2882,7 @@ function fishdexModernUI.buildModernFishdex()
 			tabTitle.Size = UDim2.fromScale(0.68, 0.54)
 		end
 
-		tabTitle.Font = Enum.Font.FredokaOne
+		tabTitle.Font = Enum.Font.GothamBlack
 		tabTitle.Text = definition.label
 		tabTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 		tabTitle.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
@@ -2818,7 +2962,7 @@ function fishdexModernUI.buildModernFishdex()
 	collectionTitle.BackgroundTransparency = 1
 	collectionTitle.Position = UDim2.new(0.35, 0, 0.14, 0)
 	collectionTitle.Size = UDim2.new(0.56, 0, 0.30, 0)
-	collectionTitle.Font = Enum.Font.FredokaOne
+	collectionTitle.Font = Enum.Font.GothamBlack
 	collectionTitle.Text = "Collection"
 	collectionTitle.TextColor3 = Color3.fromRGB(46, 231, 255)
 	collectionTitle.TextStrokeColor3 = Color3.new(0, 0, 0)
@@ -2832,7 +2976,7 @@ function fishdexModernUI.buildModernFishdex()
 	collectionCount.BackgroundTransparency = 1
 	collectionCount.Position = UDim2.new(0.35, 0, 0.44, 0)
 	collectionCount.Size = UDim2.new(0.55, 0, 0.40, 0)
-	collectionCount.Font = Enum.Font.FredokaOne
+	collectionCount.Font = Enum.Font.GothamBlack
 	collectionCount.Text = "0 / 0"
 	collectionCount.TextColor3 = Color3.new(1, 1, 1)
 	collectionCount.TextStrokeColor3 = Color3.new(0, 0, 0)
@@ -2862,7 +3006,17 @@ local renderAquariumVisitorsSection
 local function renderAquariumTab()
 	mainPanelUI.panel.Visible = false
 	if AuthoredUi.aquariumController then
-		AuthoredUi.aquariumController:Show(state)
+		-- StateUpdated re-renders the active tab frequently. Closing the Viewer
+		-- leaves Aquarium as the active tab but collapses the panel, so calling
+		-- Show here unconditionally caused it to pop open again on the next state
+		-- packet. Keep its data fresh while hidden and reserve Show for an explicit
+		-- open action.
+		if panelCollapsed then
+			AuthoredUi.aquariumController:Render(state)
+			AuthoredUi.aquariumController:Hide()
+		else
+			AuthoredUi.aquariumController:Show(state)
+		end
 		return
 	end
 

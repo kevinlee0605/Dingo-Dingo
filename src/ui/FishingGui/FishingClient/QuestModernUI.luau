@@ -15,6 +15,7 @@ local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
 local Lighting = game:GetService("Lighting")
 local UserInputService = game:GetService("UserInputService")
+local GuiService = game:GetService("GuiService")
 
 local ASSETS = {
 	MainWindow = "rbxassetid://75381184130055",
@@ -141,19 +142,22 @@ local CROPS = {
 
 local BASE_WIDTH = 1187
 local BASE_HEIGHT = 1326
--- Exact recovered v1615 post-fit scale. Keeping this in the behavior module
--- makes the authored Explorer panel and the original runtime presentation use
--- the same responsive size on every viewport.
-local QUEST_UI_SIZE_MULTIPLIER = 0.72
+-- Present the complete quest window 20% larger while retaining the same
+-- viewport-fit calculation, so every tab, card, label, and control scales
+-- together without overflowing smaller displays.
+local QUEST_UI_SIZE_MULTIPLIER = 0.864
 
 -- Keep the quest cards below the lowered header panel.
+-- Leave a little more breathing room around every mission card. The list and
+-- cards share this width, so the left and right gutters stay exactly equal.
+local LIST_X = 28
 local LIST_Y = 382
+local QUEST_CARD_WIDTH = 1131
+-- Pull status/reward content away from the card's right outline while keeping
+-- the card itself centered within the quest panel.
+local QUEST_RIGHT_COLUMN_SHIFT = 32
 local CARD_HEIGHT = 238
 local CARD_GAP = 12
-
--- Quest UI background blur
-local QUEST_BLUR_SIZE = 10
-local QUEST_BLUR_TWEEN_TIME = 0.18
 
 -- Quest list scrolling
 local QUEST_SCROLL_WHEEL_STEP = 150
@@ -200,7 +204,7 @@ local function makeText(parent, name, text, textSize, color, font)
 	local label = requireChild(parent, name, "TextLabel")
 	label.BackgroundTransparency = 1
 	label.BorderSizePixel = 0
-	label.Font = font or Enum.Font.FredokaOne
+	label.Font = font or Enum.Font.GothamBlack
 	label.Text = text or ""
 	label.TextColor3 = color or Color3.new(1, 1, 1)
 	label.TextSize = textSize or 24
@@ -632,44 +636,15 @@ function QuestModernUI.create(config)
 	questBlur.Size = 0
 	controller.questBlur = questBlur
 
-	local function setQuestBlurVisible(visible)
+	local function setQuestBlurVisible(_visible)
 		if controller.blurTween then
 			controller.blurTween:Cancel()
 			controller.blurTween = nil
 		end
 
-		if visible then
-			questBlur.Enabled = true
-			controller.blurTween = TweenService:Create(
-				questBlur,
-				TweenInfo.new(
-					QUEST_BLUR_TWEEN_TIME,
-					Enum.EasingStyle.Quad,
-					Enum.EasingDirection.Out
-				),
-				{ Size = QUEST_BLUR_SIZE }
-			)
-			controller.blurTween:Play()
-		else
-			local closingTween = TweenService:Create(
-				questBlur,
-				TweenInfo.new(
-					QUEST_BLUR_TWEEN_TIME,
-					Enum.EasingStyle.Quad,
-					Enum.EasingDirection.Out
-				),
-				{ Size = 0 }
-			)
-
-			controller.blurTween = closingTween
-			closingTween.Completed:Connect(function()
-				if controller.blurTween == closingTween
-					and not controller.root.Visible then
-					questBlur.Enabled = false
-				end
-			end)
-			closingTween:Play()
-		end
+		-- Daily Quests should leave the 3D scene crisp while it is open.
+		questBlur.Size = 0
+		questBlur.Enabled = false
 	end
 
 	controller.setQuestBlurVisible = setQuestBlurVisible
@@ -729,8 +704,21 @@ function QuestModernUI.create(config)
 
 		scale.Scale = math.clamp(
 			fit * QUEST_UI_SIZE_MULTIPLIER,
-			0.26,
+			-- Allow compact phone and landscape viewports to honor the fit
+			-- calculation instead of overflowing because of a desktop-sized floor.
+			0.1,
 			1
+		)
+
+		-- ScreenInsets centers GuiObjects inside Roblox's inset-safe rectangle.
+		-- Shift by half the difference between opposing insets so the result is
+		-- visually centered in the complete viewport on every device.
+		local topLeftInset, bottomRightInset = GuiService:GetGuiInset()
+		overlay.Position = UDim2.new(
+			0.5,
+			math.round((bottomRightInset.X - topLeftInset.X) * 0.5),
+			0.5,
+			math.round((bottomRightInset.Y - topLeftInset.Y) * 0.5)
 		)
 	end
 
@@ -826,9 +814,13 @@ function QuestModernUI.create(config)
 	list.ScrollBarThickness = 0
 	list.ScrollBarImageTransparency = 1
 	list.VerticalScrollBarInset = Enum.ScrollBarInset.None
+	list.Position = UDim2.fromOffset(LIST_X, LIST_Y)
+	list.Size = UDim2.fromOffset(QUEST_CARD_WIDTH, 876)
 	controller.list = list
 
 	local scrollInputCatcher = requireChild(overlay, "ScrollInputCatcher", "TextButton")
+	scrollInputCatcher.Position = UDim2.fromOffset(LIST_X, LIST_Y)
+	scrollInputCatcher.Size = UDim2.fromOffset(QUEST_CARD_WIDTH, 876)
 	controller.scrollInputCatcher = scrollInputCatcher
 
 	local listLayout = requireChild(list, "QuestListLayout", "UIListLayout")
@@ -837,20 +829,28 @@ function QuestModernUI.create(config)
 	-- Custom scrollbar using the supplied image.
 	local scrollbarTrack = requireChild(overlay, "ScrollbarTrack", "Frame")
 	scrollbarTrack.Position = UDim2.fromOffset(SCROLLBAR_TRACK_X, LIST_Y)
+	scrollbarTrack.Visible = false
+	scrollbarTrack.Active = false
 	controller.scrollbarTrack = scrollbarTrack
 
 	-- Cover the sample thumb baked into the full scrollbar artwork.
 	local scrollbarChannel = requireChild(scrollbarTrack, "ScrollbarChannel", "Frame")
+	scrollbarChannel.Visible = false
 	controller.scrollbarChannel = scrollbarChannel
 
 	local scrollbarThumb = requireChild(overlay, "ScrollbarThumb", "Frame")
 	scrollbarThumb.Position = UDim2.fromOffset(SCROLLBAR_THUMB_X, LIST_Y)
+	scrollbarThumb.Visible = false
+	scrollbarThumb.Active = false
 	controller.scrollbarThumb = scrollbarThumb
 
 	-- The thin pale line is actually the clipped right edge of every
 	-- QuestCard image, not the scrollbar track. Mask only that 4 px edge.
 	local questCardRightEdgeMask = requireChild(overlay, "QuestCardRightEdgeMask", "Frame")
-	questCardRightEdgeMask.Visible = true
+	questCardRightEdgeMask.Visible = false
+	-- Keep the card-edge mask behind the scrollbar artwork. The old higher
+	-- ZIndex covered part of the blue thumb and made Quest look narrower.
+	questCardRightEdgeMask.ZIndex = scrollbarTrack.ZIndex - 1
 	controller.questCardRightEdgeMask = questCardRightEdgeMask
 
 	-- Bottom-right decoration.
@@ -859,39 +859,13 @@ function QuestModernUI.create(config)
 	controller.cornerDecoration = cornerDecoration
 
 	local function updateScrollbar()
-		local contentHeight = math.max(
-			listLayout.AbsoluteContentSize.Y,
-			list.AbsoluteCanvasSize.Y
-		)
-		local viewportHeight = math.max(1, list.AbsoluteWindowSize.Y)
-
-		if contentHeight <= viewportHeight + 1 then
-			scrollbarThumb.Visible = false
-			setArtworkTransparency(scrollbarTrack, 0.45)
-			return
-		end
-
-		scrollbarThumb.Visible = true
-		setArtworkTransparency(scrollbarTrack, 0)
-
-		local trackHeight = scrollbarTrack.AbsoluteSize.Y
-		if trackHeight <= 0 then
-			return
-		end
-
-		local ratio = math.clamp(viewportHeight / contentHeight, 0.08, 1)
-		local thumbHeight = math.max(48, math.floor(trackHeight * ratio))
-		local maxThumbTravel = math.max(0, trackHeight - thumbHeight)
-
-		local maxCanvasY = math.max(1, contentHeight - viewportHeight)
-		local scrollRatio = math.clamp(list.CanvasPosition.Y / maxCanvasY, 0, 1)
-		local thumbY = math.floor(maxThumbTravel * scrollRatio)
-
-		scrollbarThumb.Position = UDim2.fromOffset(
-			SCROLLBAR_THUMB_X,
-			LIST_Y + thumbY
-		)
-		scrollbarThumb.Size = UDim2.fromOffset(14, thumbHeight)
+		-- Scrolling remains functional through wheel, drag, and touch input, but
+		-- the retired visual bar must not consume the right-hand card gutter.
+		scrollbarTrack.Visible = false
+		scrollbarTrack.Active = false
+		scrollbarChannel.Visible = false
+		scrollbarThumb.Visible = false
+		scrollbarThumb.Active = false
 	end
 
 	controller.updateScrollbar = updateScrollbar
@@ -1216,7 +1190,7 @@ function QuestModernUI.create(config)
 				suffix,
 				23,
 				Color3.fromRGB(120, 216, 255),
-				Enum.Font.GothamBold
+				Enum.Font.GothamBlack
 			)
 			suffixText.Position = UDim2.fromOffset(46, 37)
 			suffixText.Size = UDim2.fromOffset(valueWidth, 27)
@@ -1231,6 +1205,7 @@ function QuestModernUI.create(config)
 		card.Name = "QuestCard_" .. tostring(quest.id or index)
 		card.LayoutOrder = index
 		card.Visible = true
+		card.Size = UDim2.fromOffset(QUEST_CARD_WIDTH, CARD_HEIGHT)
 		card.Parent = self.list
 
 		local iconKey = getObjectiveIconKey(quest, index)
@@ -1262,7 +1237,7 @@ function QuestModernUI.create(config)
 			quest.description or "",
 			30,
 			Color3.fromRGB(78, 205, 255),
-			Enum.Font.GothamBold
+			Enum.Font.GothamBlack
 		)
 		description.Position = UDim2.fromOffset(220, 74)
 		description.Size = UDim2.fromOffset(535, 52)
@@ -1320,7 +1295,7 @@ function QuestModernUI.create(config)
 			card,
 			"StatusBadge",
 			statusImage,
-			UDim2.fromOffset(785, 24),
+			UDim2.fromOffset(785 + QUEST_RIGHT_COLUMN_SHIFT, 24),
 			UDim2.fromOffset(261, 62),
 			203
 		)
@@ -1333,7 +1308,7 @@ function QuestModernUI.create(config)
 			complete
 				and Color3.fromRGB(85, 255, 35)
 				or Color3.fromRGB(0, 224, 255),
-			Enum.Font.GothamBold
+			Enum.Font.GothamBlack
 		)
 		statusLabel.Size = UDim2.fromScale(1, 1)
 		statusLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -1346,9 +1321,9 @@ function QuestModernUI.create(config)
 			"Rewards",
 			29,
 			Color3.fromRGB(72, 210, 255),
-			Enum.Font.GothamBold
+			Enum.Font.GothamBlack
 		)
-		rewardsLabel.Position = UDim2.fromOffset(770, 96)
+		rewardsLabel.Position = UDim2.fromOffset(770 + QUEST_RIGHT_COLUMN_SHIFT, 96)
 		rewardsLabel.Size = UDim2.fromOffset(250, 34)
 		rewardsLabel.TextStrokeTransparency = 0.35
 		rewardsLabel.ZIndex = 204
@@ -1356,7 +1331,7 @@ function QuestModernUI.create(config)
 		local reward = quest.reward or {}
 		self:MakeRewardBox(
 			card,
-			770,
+			770 + QUEST_RIGHT_COLUMN_SHIFT,
 			157,
 			"MoneyIcon",
 			reward.coins or 0,
@@ -1364,7 +1339,7 @@ function QuestModernUI.create(config)
 		)
 		self:MakeRewardBox(
 			card,
-			935,
+			935 + QUEST_RIGHT_COLUMN_SHIFT,
 			122,
 			"XPIcon",
 			reward.xp or 0,

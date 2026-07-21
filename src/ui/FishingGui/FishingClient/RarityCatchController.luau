@@ -350,6 +350,7 @@ function RarityCatchController.start(options)
 
 		session.cancelled = true
 		FishingSFX.stopReeling()
+		FishingSFX.stopRarityWarning()
 		disconnectAll()
 		resetFishingOnlyVisuals()
 	end
@@ -362,6 +363,7 @@ function RarityCatchController.start(options)
 		session.setHolding(false)
 		session.finished = true
 		FishingSFX.stopReeling()
+		FishingSFX.stopRarityWarning()
 		if success == true then
 			FishingSFX.playCatchReveal(rarity, isAutoFish)
 		end
@@ -469,6 +471,7 @@ function RarityCatchController.start(options)
 			return
 		end
 		session.lastTapAt = now
+		FishingSFX.playReelTap()
 		session.emitInput("Tap", session.holding)
 		session.tapCount = math.min(session.tapGoal, session.tapCount + 1)
 		session.phaseProgress = session.tapGoal > 0
@@ -497,6 +500,7 @@ function RarityCatchController.start(options)
 		session.rageSequenceStarted = true
 		session.phase = "RAGE_WARNING"
 		session.setHolding(false)
+		FishingSFX.stopReeling()
 		session.progress = 1
 		useStandardGauge()
 		setCurrentTapEnabled(false)
@@ -508,6 +512,7 @@ function RarityCatchController.start(options)
 		end
 
 		task.spawn(function()
+			FishingSFX.playRarityWarning(rarity)
 			local warningCompleted = true
 			if modernUi and modernUi.showRageWarning then
 				warningCompleted = modernUi.showRageWarning(
@@ -521,6 +526,7 @@ function RarityCatchController.start(options)
 				end
 				warningCompleted = isSessionAlive()
 			end
+			FishingSFX.stopRarityWarning()
 
 			if not warningCompleted or not isSessionAlive() then
 				return
@@ -581,13 +587,16 @@ function RarityCatchController.start(options)
 	)
 	options.forcePureWhiteText(ui.minigameText)
 
-	table.insert(connections, tapButton.Activated:Connect(registerTap))
-
 	-- Explicit button press/release handling for phones and tablets.
 	-- UserInputService below remains as the fallback for mouse, touch, and Space.
 	table.insert(connections, tapButton.InputBegan:Connect(function(input)
 		if session.phase == "REEL" and isReelInput(input) then
 			session.setHolding(true)
+		elseif session.phase == "TAP"
+			and (input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch)
+		then
+			registerTap()
 		end
 	end))
 	table.insert(connections, tapButton.InputEnded:Connect(function(input)

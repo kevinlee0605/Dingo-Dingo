@@ -1,5 +1,9 @@
 local BagModernUI = {}
 
+local GuiService = game:GetService("GuiService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
 local BASE_WIDTH = 1448
 local BASE_HEIGHT = 1086
 
@@ -10,7 +14,7 @@ local BASE_HEIGHT = 1086
 -- 0.80 = 20% 작게
 -- 1.10 = 10% 크게
 -- ============================================================
-local BAG_UI_SCALE_MULTIPLIER = 0.87
+local BAG_UI_SCALE_MULTIPLIER = 1.05
 
 -- ============================================================
 -- TARGET LAYOUT TUNING
@@ -113,6 +117,7 @@ local ui = {
 	selectedTab = "Rods",
 	context = nil,
 	viewportConnection = nil,
+	mobileLayout = false,
 	hiddenLegacyBaitIcons = {},
 	legacyBaitWatcher = nil,
 	legacyBaitSearchRoot = nil,
@@ -170,10 +175,16 @@ local function makeLabel(parent, name, text, position, size, textSize, zIndex, c
 	label.BackgroundTransparency = 1
 	label.Position = position
 	label.Size = size
-	label.Font = Enum.Font.FredokaOne
+	label.Font = Enum.Font.GothamBlack
 	label.Text = text or ""
 	label.TextColor3 = color or Color3.new(1, 1, 1)
-	label.TextSize = textSize or 28
+	local requestedTextSize = textSize or 28
+	-- The Bag is scaled down substantially to fit a phone viewport. Increase
+	-- authored text sizes inside that scaled canvas so row information remains
+	-- readable instead of becoming desktop-sized text shrunk to a few pixels.
+	label.TextSize = ui.mobileLayout
+		and math.floor(requestedTextSize * 1.32 + 0.5)
+		or requestedTextSize
 	label.TextScaled = false
 	label.TextWrapped = false
 	label.TextXAlignment = alignment or Enum.TextXAlignment.Left
@@ -205,7 +216,13 @@ end
 
 local function addTextConstraint(label, minSize, maxSize)
 	local constraint = label:FindFirstChildOfClass("UITextSizeConstraint")
-	assert(constraint, string.format("Bag authored text constraint is missing from %s", label:GetFullName()))
+	-- A stale Team Create/Studio copy of the authored template may not yet have
+	-- this optional layout helper. Missing it must not abort the entire Bag.
+	if not constraint then
+		constraint = Instance.new("UITextSizeConstraint")
+		constraint.Name = "UITextSizeConstraint"
+		constraint.Parent = label
+	end
 	constraint.MinTextSize = minSize
 	constraint.MaxTextSize = maxSize
 	return constraint
@@ -431,18 +448,94 @@ local function updateScale()
 	local camera = workspace.CurrentCamera
 	local viewport = camera and camera.ViewportSize
 		or Vector2.new(1920, 1080)
+	local topLeftInset, bottomRightInset = GuiService:GetGuiInset()
+	local usableViewport = Vector2.new(
+		math.max(1, viewport.X - topLeftInset.X - bottomRightInset.X),
+		math.max(1, viewport.Y - topLeftInset.Y - bottomRightInset.Y)
+	)
 
 	-- 화면 크기에 따라 기본 반응형 크기 계산
-	local widthScale = viewport.X * 0.80 / BASE_WIDTH
-	local heightScale = viewport.Y * 0.76 / BASE_HEIGHT
+	local isPhoneViewport = math.min(viewport.X, viewport.Y) <= 600
+	local mobileLayoutChanged = ui.mobileLayout ~= isPhoneViewport
+	ui.mobileLayout = isPhoneViewport
+	local widthFit = isPhoneViewport and 0.94 or 0.80
+	local heightFit = isPhoneViewport and 0.90 or 0.76
+	local widthScale = usableViewport.X * widthFit / BASE_WIDTH
+	local heightScale = usableViewport.Y * heightFit / BASE_HEIGHT
 	local responsiveScale = math.min(widthScale, heightScale)
 
 	-- BAG_UI_SCALE_MULTIPLIER 값으로 전체 UI 크기 조절
 	ui.scale.Scale = math.clamp(
 		responsiveScale * BAG_UI_SCALE_MULTIPLIER,
-		0.24,
+		0.10,
 		1.05
 	)
+
+	if ui.canvas then
+		ui.canvas.Position = UDim2.new(
+			0.5,
+			math.round((bottomRightInset.X - topLeftInset.X) * 0.5),
+			0.5,
+			math.round((bottomRightInset.Y - topLeftInset.Y) * 0.5)
+		)
+	end
+
+	if mobileLayoutChanged and ui.root and ui.root.Visible and ui.context then
+		task.defer(BagModernUI.refresh)
+	end
+end
+
+local function addQuestCloseFeedback(button)
+	if button:GetAttribute("QuestCloseFeedbackBound") == true then
+		return
+	end
+	button:SetAttribute("QuestCloseFeedbackBound", true)
+
+	local originalPosition = button.Position
+	local originalSize = button.Size
+	local activeTween = nil
+
+	local function setPressed(pressed)
+		if activeTween then
+			activeTween:Cancel()
+		end
+		activeTween = TweenService:Create(
+			button,
+			TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{
+				Position = UDim2.new(
+					originalPosition.X.Scale,
+					originalPosition.X.Offset + (pressed and 3 or 0),
+					originalPosition.Y.Scale,
+					originalPosition.Y.Offset + (pressed and 3 or 0)
+				),
+				Size = UDim2.new(
+					originalSize.X.Scale,
+					originalSize.X.Offset - (pressed and 6 or 0),
+					originalSize.Y.Scale,
+					originalSize.Y.Offset - (pressed and 6 or 0)
+				),
+				ImageTransparency = pressed and 0.16 or 0,
+			}
+		)
+		activeTween:Play()
+	end
+
+	button.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+			setPressed(true)
+		end
+	end)
+	button.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+			setPressed(false)
+		end
+	end)
+	button.MouseLeave:Connect(function()
+		setPressed(false)
+	end)
 end
 
 local function buildBase(parent)
@@ -468,9 +561,50 @@ local function buildBase(parent)
 	local templates = requireChild(root, "Templates", "Folder")
 	local content = requireChild(canvas, "ItemList", "ScrollingFrame")
 	local closeButton = requireChild(canvas, "CloseButton", "ImageButton")
+	local scrollbarTrack = requireChild(canvas, "BagScrollbarTrack", "Frame")
+	local scrollbarThumb = requireChild(canvas, "BagScrollbarThumb", "ImageButton")
 	content.ClipsDescendants = true
 	content.Active = true
 	content.ScrollingEnabled = true
+	-- Fill the scrollbar-free content area symmetrically. Inventory rows use
+	-- scale width and action buttons are right-anchored, so both extend with it.
+	content.Position = UDim2.fromOffset(62, 286)
+	content.Size = UDim2.fromOffset(1324, 712)
+	local contentPadding = content:FindFirstChildOfClass("UIPadding")
+	if contentPadding then
+		contentPadding.PaddingLeft = UDim.new(0, 2)
+		contentPadding.PaddingRight = UDim.new(0, 2)
+	end
+
+	-- Other inventory setup runs after this module and used to restore the authored
+	-- native scrollbar. Keep it disabled so only the Quest-style custom art is visible.
+	local hidingNativeScrollbar = false
+	local function hideNativeScrollbar()
+		if hidingNativeScrollbar then
+			return
+		end
+		hidingNativeScrollbar = true
+		if content.ScrollBarThickness ~= 0 then
+			content.ScrollBarThickness = 0
+		end
+		if content.ScrollBarImageTransparency ~= 1 then
+			content.ScrollBarImageTransparency = 1
+		end
+		pcall(function()
+			content.TopImage = ""
+			content.MidImage = ""
+			content.BottomImage = ""
+			content.VerticalScrollBarInset = Enum.ScrollBarInset.None
+		end)
+		hidingNativeScrollbar = false
+	end
+
+	hideNativeScrollbar()
+	if not content:GetAttribute("BagNativeScrollbarLockedV1") then
+		content:SetAttribute("BagNativeScrollbarLockedV1", true)
+		content:GetPropertyChangedSignal("ScrollBarThickness"):Connect(hideNativeScrollbar)
+		content:GetPropertyChangedSignal("ScrollBarImageTransparency"):Connect(hideNativeScrollbar)
+	end
 
 	ui.root = root
 	ui.mountParent = parent
@@ -479,6 +613,89 @@ local function buildBase(parent)
 	ui.canvas = canvas
 	ui.scale = responsiveScale
 	ui.content = content
+	addQuestCloseFeedback(closeButton)
+
+	local function getScrollbarMetrics()
+		local trackHeight = scrollbarTrack.AbsoluteSize.Y
+		local viewportHeight = content.AbsoluteWindowSize.Y
+		if viewportHeight <= 0 then
+			viewportHeight = content.AbsoluteSize.Y
+		end
+		local canvasHeight = math.max(content.AbsoluteCanvasSize.Y, viewportHeight)
+		local scrollRange = math.max(0, canvasHeight - viewportHeight)
+		local ratio = scrollRange > 0 and viewportHeight / canvasHeight or 0.72
+		local thumbHeight = math.clamp(trackHeight * ratio, 90, trackHeight)
+		return trackHeight, thumbHeight, math.max(0, trackHeight - thumbHeight), scrollRange
+	end
+
+	local function updateScrollbar()
+		local trackHeight, thumbHeight, thumbTravel, scrollRange = getScrollbarMetrics()
+		if trackHeight <= 0 then
+			task.defer(updateScrollbar)
+			return
+		end
+		local progress = scrollRange > 0
+			and math.clamp(content.CanvasPosition.Y / scrollRange, 0, 1)
+			or 0
+		scrollbarThumb.Size = UDim2.fromOffset(14, thumbHeight)
+		scrollbarThumb.Position = UDim2.fromOffset(
+			scrollbarTrack.Position.X.Offset + 7,
+			scrollbarTrack.Position.Y.Offset + thumbTravel * progress
+		)
+		scrollbarThumb.Active = scrollRange > 0
+	end
+
+	local function setCanvasFromThumbTop(thumbTop)
+		local _, _, thumbTravel, scrollRange = getScrollbarMetrics()
+		if thumbTravel <= 0 or scrollRange <= 0 then
+			content.CanvasPosition = Vector2.new(content.CanvasPosition.X, 0)
+			return
+		end
+		content.CanvasPosition = Vector2.new(
+			content.CanvasPosition.X,
+			math.clamp(thumbTop / thumbTravel, 0, 1) * scrollRange
+		)
+	end
+
+	local draggingThumb = false
+	local dragOffsetY = 0
+	scrollbarThumb.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+			draggingThumb = true
+			dragOffsetY = input.Position.Y - scrollbarThumb.AbsolutePosition.Y
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if draggingThumb and (input.UserInputType == Enum.UserInputType.MouseMovement
+			or input.UserInputType == Enum.UserInputType.Touch) then
+			setCanvasFromThumbTop(
+				input.Position.Y - scrollbarTrack.AbsolutePosition.Y - dragOffsetY
+			)
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if draggingThumb and (input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch) then
+			draggingThumb = false
+		end
+	end)
+	scrollbarTrack.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+			local _, thumbHeight = getScrollbarMetrics()
+			setCanvasFromThumbTop(
+				input.Position.Y - scrollbarTrack.AbsolutePosition.Y - thumbHeight * 0.5
+			)
+		end
+	end)
+
+	content:GetPropertyChangedSignal("CanvasPosition"):Connect(updateScrollbar)
+	content:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(updateScrollbar)
+	content:GetPropertyChangedSignal("AbsoluteWindowSize"):Connect(updateScrollbar)
+	scrollbarTrack:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateScrollbar)
+	ui.updateScrollbar = updateScrollbar
+	task.defer(updateScrollbar)
 
 	closeButton.MouseButton1Click:Connect(function()
 		BagModernUI.hide()
@@ -500,6 +717,26 @@ local function makeTab(id, labelText)
 	local label = requireChild(button, "Label", "TextLabel")
 	button.Image = selected and ASSETS.TabSelected or ASSETS.TabNormal
 	label.Text = labelText
+	label.TextWrapped = false
+	label.TextScaled = not (ui.mobileLayout and id == "Rods")
+	if ui.mobileLayout and id == "Rods" then
+		-- A fixed authored size is more reliable than TextScaled for this
+		-- two-word label: TextScaled may wrap at the space on narrow phones.
+		label.TextSize = 48
+	end
+	local textConstraint = label:FindFirstChildOfClass("UITextSizeConstraint")
+	if textConstraint then
+		-- "Fishing Rods" is the only two-word tab label. On narrow phones the
+		-- shared minimum forced TextScaled to wrap it beyond the selected tab.
+		-- Give this label enough scaling range to remain on one centered line.
+		if ui.mobileLayout and id == "Rods" then
+			textConstraint.MinTextSize = 7
+			textConstraint.MaxTextSize = 16
+		else
+			textConstraint.MinTextSize = ui.mobileLayout and 10 or 14
+			textConstraint.MaxTextSize = ui.mobileLayout and 18 or 22
+		end
+	end
 
 	if not ui.tabConnections[button] then
 		ui.tabConnections[button] = button.MouseButton1Click:Connect(function()
@@ -518,7 +755,7 @@ local function makeNormalButton(parent, text, enabled, callback)
 	button.Size = UDim2.fromOffset(ITEM_BUTTON_WIDTH, ITEM_BUTTON_HEIGHT)
 	button.BackgroundColor3 = enabled and Color3.fromRGB(4, 35, 78) or Color3.fromRGB(45, 55, 70)
 	button.AutoButtonColor = enabled
-	button.Font = Enum.Font.FredokaOne
+	button.Font = Enum.Font.GothamBlack
 	button.Text = text
 	button.TextColor3 = Color3.new(1, 1, 1)
 	button.TextSize = 28
@@ -540,11 +777,17 @@ local function makeEquippedButton(parent)
 	-- 일반 Equip 버튼과 정확히 같은 함수/좌표계를 사용한다.
 	-- 따라서 Rod/Bait/Fish 어디에서 사용해도 같은 자리에 고정된다.
 	local button = makeNormalButton(parent, "Equipped", false, nil)
-	button.Name = "EquippedButton"
+	-- Keep the authored ActionButton name. The selected-row outline is rendered
+	-- above normal row content, so explicitly place this disabled state above
+	-- that outline; otherwise the last equipped bait can appear buttonless on
+	-- compact mobile layouts.
+	button.Name = "ActionButton"
 	button.BackgroundColor3 = Color3.fromRGB(0, 126, 24)
 	button.AutoButtonColor = false
 	button.Active = false
 	button.Selectable = false
+	button.ZIndex = 330
+	button.Visible = true
 
 	local stroke = button:FindFirstChildOfClass("UIStroke")
 	if stroke then
@@ -595,6 +838,21 @@ local function makeRow(height, equipped)
 			320,
 			Enum.ScaleType.Stretch
 		)
+		-- The selected-outline PNG has uneven transparent padding. Use its
+		-- authored node as a symmetric inset border so the green box is truly
+		-- centered around the row on every responsive scale.
+		selectedOutline.ImageTransparency = 1
+		selectedOutline.Position = UDim2.fromOffset(4, 4)
+		selectedOutline.Size = UDim2.new(1, -8, 1, -8)
+		local outlineCorner = Instance.new("UICorner")
+		outlineCorner.CornerRadius = UDim.new(0, 12)
+		outlineCorner.Parent = selectedOutline
+		local outlineStroke = Instance.new("UIStroke")
+		outlineStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		outlineStroke.Color = Color3.fromRGB(35, 222, 78)
+		outlineStroke.Thickness = 2.5
+		outlineStroke.Transparency = 0.04
+		outlineStroke.Parent = selectedOutline
 		selectedOutline.Active = false
 	end
 
@@ -796,24 +1054,58 @@ local function renderBait(context)
 				Enum.TextXAlignment.Left
 			)
 
-			makeLabel(
+			local description = makeLabel(
 				row,
 				"Description",
 				bait.description or "",
 				UDim2.fromOffset(470, ITEM_STATS_Y),
 				UDim2.fromOffset(410, ITEM_STATS_HEIGHT),
-				21,
+				25,
 				309,
 				Color3.fromRGB(150, 175, 205),
 				Enum.TextXAlignment.Left
 			)
+			local hasLongMobileDescription = ui.mobileLayout
+				and #tostring(bait.description or "") > 34
+			if hasLongMobileDescription then
+				-- Long bait sentences do not fit the single-line mobile column.
+				-- Give them a bounded two-line region which ends well before the
+				-- action button instead of allowing text to overflow.
+				description.Position = UDim2.fromOffset(470, 66)
+				description.Size = UDim2.fromOffset(560, 68)
+				description.TextScaled = true
+				description.TextWrapped = true
+				description.TextYAlignment = Enum.TextYAlignment.Center
+				addTextConstraint(description, 8, 16)
+			end
 
+			local actionButton
 			if equipped then
-				makeEquippedButton(row)
+				actionButton = makeEquippedButton(row)
 			else
-				makeNormalButton(row, "Equip", true, function()
+				actionButton = makeNormalButton(row, "Equip", true, function()
 					if context.equipBait then
 						context.equipBait(baitId)
+					end
+				end)
+			end
+
+			if ui.mobileLayout and baitId == "PondGuardianBait" then
+				-- Keep the final row's action control inside the compact phone
+				-- viewport and above responsive text/scrollbar decoration. Some
+				-- mobile clients process the last row after it is inserted and used
+				-- to leave this authored button hidden.
+				actionButton.Name = "PondGuardianActionButton"
+				actionButton.AnchorPoint = Vector2.new(1, 0.5)
+				actionButton.Position = UDim2.new(1, -ITEM_BUTTON_RIGHT_MARGIN, 0.5, 0)
+				actionButton.Size = UDim2.fromOffset(ITEM_BUTTON_WIDTH, ITEM_BUTTON_HEIGHT)
+				actionButton.ZIndex = 340
+				actionButton.Visible = true
+
+				task.defer(function()
+					if actionButton.Parent == row and row.Parent then
+						actionButton.ZIndex = 340
+						actionButton.Visible = true
 					end
 				end)
 			end
@@ -965,7 +1257,7 @@ local function renderResources(context)
 				getResourceDescription(resourceId, resource),
 				UDim2.fromOffset(470, (ITEM_ROW_HEIGHT - ITEM_STATS_HEIGHT) / 2),
 				UDim2.fromOffset(650, ITEM_STATS_HEIGHT),
-				21,
+				25,
 				309,
 				Color3.fromRGB(150, 175, 205),
 				Enum.TextXAlignment.Left

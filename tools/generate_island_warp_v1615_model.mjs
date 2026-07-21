@@ -114,12 +114,12 @@ const comingCard = cardBase("ComingSoonCard", true, 4, [
 comingCard.props.LayoutOrder = scalar("int", 4);
 
 const cards = node("Frame", "Cards", {
-  ...gui({ size: udim2(1, -16, 0, 1302), zindex: 302 }),
+  ...gui({ size: udim2(1, 0, 0, 1302), zindex: 302 }),
   AutomaticSize: scalar("token", 0),
 }, [
   node("UIListLayout", "UIListLayout", {
     FillDirection: scalar("token", 1),
-    HorizontalAlignment: scalar("token", 1),
+    HorizontalAlignment: scalar("token", 0),
     Padding: udim(0, 26),
     SortOrder: scalar("token", 2),
   }),

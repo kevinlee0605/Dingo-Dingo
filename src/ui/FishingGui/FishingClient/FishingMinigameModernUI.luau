@@ -78,6 +78,11 @@ local GAUGE_SEAM_OVERLAP_PIXELS = 3
 local UI_SCALE = 0.9
 local UI_POSITION_X = 0.3
 local UI_POSITION_Y = 0.4
+-- Phone-only presentation: enlarge the complete fishing panel and its gauge
+-- together while keeping the desktop and tablet geometry unchanged.
+local PHONE_UI_SCALE = 0.98
+local PHONE_UI_POSITION_X = 0.22
+local PHONE_UI_POSITION_Y = 0.39
 
 local PANEL_ASPECT = 0.76
 
@@ -508,8 +513,9 @@ local function attachResponsivePanelLayout(panel)
 		local finalWidth = finalHeight * PANEL_ASPECT
 
 		-- 위에서 설정한 전체 배율 적용
-		finalWidth *= UI_SCALE
-		finalHeight *= UI_SCALE
+		local deviceScale = deviceKind == "phone" and PHONE_UI_SCALE or UI_SCALE
+		finalWidth *= deviceScale
+		finalHeight *= deviceScale
 
 		-- 배율을 크게 올려도 화면 바깥으로 완전히 벗어나지 않도록 보호
 		local safeWidth = screenWidth * 0.96
@@ -530,8 +536,8 @@ local function attachResponsivePanelLayout(panel)
 
 		-- 위에서 설정한 전체 위치 적용
 		panel.Position = UDim2.fromScale(
-			UI_POSITION_X,
-			UI_POSITION_Y
+			deviceKind == "phone" and PHONE_UI_POSITION_X or UI_POSITION_X,
+			deviceKind == "phone" and PHONE_UI_POSITION_Y or UI_POSITION_Y
 		)
 	end
 
@@ -1126,14 +1132,31 @@ local function ensureUi(ctx)
 	-- The focused gauge is visually horizontal after ProgressTrack rotates 90°.
 	-- A separate, unrotated fill is used during Rage Mode so its left edge stays
 	-- fixed and only the right edge advances as the player taps.
-	local RAGE_FOCUS_SCALE = 1.28
-	-- Focused horizontal gauge target: directly below the three top buttons.
-	-- X: smaller = left, larger = right
-	-- Y: smaller = higher, larger = lower
-	local RAGE_FOCUS_POSITION_X = 0.5
-	local RAGE_FOCUS_POSITION_Y = 0.16
-	local RAGE_INNER_LENGTH_SCALE = 0.94
-	local RAGE_INNER_THICKNESS_SCALE = 0.72
+	-- Focused horizontal gauge target: directly below the top HUD. The phone
+	-- variant is shorter and higher so neither rounded end reaches Tap.
+	local RAGE_LAYOUT = {
+		positionX = 0.5,
+		innerThicknessScale = 0.72,
+		-- The focused rarity fill uses the complete horizontal track length. This
+		-- makes its fixed left cap and its 100% right cap meet the track ends on
+		-- every device instead of leaving unequal empty space at either side.
+		-- Keep it a little below the notification banner so long catch messages
+		-- cannot collide with the Epic/Legendary presentation.
+		-- The track texture contains transparent padding beyond its visible black
+		-- outline. Use the artwork's visible inner span so neither colored cap
+		-- protrudes past the outline at the start or the end.
+		desktop = { focusScale = 1.28, positionY = 0.20, innerLengthScale = 0.94 },
+		phone = { focusScale = 1.10, positionY = 0.13, innerLengthScale = 0.94 },
+	}
+
+	local function getRageFocusLayout()
+		local camera = workspace.CurrentCamera
+		local viewport = camera and camera.ViewportSize or Vector2.new(1920, 1080)
+		if getDeviceKind(viewport) == "phone" then
+			return RAGE_LAYOUT.phone
+		end
+		return RAGE_LAYOUT.desktop
+	end
 
 	local rageHorizontalFill = bindOrCreate(root, "RageHorizontalFill", "Frame")
 	rageHorizontalFill.Name = "RageHorizontalFill"
@@ -1296,14 +1319,20 @@ local function ensureUi(ctx)
 		layoutRageHorizontalPieces(fillWidth, rageHorizontalFullHeight)
 	end
 
-	local function configureRageHorizontalFill(baseTrackSize, centerX, centerY)
+	local function configureRageHorizontalFill(
+		baseTrackSize,
+		centerX,
+		centerY,
+		focusScale,
+		innerLengthScale
+	)
 		rageHorizontalFullWidth = math.max(
 			1,
-			baseTrackSize.Y * RAGE_INNER_LENGTH_SCALE * RAGE_FOCUS_SCALE
+			baseTrackSize.Y * innerLengthScale * focusScale
 		)
 		rageHorizontalFullHeight = math.max(
 			1,
-			baseTrackSize.X * RAGE_INNER_THICKNESS_SCALE * RAGE_FOCUS_SCALE
+		baseTrackSize.X * RAGE_LAYOUT.innerThicknessScale * focusScale
 		)
 		rageHorizontalLeft = centerX - (rageHorizontalFullWidth * 0.5)
 		rageHorizontalCenterY = centerY
@@ -1442,6 +1471,7 @@ local function ensureUi(ctx)
 		local rootAbsoluteSize = root.AbsoluteSize
 		local currentAbsolutePosition = progressTrack.AbsolutePosition
 		local currentAbsoluteSize = progressTrack.AbsoluteSize
+		local focusLayout = getRageFocusLayout()
 
 		progressTrack.Parent = root
 		progressTrack.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1474,8 +1504,8 @@ local function ensureUi(ctx)
 			focusTweenInfo,
 			{
 				Position = UDim2.fromOffset(
-					rootAbsoluteSize.X * RAGE_FOCUS_POSITION_X,
-					rootAbsoluteSize.Y * RAGE_FOCUS_POSITION_Y
+					rootAbsoluteSize.X * RAGE_LAYOUT.positionX,
+					rootAbsoluteSize.Y * focusLayout.positionY
 				),
 				Rotation = gaugeHome.rotation + 90,
 			}
@@ -1483,7 +1513,7 @@ local function ensureUi(ctx)
 		gaugeScaleTween = TweenService:Create(
 			gaugeFocusScale,
 			focusTweenInfo,
-			{ Scale = RAGE_FOCUS_SCALE }
+			{ Scale = focusLayout.focusScale }
 		)
 		gaugeMoveTween:Play()
 		gaugeScaleTween:Play()
@@ -1497,8 +1527,10 @@ local function ensureUi(ctx)
 		progressFill.Visible = false
 		configureRageHorizontalFill(
 			currentAbsoluteSize,
-			rootAbsoluteSize.X * RAGE_FOCUS_POSITION_X,
-			rootAbsoluteSize.Y * RAGE_FOCUS_POSITION_Y
+			rootAbsoluteSize.X * RAGE_LAYOUT.positionX,
+			rootAbsoluteSize.Y * focusLayout.positionY,
+			focusLayout.focusScale,
+			focusLayout.innerLengthScale
 		)
 		return true
 	end

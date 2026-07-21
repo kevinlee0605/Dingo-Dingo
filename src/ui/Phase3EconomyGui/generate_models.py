@@ -244,7 +244,7 @@ def make_surface() -> Node:
     )
 
     grid_props = gui_props(
-        position=udim2(0, 76, 0, 218),
+        position=udim2(0, 90, 0, 218),
         size=udim2(0, 1220, 0, 700),
         clips=True,
         zindex=1103,
@@ -278,8 +278,8 @@ def make_surface() -> Node:
 
     scrollbar = frame(
         "DailyRewardCustomScrollbar",
-        position=udim2(0, 1303, 0, 226),
-        size=udim2(0, 42, 0, 670),
+        position=udim2(0, 1310, 0, 226),
+        size=udim2(0, 28, 0, 670),
         clips=True,
         zindex=1120,
     )
@@ -294,16 +294,36 @@ def make_surface() -> Node:
     scrollbar.children.append(scrollbar_art)
     lane = frame(
         "DailyRewardScrollLane",
-        position=udim2(0.5, 0, 0, 0),
-        size=udim2(0, 22, 1, -6),
-        anchor=vec2(0.5, 0),
+        position=udim2(0, 0, 0, 0),
+        size=udim2(1, 0, 1, 0),
+        anchor=vec2(0, 0),
         background=color(5, 27, 73),
-        transparency=0,
+        transparency=1,
         clips=True,
         zindex=1121,
     )
+    channel = frame(
+        "ScrollbarChannel",
+        position=udim2(0.28, 0, 0.05, 0),
+        size=udim2(0.44, 0, 0.82, 0),
+        transparency=1,
+        clips=True,
+        zindex=1121,
+    )
+    channel_art = image(
+        "Artwork",
+        "rbxassetid://73367138577137",
+        scale_type=SCALE_TYPE_STRETCH,
+        position=udim2(0, 0, 0, 0),
+        size=udim2(1, 0, 1, 0),
+        zindex=1121,
+    )
+    channel_art.props["ImageRectOffset"] = vec2(701, 914)
+    channel_art.props["ImageRectSize"] = vec2(30, 90)
+    channel.children.append(channel_art)
+    lane.children.append(channel)
     lane.props["Active"] = prop("bool", True)
-    lane.children.append(corner(11))
+    lane.children.append(corner(7))
     lane.children.append(
         Node(
             "UIGradient",
@@ -320,22 +340,27 @@ def make_surface() -> Node:
     )
     thumb = image_button(
         "DailyRewardMovingThumb",
+        "rbxassetid://73367138577137",
         scale_type=SCALE_TYPE_STRETCH,
         position=udim2(0.5, 0, 0, 0),
-        size=udim2(0, 22, 0, 96),
+        size=udim2(0, 14, 0, 96),
         anchor=vec2(0.5, 0),
         background=color(0, 125, 255),
-        transparency=0,
+        transparency=1,
         zindex=1122,
     )
+    thumb.props["ImageRectOffset"] = vec2(701, 77)
+    thumb.props["ImageRectSize"] = vec2(30, 825)
+    thumb.props["AutoButtonColor"] = prop("bool", False)
     thumb.children.extend(
         [
-            corner(11),
-            stroke(82, 246, 255, 2),
+            corner(7),
+            stroke(82, 246, 255, 2, 1),
             Node(
                 "UIGradient",
                 "ThumbGradient",
                 {
+					"Enabled": prop("bool", False),
                     "Color": color_sequence(
                         (0, (67, 246, 255)),
                         (0.38, (0, 170, 255)),
@@ -355,6 +380,7 @@ def make_surface() -> Node:
         zindex=1123,
     )
     highlight.children.append(corner(3))
+    highlight.props["Visible"] = prop("bool", False)
     thumb.children.append(highlight)
     lane.children.append(thumb)
     scrollbar.children.append(lane)

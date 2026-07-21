@@ -713,9 +713,9 @@ def supply_status_button(label_text: str = "Not Enough") -> Node:
         "ImageButton",
         "StatusButton",
         "RedButton",
-        930,
+        1008,
         38,
-        252,
+        276,
         88,
         516,
         children=[
@@ -759,7 +759,7 @@ def supply_card(name: str, *, rod: bool) -> Node:
         "IndividualUITab",
         0,
         0,
-        1238,
+        1316,
         164,
         508,
         visible=False,
@@ -802,7 +802,7 @@ def supply_tab(name: str, label_text: str, x: int, icon_key: str, selected: bool
 def make_supply() -> Node:
     list_props = gui(
         position=udim2(0, 70, 0, 248),
-        size=udim2(0, 1252, 0, 780),
+        size=udim2(0, 1316, 0, 780),
         zindex=506,
         clips=True,
     )
@@ -840,7 +840,7 @@ def make_supply() -> Node:
                 "LoadingLabel",
                 "Loading supplies...",
                 udim2(0, 0, 0, 0),
-                udim2(0, 1238, 0, 100),
+                udim2(0, 1316, 0, 100),
                 36,
                 color(255, 255, 255),
                 505,
@@ -869,7 +869,8 @@ def make_supply() -> Node:
         transparency=0.08,
         zindex=509,
     )
-    scroll_track.props["Active"] = scalar("bool", True)
+    scroll_track.props["Active"] = scalar("bool", False)
+    scroll_track.props["Visible"] = scalar("bool", False)
     scroll_track.children = [corner("TrackCorner", 0, 27), scroll_thumb]
 
     tabs = frame(
@@ -885,7 +886,7 @@ def make_supply() -> Node:
 
     root = frame(
         "ModernSupplyShop",
-        position=udim2(0.5, 0, 0.43, 0),
+        position=udim2(0.5, 0, 0.5, 0),
         size=udim2(0, 1448, 0, 1086),
         anchor=vec2(0.5, 0.5),
         visible=False,
@@ -901,14 +902,6 @@ def make_supply() -> Node:
         tabs,
         supply_list,
         scroll_track,
-        frame(
-            "ListRightEdgeMask",
-            position=udim2(0, 1317, 0, 248),
-            size=udim2(0, 7, 0, 780),
-            background=color(1, 18, 54),
-            transparency=0,
-            zindex=508,
-        ),
     ]
     return root
 

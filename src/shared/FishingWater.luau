@@ -26,6 +26,10 @@ local function isWaterResult(result)
 	end
 
 	local instance = result.Instance
+	if instance and type(instance:GetAttribute("FishingWaterSurfaceY")) == "number" then
+		return true
+	end
+
 	local lowerName = instance and string.lower(instance.Name) or ""
 	return string.find(lowerName, "water", 1, true) ~= nil
 		or string.find(lowerName, "ocean surface", 1, true) ~= nil
@@ -40,6 +44,10 @@ local function castDown(candidate, referenceY, params, rayHeight, rayDepth)
 	local origin = Vector3.new(candidate.X, referenceY + rayHeight, candidate.Z)
 	local result = workspace:Raycast(origin, Vector3.new(0, -rayDepth, 0), params)
 	if isWaterResult(result) then
+		local authoredSurfaceY = result.Instance:GetAttribute("FishingWaterSurfaceY")
+		if type(authoredSurfaceY) == "number" then
+			return Vector3.new(result.Position.X, authoredSurfaceY, result.Position.Z), result
+		end
 		return result.Position, result
 	end
 	return nil, nil

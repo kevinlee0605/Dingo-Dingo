@@ -2,7 +2,7 @@
   "className": "ScreenGui",
   "properties": {
     "ClipToDeviceSafeArea": true,
-    "DisplayOrder": 2100,
+    "DisplayOrder": 1100,
     "Enabled": true,
     "IgnoreGuiInset": false,
     "ResetOnSpawn": false,

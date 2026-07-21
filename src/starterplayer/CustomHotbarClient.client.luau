@@ -50,7 +50,9 @@ local HOTBAR_SCALE_TINY_PHONE = 0.94
 
 -- 하단 위치 조정값. 음수 숫자가 커질수록 위로 올라감.
 local HOTBAR_BOTTOM_OFFSET_PC = -18
-local HOTBAR_BOTTOM_OFFSET_TOUCH = -24
+-- Leave enough room below scaled/selected slots for the full border to remain
+-- inside the mobile safe area. Selected slots grow to 1.12x around their center.
+local HOTBAR_BOTTOM_OFFSET_TOUCH = -22
 local HOTBAR_BOTTOM_OFFSET_SHORT_SCREEN = -12
 
 local selectedSlot = nil

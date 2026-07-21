@@ -5,10 +5,11 @@ local CoinsHud = {}
 local COIN_ICON_IMAGE = "rbxassetid://99615681502772"
 
 local NUMBER_AREA_WIDTH = 320
--- Leave room for the 3.3 px outline so the first/last glyph is not clipped.
-local DIGIT_WIDTH = 24
-local COMMA_WIDTH = 12
+-- Leave room for the 2.2 px outline so the first/last glyph is not clipped.
+local DIGIT_WIDTH = 28
+local COMMA_WIDTH = 15
 local DIGIT_HEIGHT = 72
+local GLYPH_HORIZONTAL_PADDING = 3
 local ROLL_TIME = 0.65
 
 local function requiredChild(parent, name, className)
@@ -142,8 +143,14 @@ function CoinsHud.create(deps, refs, formatNumber)
 	local function createSlot(xOffset, width)
 		local slot = previewSlot:Clone()
 		slot.Name = "DigitSlot"
-		slot.Position = UDim2.fromOffset(xOffset, 0)
-		slot.Size = UDim2.fromOffset(width, DIGIT_HEIGHT)
+		-- The slot must remain vertically clipped for the rolling animation, but
+		-- its text outline needs a few pixels beyond the glyph on both sides.
+		-- Expanding symmetrically preserves the exact character center/spacing.
+		slot.Position = UDim2.fromOffset(xOffset - GLYPH_HORIZONTAL_PADDING, 0)
+		slot.Size = UDim2.fromOffset(
+			width + GLYPH_HORIZONTAL_PADDING * 2,
+			DIGIT_HEIGHT
+		)
 		slot.Visible = true
 		slot.Parent = digitsHolder
 		return slot

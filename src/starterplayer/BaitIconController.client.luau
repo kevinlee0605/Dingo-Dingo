@@ -132,7 +132,10 @@ local function decorateBaitCards()
 		for _, descendant in ipairs(fishingGui:GetDescendants()) do
 			if descendant:IsA("TextLabel") and descendant.Text == bait.displayName then
 				local card = descendant.Parent
-				if card and card:IsA("GuiObject") and card.Name ~= baitId .. "ShopOption" then
+				if card and card:IsA("GuiObject")
+					and card.Name ~= baitId .. "ShopOption"
+					and not card:FindFirstAncestor("ModernSupplyShop")
+				then
 					decorateBagCard(card, baitId)
 				end
 			end

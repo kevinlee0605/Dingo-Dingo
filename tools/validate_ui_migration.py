@@ -1173,7 +1173,6 @@ def main() -> int:
         "LoadingLabel",
         "ScrollTrack",
         "ScrollThumb",
-        "ListRightEdgeMask",
     }
     missing_supply_nodes = sorted(required_supply_nodes - supply_names)
     if missing_supply_nodes:
@@ -1656,12 +1655,11 @@ def main() -> int:
         "125654737802805",
         "102095594840013",
         "109248646612122",
-        "121676475074564",
         "107602146669555",
         "105327955653365",
         "109156112056544",
         "105621557357975",
-        "90625326453971",
+        "73367138577137",
         "84751657680455",
         "92519303171140",
         "140618424967086",

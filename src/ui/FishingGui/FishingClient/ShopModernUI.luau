@@ -11,12 +11,13 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
+local GuiService = game:GetService("GuiService")
 
 local BASE_WIDTH = 1448
 local BASE_HEIGHT = 1086
-local SHOP_SIZE_MULTIPLIER = 0.67
+local SHOP_SIZE_MULTIPLIER = 0.804
 local SHOP_X = 0.50
-local SHOP_Y = 0.4
+local SHOP_Y = 0.50
 
 -- Keep the custom blue scrollbar thumb visible even when a tab's contents
 -- already fit inside the window.
@@ -38,6 +39,7 @@ local SEA_STAR_PACK_VISUALS = {
 local SEA_STAR_ROW_HEIGHT = 154
 local SEA_STAR_ICON_AREA_WIDTH = 196
 local SEA_STAR_TEXT_X = 228
+local PASS_UPGRADE_ICON_SIZE = 154
 
 local VALID_SHOP_TABS = {
 	Passes = true,
@@ -59,23 +61,23 @@ local ASSETS = {
 	CloseButton = "rbxassetid://119322438066977",
 	DecorationCastle = "rbxassetid://120613246130409",
 
-	VipDailyReward = "rbxassetid://96068622781673",
-	VipAnglerPass = "rbxassetid://138061692418651",
+	VipDailyReward = "rbxassetid://99933149858722",
+	VipAnglerPass = "rbxassetid://96108986049974",
 	AquariumDesignerPass = "rbxassetid://134252679867634",
 
 	SmallLuckyBaitPack = "rbxassetid://96266529771108",
 	MediumLuckyBaitPack = "rbxassetid://139023229463150",
 	LargeLuckyBaitPack = "rbxassetid://78982257234804",
 
-	StarterCoinPack = "rbxassetid://119755475927257",
-	SmallCoinPack = "rbxassetid://84487201357535",
-	MediumCoinPack = "rbxassetid://120340267245808",
-	LargeCoinPack = "rbxassetid://117952324689348",
-	HugeCoinPack = "rbxassetid://81048476941918",
+	StarterCoinPack = "rbxassetid://122982075390467",
+	SmallCoinPack = "rbxassetid://89535174408052",
+	MediumCoinPack = "rbxassetid://94304360282205",
+	LargeCoinPack = "rbxassetid://113732340355755",
+	HugeCoinPack = "rbxassetid://80743634381583",
 
-	SmallBagUpgrade = "rbxassetid://80091101944926",
-	MediumBagUpgrade = "rbxassetid://111407932652412",
-	LargeBagUpgrade = "rbxassetid://101921318471224",
+	SmallBagUpgrade = "rbxassetid://139726034741243",
+	MediumBagUpgrade = "rbxassetid://98621724666237",
+	LargeBagUpgrade = "rbxassetid://92679833309609",
 }
 
 local CROPS = {
@@ -119,10 +121,20 @@ local CROPS = {
 		offset = Vector2.new(119, 479),
 		size = Vector2.new(1011, 375),
 	},
-	ScrollBar = {
+	ScrollBarTrack = {
 		source = Vector2.new(1448, 1086),
 		offset = Vector2.new(683, 29),
 		size = Vector2.new(65, 1021),
+	},
+	ScrollBarThumb = {
+		source = Vector2.new(1448, 1086),
+		offset = Vector2.new(701, 77),
+		size = Vector2.new(30, 825),
+	},
+	ScrollBarChannel = {
+		source = Vector2.new(1448, 1086),
+		offset = Vector2.new(701, 914),
+		size = Vector2.new(30, 90),
 	},
 	CloseButton = {
 		source = Vector2.new(1187, 1326),
@@ -356,7 +368,7 @@ local function addPressFeedback(button)
 		then
 			TweenService:Create(
 				button,
-				TweenInfo.new(0.06),
+				TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 				{
 					Position = UDim2.new(
 						originalPosition.X.Scale,
@@ -373,7 +385,11 @@ local function addPressFeedback(button)
 				}
 			):Play()
 			if artwork then
-				artwork.ImageTransparency = 0.12
+				TweenService:Create(
+					artwork,
+					TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+					{ ImageTransparency = 0.16 }
+				):Play()
 			end
 		end
 	end)
@@ -381,14 +397,18 @@ local function addPressFeedback(button)
 	local function release()
 		TweenService:Create(
 			button,
-			TweenInfo.new(0.06),
+			TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 			{
 				Position = originalPosition,
 				Size = originalSize,
 			}
 		):Play()
 		if artwork then
-			artwork.ImageTransparency = 0
+			TweenService:Create(
+				artwork,
+				TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+				{ ImageTransparency = 0 }
+			):Play()
 		end
 	end
 
@@ -502,9 +522,19 @@ local function updateScale()
 	)
 	ui.scale.Scale = math.clamp(
 		fit * SHOP_SIZE_MULTIPLIER,
-		0.30,
+		0.10,
 		1.00
 	)
+
+	if ui.canvas then
+		local topLeftInset, bottomRightInset = GuiService:GetGuiInset()
+		ui.canvas.Position = UDim2.new(
+			SHOP_X,
+			math.round((bottomRightInset.X - topLeftInset.X) * 0.5),
+			SHOP_Y,
+			math.round((bottomRightInset.Y - topLeftInset.Y) * 0.5)
+		)
+	end
 end
 
 local function restoreOriginal()
@@ -689,8 +719,8 @@ local function updateScrollbar()
 				math.max(90, trackHeight)
 			)
 
-			ui.scrollThumb.Position = UDim2.fromOffset(1, 0)
-			ui.scrollThumb.Size = UDim2.fromOffset(26, idleHeight)
+			ui.scrollThumb.Position = UDim2.fromOffset(7, 0)
+			ui.scrollThumb.Size = UDim2.fromOffset(14, idleHeight)
 		else
 			ui.scrollThumb.Visible = false
 		end
@@ -715,11 +745,11 @@ local function updateScrollbar()
 	)
 
 	ui.scrollThumb.Position = UDim2.fromOffset(
-		1,
+		7,
 		math.floor(maxTravel * scrollRatio)
 	)
 	ui.scrollThumb.Size = UDim2.fromOffset(
-		26,
+		14,
 		thumbHeight
 	)
 end
@@ -968,8 +998,9 @@ local function buildShell(context)
 	ui.scrollTrack = boundChild(ui.skin, "ModernShopScrollTrack", "Frame")
 	ui.scrollTrack.Name = "ModernShopScrollTrack"
 	ui.scrollTrack.BackgroundColor3 = Color3.fromRGB(1, 19, 55)
-	ui.scrollTrack.BackgroundTransparency = 0.04
+	ui.scrollTrack.BackgroundTransparency = 1
 	ui.scrollTrack.BorderSizePixel = 0
+	ui.scrollTrack.ClipsDescendants = true
 	ui.scrollTrack.Position = UDim2.fromOffset(1333, 264)
 	ui.scrollTrack.Size = UDim2.fromOffset(28, 738)
 	ui.scrollTrack.Active = true
@@ -983,22 +1014,34 @@ local function buildShell(context)
 	if trackStroke then
 		trackStroke.Color = Color3.fromRGB(0, 82, 190)
 		trackStroke.Thickness = 2
-		trackStroke.Transparency = 0.25
+		trackStroke.Transparency = 1
 	end
+	makeArtwork(ui.scrollTrack, ASSETS.ScrollBar, CROPS.ScrollBarTrack, 210)
+	local scrollChannel = boundChild(ui.scrollTrack, "ScrollbarChannel", "Frame")
+	scrollChannel.BackgroundTransparency = 1
+	scrollChannel.BorderSizePixel = 0
+	scrollChannel.ClipsDescendants = true
+	scrollChannel.Position = UDim2.fromScale(0.28, 0.05)
+	scrollChannel.Size = UDim2.fromScale(0.44, 0.82)
+	scrollChannel.ZIndex = 211
+	makeArtwork(scrollChannel, ASSETS.ScrollBar, CROPS.ScrollBarChannel, 211)
 
 	ui.scrollThumb = makeImageButton(
 		ui.scrollTrack,
 		"ModernShopScrollThumb",
 		ASSETS.ScrollBar,
-		CROPS.ScrollBar,
-		UDim2.fromOffset(1, 0),
-		UDim2.fromOffset(26, 210),
+		CROPS.ScrollBarThumb,
+		UDim2.fromOffset(7, 0),
+		UDim2.fromOffset(14, 210),
 		213,
 		true
 	)
 
 	content.Position = UDim2.fromOffset(58, 260)
-	content.Size = UDim2.fromOffset(1260, 750)
+	-- The scrollbar artwork is intentionally hidden. Reclaim its former column
+	-- so row backings reach the same inset on both sides; right-anchored action
+	-- buttons move with their rows automatically.
+	content.Size = UDim2.fromOffset(1332, 750)
 	content.BackgroundTransparency = 1
 	content.ZIndex = 205
 	content.ScrollBarThickness = 0
@@ -1058,7 +1101,8 @@ local function renderTabs(context)
 	layout.FillDirection = Enum.FillDirection.Horizontal
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 	layout.VerticalAlignment = Enum.VerticalAlignment.Center
-	layout.Padding = UDim.new(0, 11)
+	-- Use the same compact visual spacing as the Sea Star product controls.
+	layout.Padding = UDim.new(0, 6)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = ui.tabs
 
@@ -1146,12 +1190,91 @@ local function createImageRow(context, options)
 	makeImageHolder(
 		holder,
 		"RowArtwork",
-		ASSETS[options.key],
-		CROPS[options.key],
+		options.iconImage and ASSETS.IndividualUITab or ASSETS[options.key],
+		options.iconImage and CROPS.IndividualUITab or CROPS[options.key],
 		UDim2.fromScale(0, 0),
 		UDim2.fromScale(1, 1),
 		207
 	)
+	if options.matchSeaStarBody then
+		-- Match the Sea Star row's dark navy body without tinting the authored
+		-- product artwork or its icon compartment.
+		local bodyShade = Instance.new("Frame")
+		bodyShade.Name = "SeaStarBodyColorMatch"
+		bodyShade.BackgroundColor3 = Color3.fromRGB(3, 18, 52)
+		bodyShade.BackgroundTransparency = 0.02
+		bodyShade.BorderSizePixel = 0
+		bodyShade.Position = UDim2.fromOffset(196, 6)
+		bodyShade.Size = UDim2.new(1, -202, 1, -12)
+		bodyShade.ZIndex = 212
+		bodyShade.Parent = holder
+
+		local bodyCorner = Instance.new("UICorner")
+		bodyCorner.CornerRadius = UDim.new(0, 14)
+		bodyCorner.Parent = bodyShade
+
+		local bodyGradient = Instance.new("UIGradient")
+		bodyGradient.Color = ColorSequence.new(
+			Color3.fromRGB(5, 28, 72),
+			Color3.fromRGB(1, 12, 38)
+		)
+		bodyGradient.Rotation = 0
+		bodyGradient.Parent = bodyShade
+	end
+
+	-- Coin-pack artwork is uploaded as a transparent square icon rather than a
+	-- precomposed full-width row. Cover the oversized compartment embedded in
+	-- the authored backing, then draw a narrower box that clears the row text.
+	if options.iconImage then
+		local rowHeight = options.height or 176
+		local mask = Instance.new("Frame")
+		mask.Name = "ProductIconCompartmentMask"
+		mask.BackgroundColor3 = Color3.new(1, 1, 1)
+		mask.BorderSizePixel = 0
+		mask.Position = UDim2.fromOffset(16, 7)
+		mask.Size = UDim2.fromOffset(220, rowHeight - 14)
+		mask.ZIndex = 213
+		mask.Parent = holder
+
+		local maskGradient = Instance.new("UIGradient")
+		maskGradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(1, 24, 76)),
+			ColorSequenceKeypoint.new(0.48, Color3.fromRGB(1, 20, 66)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 11, 38)),
+		})
+		maskGradient.Rotation = 90
+		maskGradient.Parent = mask
+
+		local iconFrame = Instance.new("Frame")
+		iconFrame.Name = "ProductIconFrame"
+		iconFrame.BackgroundColor3 = Color3.fromRGB(3, 25, 66)
+		iconFrame.BorderSizePixel = 0
+		iconFrame.Position = UDim2.fromOffset(8, 5)
+		iconFrame.Size = UDim2.fromOffset(156, rowHeight - 24)
+		iconFrame.ZIndex = 214
+		iconFrame.Parent = mask
+
+		local iconCorner = Instance.new("UICorner")
+		iconCorner.CornerRadius = UDim.new(0, 12)
+		iconCorner.Parent = iconFrame
+
+		local iconStroke = Instance.new("UIStroke")
+		iconStroke.Color = Color3.fromRGB(0, 108, 255)
+		iconStroke.Thickness = 2
+		iconStroke.Transparency = 0.12
+		iconStroke.Parent = iconFrame
+
+		local icon = Instance.new("ImageLabel")
+		icon.Name = "ProductIcon"
+		icon.BackgroundTransparency = 1
+		icon.BorderSizePixel = 0
+		icon.Image = options.iconImage
+		icon.Position = UDim2.fromOffset(6, 6)
+		icon.Size = UDim2.new(1, -12, 1, -12)
+		icon.ScaleType = Enum.ScaleType.Fit
+		icon.ZIndex = 215
+		icon.Parent = iconFrame
+	end
 
 	local title = boundChild(holder, "Title", "TextLabel")
 	title.Text = options.title
@@ -1165,13 +1288,16 @@ local function createImageRow(context, options)
 	local description = boundChild(holder, "Description", "TextLabel")
 	if options.description and options.description ~= "" then
 		description.Text = options.description
-		description.TextSize = 23
+		description.Font = Enum.Font.GothamBlack
+		description.TextSize = 28
+		description.TextStrokeColor3 = Color3.new(0, 0, 0)
+		description.TextStrokeTransparency = 0.35
 		description.Position = UDim2.fromOffset(228, detailY)
-		description.Size = UDim2.new(1, -520, 0, options.descriptionLines == 2 and 56 or 32)
+		description.Size = UDim2.new(1, -520, 0, options.descriptionLines == 2 and 64 or 36)
 		description.TextWrapped = options.descriptionLines == 2
 		description.Visible = true
 		description.ZIndex = 216
-		detailY += options.descriptionLines == 2 and 58 or 36
+		detailY += options.descriptionLines == 2 and 66 or 40
 	elseif description then
 		description.Visible = false
 	end
@@ -1257,14 +1383,32 @@ local function createProductCard(context, options)
 	assert(iconTemplate and iconTemplate:IsA("ImageLabel"), "[ShopModernUI] ProductCardTemplate.Icon is missing")
 	local icon = iconTemplate:Clone()
 	local iconSize = options.iconSize or 142
-	icon.Name = "SeaStarIcon"
-	icon.Parent = iconArea
-	icon.AnchorPoint = Vector2.new(0, 0)
-	icon.Position = UDim2.fromOffset(
-		math.floor((SEA_STAR_ICON_AREA_WIDTH - iconSize) / 2),
-		math.floor((SEA_STAR_ROW_HEIGHT - iconSize) / 2)
-	)
-	icon.Size = UDim2.fromOffset(iconSize, iconSize)
+	icon.Name = "ProductIcon"
+	if options.iconCrop then
+		local crop = options.iconCrop
+		-- Pass and upgrade art already contains its authored icon tile. Fill
+		-- the compartment with that tile instead of drawing it as a second,
+		-- smaller box inside the generated IconArea. The original source has
+		-- 13 px of left gutter, so include that gutter in the crop to center
+		-- the visible VIP/backpack artwork rather than only its source frame.
+		iconArea.BackgroundTransparency = 1
+		iconArea.ClipsDescendants = true
+		iconAreaStroke.Transparency = 1
+		icon.Parent = iconArea
+		icon.AnchorPoint = Vector2.new(0.5, 0.5)
+		icon.Position = UDim2.fromScale(0.5, 0.5)
+		icon.Size = UDim2.fromScale(1, 1)
+		icon.ImageRectOffset = Vector2.new(
+			math.max(0, crop.offset.X - 13),
+			crop.offset.Y
+		)
+		icon.ImageRectSize = crop.size
+	else
+		icon.Parent = iconArea
+		icon.AnchorPoint = Vector2.new(0.5, 0.5)
+		icon.Position = UDim2.fromScale(0.5, 0.5)
+		icon.Size = UDim2.fromOffset(iconSize, iconSize)
+	end
 	icon.BackgroundTransparency = 1
 	icon.BorderSizePixel = 0
 	icon.Image = options.iconImage or SEA_STAR_ICON
@@ -1300,11 +1444,14 @@ local function createProductCard(context, options)
 
 	local description = getTextLabel(
 		"Description",
-		23,
+		28,
 		Color3.fromRGB(178, 194, 235)
 	)
+	description.Font = Enum.Font.GothamBlack
+	description.TextStrokeColor3 = Color3.new(0, 0, 0)
+	description.TextStrokeTransparency = 0.35
 	description.Position = UDim2.fromOffset(SEA_STAR_TEXT_X, 65)
-	description.Size = UDim2.new(1, -520, 0, 31)
+	description.Size = UDim2.new(1, -520, 0, 36)
 	description.Text = tostring(options.description or "")
 	description.TextXAlignment = Enum.TextXAlignment.Left
 	description.TextYAlignment = Enum.TextYAlignment.Top
@@ -1320,7 +1467,7 @@ local function createProductCard(context, options)
 	value.TextXAlignment = Enum.TextXAlignment.Left
 	value.TextYAlignment = Enum.TextYAlignment.Center
 
-	makeActionButton(context, holder, {
+	makeActionButton(context, holder, options.action or {
 		text = "Buy",
 		type = "GreenButton",
 		enabled = true,
@@ -1452,10 +1599,11 @@ end
 
 local function renderPasses(context)
 	local order = 1
-	createImageRow(context, {
+	createProductCard(context, {
 		key = "VipDailyReward",
+		iconImage = ASSETS.VipDailyReward,
+		iconSize = PASS_UPGRADE_ICON_SIZE,
 		layoutOrder = order,
-		height = 172,
 		title = "VIP Daily Reward",
 		description = "5 Fresh Bait + 2 Lucky Bait once per day.",
 		action = vipRewardAction(context),
@@ -1473,13 +1621,13 @@ local function renderPasses(context)
 		}) do
 		local pass = context.MonetizationConfig.GamePasses[passKey]
 		if pass then
-			createImageRow(context, {
+			createProductCard(context, {
 				key = passImages[passKey],
+				iconImage = ASSETS[passImages[passKey]],
+				iconSize = PASS_UPGRADE_ICON_SIZE,
 				layoutOrder = order,
-				height = 190,
 				title = pass.name,
 				description = pass.description,
-				descriptionLines = 2,
 				priceText = formatRobux(pass, Enum.InfoType.GamePass),
 				action = gamePassAction(context, passKey),
 			})
@@ -1570,25 +1718,25 @@ local function renderCoins(context)
 		local product = context.MonetizationConfig
 			.DeveloperProducts[productKey]
 		if product then
-			createImageRow(context, {
+			-- Coin packs keep their own product data and artwork, but use the
+			-- exact same card renderer as the Sea Star products in Items. This
+			-- keeps the row backing, border, icon compartment, gutters, text
+			-- positions, and Buy button geometry visually identical.
+			createProductCard(context, {
 				key = imageKeys[productKey],
+				iconImage = ASSETS[imageKeys[productKey]],
+				iconSize = 124,
 				layoutOrder = order,
-				height = 158,
 				title = product.name,
 				description = product.description,
 				priceText = formatRobux(product, Enum.InfoType.Product),
-				action = {
-					text = "Buy",
-					type = "GreenButton",
-					enabled = true,
-					onClick = function()
-						context.fireShopAction(
-							"PromptProduct",
-							"Product",
-							productKey
-						)
-					end,
-				},
+				onClick = function()
+					context.fireShopAction(
+						"PromptProduct",
+						"Product",
+						productKey
+					)
+				end,
 			})
 			order += 1
 		end
@@ -1620,10 +1768,11 @@ local function renderUpgrades(context)
 		}) do
 		local pass = context.MonetizationConfig.GamePasses[passKey]
 		if pass then
-			createImageRow(context, {
+			createProductCard(context, {
 				key = imageKeys[passKey],
+				iconImage = ASSETS[imageKeys[passKey]],
+				iconSize = PASS_UPGRADE_ICON_SIZE,
 				layoutOrder = order,
-				height = 178,
 				title = pass.name,
 				description = pass.description,
 				priceText = formatRobux(pass, Enum.InfoType.GamePass),
@@ -1660,6 +1809,13 @@ function ShopModernUI.render(context)
 	assert(ui.layout and ui.padding, "[ShopModernUI] Authored Content layout/padding is missing")
 
 	renderTabs(context)
+	-- The authored non-Sea-Star rows contain a little extra transparent edge
+	-- padding. Tighten their list gap so their visible spacing matches the Sea
+	-- Star product rows in Items.
+	ui.layout.Padding = UDim.new(
+		0,
+		10
+	)
 
 	if ui.selectedTab == "Passes" then
 		renderPasses(context)

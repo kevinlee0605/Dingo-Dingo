@@ -13,6 +13,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
+local GuiService = game:GetService("GuiService")
 
 local player = Players.LocalPlayer
 local screenGui = script:FindFirstAncestorOfClass("ScreenGui")
@@ -140,10 +141,20 @@ local CROPS = {
 		offset = Vector2.new(119, 479),
 		size = Vector2.new(1011, 375),
 	},
-	ScrollBar = {
+	ScrollBarTrack = {
 		source = Vector2.new(1448, 1086),
 		offset = Vector2.new(683, 29),
 		size = Vector2.new(65, 1021),
+	},
+	ScrollBarThumb = {
+		source = Vector2.new(1448, 1086),
+		offset = Vector2.new(701, 77),
+		size = Vector2.new(30, 825),
+	},
+	ScrollBarChannel = {
+		source = Vector2.new(1448, 1086),
+		offset = Vector2.new(701, 914),
+		size = Vector2.new(30, 90),
 	},
 	CloseButton = {
 		source = Vector2.new(1187, 1326),
@@ -160,11 +171,15 @@ local BASE_WIDTH = 1448
 local BASE_HEIGHT = 1086
 
 -- Whole UI size and position.
-local SUPPLY_UI_SIZE_MULTIPLIER = 0.7
+-- Use more of the available safe viewport on every device while preserving
+-- the authored aspect ratio and centered responsive layout.
+local SUPPLY_UI_SIZE_MULTIPLIER = 1.0
+local SUPPLY_MOBILE_UI_SIZE_MULTIPLIER = 1.0
 local SUPPLY_UI_X = 0.5
 local SUPPLY_UI_Y = 0.43
 
 local TAB_Y = 165
+-- Match the approved compact Rods/Bait tabs authored in Explorer.
 local TAB_WIDTH = 355
 local TAB_HEIGHT = 80
 local TAB_GAP = 14
@@ -175,28 +190,36 @@ local TAB_START_X = 92
 -- so the fishing rod and bait icons are no longer stretched or squashed.
 local TAB_ICON_SLOT_X = 42
 local TAB_ICON_SLOT_WIDTH = 84
-local TAB_ICON_Y = 7
+local TAB_ICON_Y = 10
 local TAB_ICON_HEIGHT = 66
 
 local LIST_X = 70
 local LIST_Y = 248
-local LIST_WIDTH = 1252
+local LIST_WIDTH = 1316
 local LIST_HEIGHT = 780
 
-local CARD_WIDTH = 1238
+-- Let each row use the full list width up to the scrollbar.
+local CARD_WIDTH = LIST_WIDTH
 local CARD_HEIGHT = 164
+local MOBILE_CARD_HEIGHT = 146
 local CARD_GAP = 8
 
-local SCROLL_TRACK_X = 1332
+local SCROLL_TRACK_X = 1392
 local SCROLL_TRACK_Y = 246
-local SCROLL_TRACK_WIDTH = 27
+local SCROLL_TRACK_WIDTH = 28
 local SCROLL_TRACK_HEIGHT = 778
 local SCROLL_WHEEL_STEP = 145
+local SCROLL_THUMB_WIDTH = 14
+local SCROLL_THUMB_X = math.floor((SCROLL_TRACK_WIDTH - SCROLL_THUMB_WIDTH) * 0.5)
 
-local BUTTON_X = 930
-local BUTTON_Y = 38
-local BUTTON_WIDTH = 252
+-- Keep the action button close to the newly extended right edge.
+local BUTTON_WIDTH = 276
 local BUTTON_HEIGHT = 88
+-- Match the reference: the button sits inside the full-width row with a
+-- narrow, even right inset instead of touching the row outline.
+local BUTTON_RIGHT_INSET = 32
+local BUTTON_X = CARD_WIDTH - BUTTON_WIDTH - BUTTON_RIGHT_INSET
+local BUTTON_Y = 38
 
 -- Rod/Bait image placement inside the left item box.
 -- Changing these values moves or resizes every item image at once.
@@ -206,13 +229,45 @@ local ITEM_ICON_BOX_WIDTH = 160
 local ITEM_ICON_BOX_HEIGHT = 136
 local ITEM_ICON_INNER_SCALE = 0.84
 
+-- Rod uploads also differ slightly in transparent padding, especially the
+-- narrow Ocean Rod. Tune each visible silhouette to the box center.
+local ROD_IMAGE_CENTER_X = {
+	WoodenRod = 0.59,
+	IronRod = 0.59,
+	GoldenRod = 0.58,
+	EmeraldRod = 0.585,
+	OceanRod = 0.55,
+}
+
+-- Each bait upload has different transparent padding. These optical centers
+-- align the visible artwork, not merely the PNG canvas, with the box center.
+local BAIT_IMAGE_CENTER_X = {
+	FreshBait = 0.645,
+	TastyBait = 0.55,
+	LuckyBait = 0.617,
+	GlowBait = 0.635,
+	MysticBait = 0.647,
+	PondGuardianBait = 0.602,
+}
+
+local BAIT_IMAGE_CENTER_Y = {
+	FreshBait = 0.555,
+	TastyBait = 0.595,
+	LuckyBait = 0.575,
+	GlowBait = 0.515,
+	MysticBait = 0.555,
+	PondGuardianBait = 0.56,
+}
+
 local state = nil
 local activeTab = "Rods"
 local pendingRodPurchases = {}
 local setVisible
+local render
 local pendingBaitPurchases = {}
 
 local backpackWasEnabled = nil
+local mobileLayoutActive = false
 
 local function formatNumber(value)
 	local text = tostring(math.max(0, math.floor(tonumber(value) or 0)))
@@ -325,7 +380,7 @@ local function addPressFeedback(button)
 		activeTween = TweenService:Create(
 			button,
 			TweenInfo.new(
-				0.075,
+				0.07,
 				Enum.EasingStyle.Quad,
 				Enum.EasingDirection.Out
 			),
@@ -350,12 +405,12 @@ local function addPressFeedback(button)
 			activeArtworkTween = TweenService:Create(
 				artwork,
 				TweenInfo.new(
-					0.075,
+					0.07,
 					Enum.EasingStyle.Quad,
 					Enum.EasingDirection.Out
 				),
 				{
-					ImageTransparency = pressed and 0.14 or 0,
+					ImageTransparency = pressed and 0.16 or 0,
 				}
 			)
 			activeArtworkTween:Play()
@@ -554,17 +609,37 @@ local function updateResponsiveScale()
 	local camera = workspace.CurrentCamera
 	local viewport = camera and camera.ViewportSize
 		or Vector2.new(1920, 1080)
+	local topLeftInset, bottomRightInset = GuiService:GetGuiInset()
+	local usableViewport = Vector2.new(
+		math.max(1, viewport.X - topLeftInset.X - bottomRightInset.X),
+		math.max(1, viewport.Y - topLeftInset.Y - bottomRightInset.Y)
+	)
 
 	local fit = math.min(
-		(viewport.X * 0.98) / BASE_WIDTH,
-		(viewport.Y * 0.96) / BASE_HEIGHT
+		(usableViewport.X * 0.98) / BASE_WIDTH,
+		(usableViewport.Y * 0.96) / BASE_HEIGHT
 	)
+	local wasMobileLayout = mobileLayoutActive
+	mobileLayoutActive = math.min(usableViewport.X, usableViewport.Y) <= 600
+	local deviceMultiplier = mobileLayoutActive
+		and SUPPLY_MOBILE_UI_SIZE_MULTIPLIER
+		or SUPPLY_UI_SIZE_MULTIPLIER
 
 	scale.Scale = math.clamp(
-		fit * SUPPLY_UI_SIZE_MULTIPLIER,
-		0.30,
+		fit * deviceMultiplier,
+		0.10,
 		1
 	)
+	root.Position = UDim2.new(
+		0.5,
+		math.round((bottomRightInset.X - topLeftInset.X) * 0.5),
+		0.5,
+		math.round((bottomRightInset.Y - topLeftInset.Y) * 0.5)
+	)
+	if wasMobileLayout ~= mobileLayoutActive
+		and root.Visible and state and render then
+		task.defer(render)
+	end
 end
 
 updateResponsiveScale()
@@ -586,11 +661,30 @@ addPressFeedback(closeButton)
 local tabHolder = requireAuthoredChild(root, "Tabs", "Frame")
 local rodsTab = requireAuthoredChild(tabHolder, "RodsTab", "ImageButton")
 local baitTab = requireAuthoredChild(tabHolder, "BaitTab", "ImageButton")
+
+local function layoutSectionTab(button, x, iconX, labelX)
+	button.Position = UDim2.fromOffset(x, 0)
+	button.Size = UDim2.fromOffset(TAB_WIDTH, TAB_HEIGHT)
+
+	local icon = requireAuthoredChild(button, "Icon", "Frame")
+	local label = requireAuthoredChild(button, "Label", "TextLabel")
+	icon.Position = UDim2.fromOffset(iconX, TAB_ICON_Y)
+	label.Position = UDim2.fromOffset(labelX, 11)
+end
+
+tabHolder.Position = UDim2.fromOffset(TAB_START_X, TAB_Y)
+tabHolder.Size = UDim2.fromOffset(TAB_WIDTH * 2 + TAB_GAP, TAB_HEIGHT)
+layoutSectionTab(rodsTab, 0, 55, 130)
+layoutSectionTab(baitTab, TAB_WIDTH + TAB_GAP, 61, 130)
 local list = requireAuthoredChild(
 	root,
 	"SupplyShopList",
 	"ScrollingFrame"
 )
+-- Keep the live scrolling viewport in sync with the widened cards. Without
+-- this, an older authored list width clips the right edge of every button.
+list.Position = UDim2.fromOffset(LIST_X, LIST_Y)
+list.Size = UDim2.fromOffset(LIST_WIDTH, LIST_HEIGHT)
 local listLayout = requireAuthoredChild(list, "ListLayout", "UIListLayout")
 local rodCardTemplate = requireAuthoredChild(
 	list,
@@ -604,11 +698,22 @@ local baitCardTemplate = requireAuthoredChild(
 )
 local loadingLabel = requireAuthoredChild(list, "LoadingLabel", "TextLabel")
 local scrollTrack = requireAuthoredChild(root, "ScrollTrack", "Frame")
+local scrollChannel = requireAuthoredChild(scrollTrack, "ScrollbarChannel", "Frame")
 local scrollThumb = requireAuthoredChild(
 	scrollTrack,
 	"ScrollThumb",
 	"ImageButton"
 )
+-- Scrolling remains available through wheel/touch input, but the visual
+-- scrollbar was intentionally removed. Hiding the complete parent also
+-- removes the dark vertical channel that appeared beside every row button.
+scrollTrack.Visible = false
+scrollTrack.Active = false
+scrollTrack.Position = UDim2.fromOffset(SCROLL_TRACK_X, SCROLL_TRACK_Y)
+scrollTrack.Size = UDim2.fromOffset(SCROLL_TRACK_WIDTH, SCROLL_TRACK_HEIGHT)
+applyCropArtwork(scrollTrack, ASSETS.ScrollBar, CROPS.ScrollBarTrack)
+applyCropArtwork(scrollChannel, ASSETS.ScrollBar, CROPS.ScrollBarChannel)
+applyCropArtwork(scrollThumb, ASSETS.ScrollBar, CROPS.ScrollBarThumb)
 
 local function getContentHeight()
 	return math.max(
@@ -637,11 +742,18 @@ local function updateScrollbar()
 	local trackHeight = math.max(1, scrollTrack.AbsoluteSize.Y)
 
 	if contentHeight <= viewportHeight + 1 then
-		scrollThumb.Visible = false
+		scrollThumb.Visible = true
+		scrollThumb.Active = false
+		scrollThumb.Position = UDim2.fromOffset(SCROLL_THUMB_X, 0)
+		scrollThumb.Size = UDim2.fromOffset(
+			SCROLL_THUMB_WIDTH,
+			math.clamp(math.floor(trackHeight * 0.72), 90, trackHeight)
+		)
 		return
 	end
 
 	scrollThumb.Visible = true
+	scrollThumb.Active = true
 
 	local ratio = math.clamp(
 		viewportHeight / contentHeight,
@@ -649,7 +761,7 @@ local function updateScrollbar()
 		1
 	)
 	local thumbHeight = math.max(
-		82,
+		90,
 		math.floor(trackHeight * ratio)
 	)
 	local maxTravel = math.max(
@@ -667,11 +779,11 @@ local function updateScrollbar()
 	)
 
 	scrollThumb.Position = UDim2.fromOffset(
-		1,
+		SCROLL_THUMB_X,
 		math.floor(maxTravel * scrollRatio)
 	)
 	scrollThumb.Size = UDim2.fromOffset(
-		SCROLL_TRACK_WIDTH - 2,
+		SCROLL_THUMB_WIDTH,
 		thumbHeight
 	)
 end
@@ -684,10 +796,11 @@ list:GetPropertyChangedSignal("AbsoluteWindowSize"):Connect(
 )
 
 local function setListCanvasForCount(itemCount)
+	local cardHeight = mobileLayoutActive and MOBILE_CARD_HEIGHT or CARD_HEIGHT
 	local contentHeight = 0
 
 	if itemCount > 0 then
-		contentHeight = (itemCount * CARD_HEIGHT)
+		contentHeight = (itemCount * cardHeight)
 			+ ((itemCount - 1) * CARD_GAP)
 			+ 16
 	end
@@ -828,8 +941,6 @@ UserInputService.InputEnded:Connect(function(input)
 	end
 end)
 
-local render
-
 local function updateTab(tabName, button)
 	local selected = activeTab == tabName
 	local imageKey = selected
@@ -857,7 +968,8 @@ bindTab("Bait", baitTab)
 
 local function makeItemIcon(
 	card,
-	imageId
+	imageId,
+	itemId
 )
 	local holder = requireAuthoredChild(
 		card,
@@ -865,7 +977,36 @@ local function makeItemIcon(
 		"Frame"
 	)
 	local image = requireAuthoredChild(holder, "ItemIcon", "ImageLabel")
+	local mobileVerticalScale = mobileLayoutActive
+		and (MOBILE_CARD_HEIGHT / CARD_HEIGHT)
+		or 1
+	holder.AnchorPoint = Vector2.new(0, 0)
+	holder.Position = UDim2.fromOffset(
+		ITEM_ICON_BOX_X,
+		math.round(ITEM_ICON_BOX_Y * mobileVerticalScale)
+	)
+	holder.Size = UDim2.fromOffset(
+		ITEM_ICON_BOX_WIDTH,
+		math.round(ITEM_ICON_BOX_HEIGHT * mobileVerticalScale)
+	)
+	-- Mobile cards are shorter than the desktop cards. Keep the icon viewport
+	-- matched to that compressed border so rod and bait artwork cannot extend
+	-- above or below its blue image box.
+	holder.ClipsDescendants = true
 	image.Image = imageId
+	image.AnchorPoint = Vector2.new(0.5, 0.5)
+	-- The uploaded item PNGs contain uneven transparent margins. Use optical
+	-- centers so the visible rod/bait artwork, rather than the full PNG canvas,
+	-- is centered in its outlined box on every device.
+	local imageCenterX = activeTab == "Rods"
+		and (ROD_IMAGE_CENTER_X[itemId] or 0.59)
+		or (BAIT_IMAGE_CENTER_X[itemId] or 0.59)
+	local imageCenterY = activeTab == "Rods"
+		and 0.5
+		or (BAIT_IMAGE_CENTER_Y[itemId] or 0.56)
+	image.Position = UDim2.fromScale(imageCenterX, imageCenterY)
+	image.Size = UDim2.fromScale(ITEM_ICON_INNER_SCALE, ITEM_ICON_INNER_SCALE)
+	image.ScaleType = Enum.ScaleType.Fit
 	return image
 end
 
@@ -893,6 +1034,8 @@ local function makeStatusButton(
 		"StatusButton",
 		"ImageButton"
 	)
+	button.Position = UDim2.fromOffset(BUTTON_X, BUTTON_Y)
+	button.Size = UDim2.fromOffset(BUTTON_WIDTH, BUTTON_HEIGHT)
 	applyCropArtwork(button, ASSETS[imageKey], CROPS[imageKey])
 	button.Active = active
 	button.Selectable = active
@@ -924,6 +1067,35 @@ local function makeCard(itemId, layoutOrder)
 	card.Name = itemId .. "Card"
 	card.Visible = true
 	card.LayoutOrder = layoutOrder
+	local cardHeight = mobileLayoutActive and MOBILE_CARD_HEIGHT or CARD_HEIGHT
+	card.Size = UDim2.fromOffset(CARD_WIDTH, cardHeight)
+	if mobileLayoutActive then
+		-- Five rod entries should fit inside the phone viewport now that the
+		-- visual scrollbar has been removed. Compress only vertical geometry;
+		-- widths, buttons, and readable mobile text sizes stay unchanged.
+		local verticalScale = MOBILE_CARD_HEIGHT / CARD_HEIGHT
+		for _, child in ipairs(card:GetChildren()) do
+			if child:IsA("GuiObject") then
+				local position = child.Position
+				local size = child.Size
+				child.Position = UDim2.new(
+					position.X.Scale,
+					position.X.Offset,
+					position.Y.Scale,
+					math.round(position.Y.Offset * verticalScale)
+				)
+				child.Size = UDim2.new(
+					size.X.Scale,
+					size.X.Offset,
+					size.Y.Scale,
+					math.round(size.Y.Offset * verticalScale)
+				)
+			end
+		end
+	end
+	-- Refit the row backing after widening the card so its right edge extends
+	-- behind the complete status button instead of ending at the legacy width.
+	applyCropArtwork(card, ASSETS.IndividualUITab, CROPS.IndividualUITab)
 	card.Parent = list
 	return card
 end
@@ -976,7 +1148,7 @@ local function renderRods()
 			and not pendingRodPurchases[rodId]
 
 		local card = makeCard(rodId, index)
-		makeItemIcon(card, getRodImage(rodId))
+		makeItemIcon(card, getRodImage(rodId), rodId)
 
 		local name = requireAuthoredChild(card, "ItemName", "TextLabel")
 		name.Text = rod.displayName or rodId
@@ -994,15 +1166,20 @@ local function renderRods()
 
 		local info = requireAuthoredChild(card, "Info", "TextLabel")
 		info.Text = infoText
+		info.TextSize = mobileLayoutActive and 34 or 27
 
 		local previousName = rod.previousRod
 			and GameConfig.Rods[rod.previousRod]
 			and GameConfig.Rods[rod.previousRod].displayName
 			or "None"
+		-- Compact the mobile separator so Emerald Rod's final "(Unmet)" keeps
+		-- clear space before the Equipped/Owned button.
+		local requirementSeparator = mobileLayoutActive and " | " or "   |   "
 		local requirementText = string.format(
-			"Previous: %s (%s)   |   %s",
+			"Previous: %s (%s)%s%s",
 			previousName,
 			previousOkay and "Met" or "Unmet",
+			requirementSeparator,
 			resourceText
 		)
 		local requirements = requireAuthoredChild(
@@ -1011,6 +1188,7 @@ local function renderRods()
 			"TextLabel"
 		)
 		requirements.Text = requirementText
+		requirements.TextSize = mobileLayoutActive and 31 or 25
 		requirements.TextColor3 = previousOkay
 			and resourcesOkay
 			and Color3.fromRGB(98, 255, 83)
@@ -1046,6 +1224,7 @@ local function renderRods()
 		local status = requireAuthoredChild(card, "Status", "TextLabel")
 		status.Text = statusText
 		status.TextColor3 = statusColor
+		status.TextSize = mobileLayoutActive and 30 or 25
 
 		if owned then
 			makeStatusButton(card, equipped and "Equipped" or "Owned", nil)
@@ -1120,7 +1299,7 @@ local function renderBaits()
 			and not pendingBaitPurchases[baitId]
 
 		local card = makeCard(baitId, index)
-		makeItemIcon(card, getBaitImage(baitId))
+		makeItemIcon(card, getBaitImage(baitId), baitId)
 
 		local name = requireAuthoredChild(card, "ItemName", "TextLabel")
 		name.Text = bait.displayName or baitId
@@ -1131,6 +1310,7 @@ local function renderBaits()
 			"TextLabel"
 		)
 		description.Text = bait.description or ""
+		description.TextSize = mobileLayoutActive and 34 or 29
 
 		local detailText = string.format(
 			"%s left"
@@ -1144,6 +1324,7 @@ local function renderBaits()
 
 		local detail = requireAuthoredChild(card, "Detail", "TextLabel")
 		detail.Text = detailText
+		detail.TextSize = mobileLayoutActive and 33 or 29
 
 		if canBuy then
 			makeStatusButton(

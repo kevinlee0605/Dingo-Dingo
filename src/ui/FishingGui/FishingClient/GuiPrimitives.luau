@@ -53,7 +53,7 @@ function GuiPrimitives.create(deps)
 	end
 
 	function primitives.styleOutlinedText(label, size)
-		label.Font = Enum.Font.FredokaOne
+		label.Font = Enum.Font.GothamBlack
 		label.TextSize = size or label.TextSize
 		label.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
 		label.TextStrokeTransparency = 1

@@ -6,7 +6,7 @@
 		<Properties>
 			<string name="Name">FishingXPText</string>
 			<Vector2 name="AnchorPoint">
-				<X>0</X>
+				<X>1</X>
 				<Y>0</Y>
 			</Vector2>
 			<Color3 name="BackgroundColor3">
@@ -19,14 +19,14 @@
 			<bool name="ClipsDescendants">false</bool>
 			<int name="LayoutOrder">1</int>
 			<UDim2 name="Position">
-				<XS>0.01</XS>
+				<XS>0.99</XS>
 				<XO>0</XO>
-				<YS>0.1</YS>
-				<YO>-44</YO>
+				<YS>0</YS>
+				<YO>0</YO>
 			</UDim2>
 			<UDim2 name="Size">
 				<XS>0</XS>
-				<XO>380</XO>
+				<XO>330</XO>
 				<YS>0</YS>
 				<YO>54</YO>
 			</UDim2>
@@ -36,18 +36,18 @@
 		<Item class="UIScale" referent="RBX00000002">
 			<Properties>
 				<string name="Name">LeftStatsScale</string>
-				<float name="Scale">0.74</float>
+				<float name="Scale">0.86</float>
 			</Properties>
 		</Item>
 		<Item class="UISizeConstraint" referent="RBX00000003">
 			<Properties>
 				<string name="Name">XPSizeConstraint</string>
 				<Vector2 name="MaxSize">
-					<X>380</X>
+					<X>330</X>
 					<Y>54</Y>
 				</Vector2>
 				<Vector2 name="MinSize">
-					<X>380</X>
+					<X>330</X>
 					<Y>54</Y>
 				</Vector2>
 			</Properties>
@@ -95,7 +95,7 @@
 					<G>0.0</G>
 					<B>0.0</B>
 				</Color3>
-				<float name="TextStrokeTransparency">0</float>
+				<float name="TextStrokeTransparency">1</float>
 				<float name="TextTransparency">0</float>
 				<bool name="TextWrapped">true</bool>
 				<token name="TextXAlignment">0</token>
@@ -108,10 +108,10 @@
 					<string name="Name">XPTextOutline</string>
 					<Color3 name="Color">
 						<R>0.0</R>
-						<G>0.0</G>
-						<B>0.0</B>
+						<G>0.0392156862745098</G>
+						<B>0.08235294117647059</B>
 					</Color3>
-					<float name="Thickness">3</float>
+					<float name="Thickness">1.6</float>
 					<float name="Transparency">0</float>
 				</Properties>
 			</Item>

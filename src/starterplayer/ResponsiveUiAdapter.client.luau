@@ -231,6 +231,12 @@ local function getHudTargetScale(target)
 	if leftStatsTargets[target.Name] then
 		return currentStatsScale
 	end
+	if target.Name == "ClockFrame"
+		and UserInputService.PreferredInput == Enum.PreferredInput.KeyboardAndMouse
+	then
+		-- Enlarge the PC clock without changing its phone/tablet presentation.
+		return math.clamp(currentHudScale * 1.16, 0.86, 1.16)
+	end
 	return currentHudScale
 end
 
@@ -728,6 +734,7 @@ local function bindMenuCanvasFit(canvas)
 	local originalPosition = canvas.Position
 	local isBagCanvas = canvas.Name == "Canvas"
 		and canvas:FindFirstAncestor("ModernBagRoot") ~= nil
+	local isCenteredCanvas = isBagCanvas or canvas.Name == "ModernFishdex"
 	local applying = false
 	local function updateFit()
 		if applying or not canvas.Parent or not scale.Parent then
@@ -735,12 +742,31 @@ local function bindMenuCanvasFit(canvas)
 		end
 
 		applying = true
-		local maximumFit = fitCanvasInsideHudBand(
-			canvas,
-			scale,
-			originalPosition,
-			0.94
-		)
+		local maximumFit
+		if isCenteredCanvas then
+			local viewport = getViewportSize()
+			local topLeftInset, bottomRightInset = GuiService:GetGuiInset()
+			local usableWidth = math.max(1, viewport.X - topLeftInset.X - bottomRightInset.X)
+			local usableHeight = math.max(1, viewport.Y - topLeftInset.Y - bottomRightInset.Y)
+			maximumFit = math.max(0.1, math.min(
+				(usableWidth * 0.94) / canvas.Size.X.Offset,
+				(usableHeight * 0.94) / canvas.Size.Y.Offset,
+				1
+			))
+			canvas.Position = UDim2.new(
+				0.5,
+				math.round((bottomRightInset.X - topLeftInset.X) * 0.5),
+				0.5,
+				math.round((bottomRightInset.Y - topLeftInset.Y) * 0.5)
+			)
+		else
+			maximumFit = fitCanvasInsideHudBand(
+				canvas,
+				scale,
+				originalPosition,
+				0.94
+			)
+		end
 		if maximumFit and scale.Scale > maximumFit + 0.001 then
 			scale.Scale = maximumFit
 		end
@@ -805,22 +831,40 @@ local function bindDailyRewardFit(overlay)
 			return
 		end
 
+		local isPhoneViewport = math.min(viewport.X, viewport.Y) <= 600
+		-- Match Phase3EconomyUI's enlarged phone presentation. This adapter is a
+		-- safety cap, so it must not immediately shrink the controller's 1.06 fit.
+		local widthFactor = isPhoneViewport and 1.06 or 0.92
+		local heightFactor = isPhoneViewport and 1.06 or 0.90
 		local maximumFit = math.max(
 			0.1,
 			math.min(
-				(viewport.X * 0.92) / baseWidth,
-				(viewport.Y * 0.90) / baseHeight,
+				(viewport.X * widthFactor) / baseWidth,
+				(viewport.Y * heightFactor) / baseHeight,
 				1
 			)
 		)
-		local bandFit = fitCanvasInsideHudBand(
-			canvas,
-			scale,
-			originalPosition,
-			0.92
-		)
-		if bandFit then
-			maximumFit = math.min(maximumFit, bandFit)
+		if not isPhoneViewport then
+			local bandFit = fitCanvasInsideHudBand(
+				canvas,
+				scale,
+				originalPosition,
+				0.92
+			)
+			if bandFit then
+				maximumFit = math.min(maximumFit, bandFit)
+			end
+		else
+			local topLeftInset, bottomRightInset = GuiService:GetGuiInset()
+			local centeredPosition = UDim2.new(
+				0.5,
+				math.round((bottomRightInset.X - topLeftInset.X) * 0.5),
+				0.5,
+				math.round((bottomRightInset.Y - topLeftInset.Y) * 0.5)
+			)
+			if canvas.Position ~= centeredPosition then
+				canvas.Position = centeredPosition
+			end
 		end
 
 		-- The source currently clamps Daily Rewards to 0.50. On phones that

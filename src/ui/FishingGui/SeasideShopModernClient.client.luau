@@ -165,10 +165,10 @@ local SUB_PANEL_HEIGHT = 810
 
 local LIST_X = 72
 local LIST_Y = 254
-local LIST_WIDTH = 1238
+local LIST_WIDTH = 1304
 local LIST_HEIGHT = 742
 
-local ROW_WIDTH = 1228
+local ROW_WIDTH = 1294
 local ROW_HEIGHT = 178
 local ROW_GAP = 10
 
@@ -187,7 +187,7 @@ local FISH_VALUE_Y = 88
 local FISH_VALUE_WIDTH = 650
 local FISH_VALUE_HEIGHT = 48
 
-local SELL_BUTTON_X = 938
+local SELL_BUTTON_X = 1004
 local SELL_BUTTON_Y = 43
 local SELL_BUTTON_WIDTH = 244
 local SELL_BUTTON_HEIGHT = 92
@@ -316,31 +316,60 @@ local function addPressFeedback(button)
 		"UIScale"
 	)
 	buttonScale.Scale = 1
+	local originalPosition = button.Position
+	local originalSize = button.Size
+	local artwork = button:FindFirstChild("MappedImage")
 
 	local currentTween
+	local currentArtworkTween
 
-	local function tweenTo(value)
+	local function tweenTo(pressed)
 		if currentTween then
 			currentTween:Cancel()
 		end
+		if currentArtworkTween then
+			currentArtworkTween:Cancel()
+		end
 
 		currentTween = TweenService:Create(
-			buttonScale,
+			button,
 			TweenInfo.new(
-				0.08,
+				0.07,
 				Enum.EasingStyle.Quad,
 				Enum.EasingDirection.Out
 			),
-			{ Scale = value }
+			{
+				Position = UDim2.new(
+					originalPosition.X.Scale,
+					originalPosition.X.Offset + (pressed and 3 or 0),
+					originalPosition.Y.Scale,
+					originalPosition.Y.Offset + (pressed and 3 or 0)
+				),
+				Size = UDim2.new(
+					originalSize.X.Scale,
+					originalSize.X.Offset - (pressed and 6 or 0),
+					originalSize.Y.Scale,
+					originalSize.Y.Offset - (pressed and 6 or 0)
+				),
+			}
 		)
 		currentTween:Play()
+
+		if artwork and artwork:IsA("ImageLabel") then
+			currentArtworkTween = TweenService:Create(
+				artwork,
+				TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+				{ ImageTransparency = pressed and 0.16 or 0 }
+			)
+			currentArtworkTween:Play()
+		end
 	end
 
 	button.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1
 			or input.UserInputType == Enum.UserInputType.Touch
 		then
-			tweenTo(0.95)
+			tweenTo(true)
 		end
 	end)
 
@@ -348,12 +377,12 @@ local function addPressFeedback(button)
 		if input.UserInputType == Enum.UserInputType.MouseButton1
 			or input.UserInputType == Enum.UserInputType.Touch
 		then
-			tweenTo(1)
+			tweenTo(false)
 		end
 	end)
 
 	button.MouseLeave:Connect(function()
-		tweenTo(1)
+		tweenTo(false)
 	end)
 end
 
@@ -441,6 +470,8 @@ local list = requireAuthoredChild(
 	"FishList",
 	"ScrollingFrame"
 )
+list.Position = UDim2.fromOffset(10, 11)
+list.Size = UDim2.fromOffset(LIST_WIDTH, LIST_HEIGHT)
 local listLayout = requireAuthoredChild(list, "ListLayout", "UIListLayout")
 local rowTemplate = requireAuthoredChild(list, "FishRowTemplate", "Frame")
 local statusLabel = requireAuthoredChild(list, "StatusLabel", "TextLabel")
@@ -532,15 +563,18 @@ local function updateScrollbar()
 	)
 	local isScrollable = maxCanvas > 1
 
-	scrollTrack.Visible = isScrollable
-	scrollThumb.Visible = isScrollable
+	scrollTrack.Visible = true
+	scrollThumb.Visible = true
 	scrollThumb.Active = isScrollable
 
 	if not isScrollable then
-		scrollThumb.Position = UDim2.fromOffset(2, 0)
+		scrollThumb.Position = UDim2.fromOffset(
+			math.floor((SCROLL_TRACK_WIDTH - 14) * 0.5),
+			0
+		)
 		scrollThumb.Size = UDim2.fromOffset(
-			SCROLL_TRACK_WIDTH - 4,
-			trackHeight
+			14,
+			math.clamp(math.floor(trackHeight * 0.72), 90, trackHeight)
 		)
 		return
 	end
@@ -552,7 +586,7 @@ local function updateScrollbar()
 	)
 	local thumbHeight = math.clamp(
 		math.floor(trackHeight * visibleRatio + 0.5),
-		92,
+		90,
 		trackHeight
 	)
 	local maxTravel = math.max(
@@ -566,11 +600,11 @@ local function updateScrollbar()
 	)
 
 	scrollThumb.Size = UDim2.fromOffset(
-		SCROLL_TRACK_WIDTH - 4,
+		14,
 		thumbHeight
 	)
 	scrollThumb.Position = UDim2.fromOffset(
-		2,
+		math.floor((SCROLL_TRACK_WIDTH - 14) * 0.5),
 		math.floor(maxTravel * scrollRatio + 0.5)
 	)
 end
@@ -743,6 +777,7 @@ local function makeRow(entry, layoutOrder)
 	row.Name = "FishRow_" .. tostring(fish.serial or entry.index)
 	row.Visible = true
 	row.LayoutOrder = layoutOrder
+	row.Size = UDim2.fromOffset(ROW_WIDTH, ROW_HEIGHT)
 	row.Parent = list
 	applyMappedArtwork(row, rowAsset, rowCrop)
 
@@ -772,6 +807,8 @@ local function makeRow(entry, layoutOrder)
 		"SellButton",
 		"ImageButton"
 	)
+	sellButton.Position = UDim2.fromOffset(SELL_BUTTON_X, SELL_BUTTON_Y)
+	sellButton.Size = UDim2.fromOffset(SELL_BUTTON_WIDTH, SELL_BUTTON_HEIGHT)
 	addPressFeedback(sellButton)
 	local sellText = requireAuthoredChild(
 		sellButton,

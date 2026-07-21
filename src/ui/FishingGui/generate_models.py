@@ -779,7 +779,7 @@ def make_root() -> Node:
     # constraint; leaving both constraints makes the editor clamp the level
     # indicator to the default eight-pixel text size.
     xp_text.children = [
-        stroke(0, 0, 0, 3, 0, "XPTextOutline"),
+        stroke(0, 10, 21, 1.6, 0, "XPTextOutline"),
         text_constraint(18, 30),
     ]
     xp.children.append(xp_text)
@@ -1123,7 +1123,7 @@ def make_root() -> Node:
     )
     top.children.extend(
         [
-            scale("TopHudScale", 0.74),
+            scale("TopHudScale", 0.86),
             size_constraint(298, 64, 298, 64, "TopButtonsSizeConstraint"),
             list_layout(horizontal=True, gap=14, horizontal_alignment=0),
             make_icon_button("SettingsButton", "rbxassetid://124685242228377", 1),
@@ -1145,7 +1145,7 @@ def make_root() -> Node:
     )
     bottom.children.extend(
         [
-            scale("BottomHudScale", 0.74),
+            scale("BottomHudScale", 0.86),
             make_bottom_image_button("AutoFishButton", auto_fish=True),
             make_bottom_image_button("TapButton", auto_fish=False),
             label(
@@ -2819,22 +2819,24 @@ def split_root_surfaces() -> dict[str, Node]:
 
     # Exact v1636 desktop geometry. Responsive scaling is owned by
     # AuthoredUiController and is intentionally independent from TopHudGui.
-    xp.props["AnchorPoint"] = vec2(0, 0)
-    xp.props["Position"] = udim2(0.01, 0, 0.10, -44 + EDITOR_PREVIEW_CORE_TOP_INSET)
-    xp.props["Size"] = udim2(0, 380, 0, 54)
-    xp.children.insert(0, scale("LeftStatsScale", 0.74))
-    xp.children.insert(1, size_constraint(380, 54, 380, 54, "XPSizeConstraint"))
+    xp.props["AnchorPoint"] = vec2(1, 0)
+    xp.props["Position"] = udim2(0.99, 0, 0.10, -44 + EDITOR_PREVIEW_CORE_TOP_INSET)
+    xp.props["Size"] = udim2(0, 330, 0, 54)
+    xp.children.insert(0, scale("LeftStatsScale", 0.86))
+    xp.children.insert(1, size_constraint(330, 54, 330, 54, "XPSizeConstraint"))
     # The level label is visually aligned to the same left edge as both icons.
     xp.children[2].props["TextXAlignment"] = prop("token", 0)
 
-    coins.props["Position"] = udim2(0.01, -6, 0.10, EDITOR_PREVIEW_CORE_TOP_INSET)
-    coins.props["Size"] = udim2(0, 430, 0, 96)
-    coins.children.insert(0, scale("LeftStatsScale", 0.74))
-    coins.children.insert(1, size_constraint(430, 96, 430, 96, "CoinsSizeConstraint"))
+    coins.props["AnchorPoint"] = vec2(1, 0)
+    coins.props["Position"] = udim2(0.99, 6, 0.10, EDITOR_PREVIEW_CORE_TOP_INSET)
+    coins.props["Size"] = udim2(0, 330, 0, 96)
+    coins.children.insert(0, scale("LeftStatsScale", 0.86))
+    coins.children.insert(1, size_constraint(330, 96, 330, 96, "CoinsSizeConstraint"))
 
-    stars.props["Position"] = udim2(0.01, -8, 0.10, 49 + EDITOR_PREVIEW_CORE_TOP_INSET)
+    stars.props["AnchorPoint"] = vec2(1, 0)
+    stars.props["Position"] = udim2(0.99, 8, 0.10, 49 + EDITOR_PREVIEW_CORE_TOP_INSET)
     stars.props["Size"] = udim2(0, 330, 0, 96)
-    stars.children.insert(0, scale("LeftStatsScale", 0.74))
+    stars.children.insert(0, scale("LeftStatsScale", 0.86))
     stars.children.insert(1, size_constraint(330, 96, 330, 96, "SeaStarsSizeConstraint"))
 
     # The guide documents the intended grouping without creating duplicate live

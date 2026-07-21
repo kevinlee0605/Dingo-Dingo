@@ -282,31 +282,31 @@ progressTrack.props.ClipsDescendants = scalar("bool", true);
 
 const questCardTemplate = holder(
   "QuestCardTemplate", ASSET.questCard, CROP.questCard,
-  udim2(0, 0, 0, 0), udim2(0, 1095, 0, 238), 200, false,
+  udim2(0, 0, 0, 0), udim2(0, 1147, 0, 238), 200, false,
   [
     holder("QuestIcon", ASSET.questIcon1, CROP.questIcon1, udim2(0, 24, 0, 26), udim2(0, 166, 0, 166), 203),
     label("QuestTitle", "Quest", udim2(0, 220, 0, 24), udim2(0, 535, 0, 52), 38, color(255, 255, 255), 204),
     label("QuestDescription", "", udim2(0, 220, 0, 74), udim2(0, 535, 0, 52), 25, color(78, 205, 255), 204, { font: 19, wrapped: true, strokeTransparency: .4 }),
     progressTrack,
-    holder("StatusBadge", ASSET.statusBlue, null, udim2(0, 785, 0, 24), udim2(0, 261, 0, 62), 203, true, [
+    holder("StatusBadge", ASSET.statusBlue, null, udim2(0, 837, 0, 24), udim2(0, 261, 0, 62), 203, true, [
       label("StatusText", "In Progress", udim2(0, 0, 0, 0), udim2(1, 0, 1, 0), 28, color(0, 224, 255), 205, { font: 19, xalign: 2, strokeTransparency: .15 }),
     ]),
-    label("RewardsLabel", "Rewards", udim2(0, 785, 0, 96), udim2(0, 250, 0, 34), 25, color(72, 210, 255), 204, { font: 19, strokeTransparency: .35 }),
-    rewardBox("MoneyIcon", 785, null),
-    rewardBox("XPIcon", 925, "XP"),
+    label("RewardsLabel", "Rewards", udim2(0, 822, 0, 96), udim2(0, 250, 0, 34), 25, color(72, 210, 255), 204, { font: 19, strokeTransparency: .35 }),
+    rewardBox("MoneyIcon", 822, null),
+    rewardBox("XPIcon", 987, "XP"),
   ],
 );
 questCardTemplate.props.LayoutOrder = scalar("int", 0);
 
 const emptyTemplate = label(
   "EmptyQuestTemplate", "Loading quests...",
-  udim2(0, 0, 0, 0), udim2(0, 1095, 0, 100), 34,
+  udim2(0, 0, 0, 0), udim2(0, 1147, 0, 100), 34,
   color(220, 235, 255), 205, { xalign: 2, visible: false },
 );
 emptyTemplate.props.LayoutOrder = scalar("int", 1);
 
 const questList = node("ScrollingFrame", "QuestList", {
-  ...gui({ position: udim2(0, 42, 0, 382), size: udim2(0, 1095, 0, 876), zindex: 184, clips: true }),
+  ...gui({ position: udim2(0, 20, 0, 382), size: udim2(0, 1147, 0, 876), zindex: 184, clips: true }),
   Active: scalar("bool", true),
   AutomaticCanvasSize: scalar("token", 0),
   CanvasPosition: vec2(0, 0),
@@ -329,16 +329,18 @@ const questList = node("ScrollingFrame", "QuestList", {
 
 const scrollbarTrack = holder(
   "ScrollbarTrack", ASSET.scrollbar, CROP.scrollbarTrack,
-  udim2(0, 1152, 0, 382), udim2(0, 28, 0, 876), 186, true,
+  udim2(0, 1122, 0, 382), udim2(0, 28, 0, 876), 186, false,
   [holder("ScrollbarChannel", ASSET.scrollbar, CROP.scrollbarChannel, udim2(.28, 0, .05, 0), udim2(.44, 0, .82, 0), 187)],
 );
-scrollbarTrack.props.Active = scalar("bool", true);
+scrollbarTrack.props.Active = scalar("bool", false);
+scrollbarTrack.props.Visible = scalar("bool", false);
 
 const scrollbarThumb = holder(
   "ScrollbarThumb", ASSET.scrollbar, CROP.scrollbarThumb,
-  udim2(0, 1146, 0, 382), udim2(0, 14, 0, 180), 188,
+  udim2(0, 1129, 0, 382), udim2(0, 14, 0, 180), 188, false,
 );
-scrollbarThumb.props.Active = scalar("bool", true);
+scrollbarThumb.props.Active = scalar("bool", false);
+scrollbarThumb.props.Visible = scalar("bool", false);
 
 const canvas = node("Frame", "QuestCanvas", {
   ...gui({ position: udim2(.5, 0, .4, 0), size: udim2(0, 1187, 0, 1326), anchor: vec2(.5, .5), visible: false, zindex: 180 }),
@@ -352,7 +354,7 @@ const canvas = node("Frame", "QuestCanvas", {
   header,
   questList,
   node("TextButton", "ScrollInputCatcher", {
-    ...gui({ position: udim2(0, 42, 0, 382), size: udim2(0, 1095, 0, 876), zindex: 250 }),
+    ...gui({ position: udim2(0, 20, 0, 382), size: udim2(0, 1147, 0, 876), zindex: 250 }),
     Active: scalar("bool", true),
     AutoButtonColor: scalar("bool", false),
     Selectable: scalar("bool", false),
@@ -361,7 +363,7 @@ const canvas = node("Frame", "QuestCanvas", {
   }),
   scrollbarTrack,
   scrollbarThumb,
-  node("Frame", "QuestCardRightEdgeMask", gui({ position: udim2(0, 1133, 0, 382), size: udim2(0, 5, 0, 876), background: color(1, 28, 58), transparency: 0, visible: true, zindex: 252 })),
+  node("Frame", "QuestCardRightEdgeMask", gui({ position: udim2(0, 1133, 0, 382), size: udim2(0, 5, 0, 876), background: color(1, 28, 58), transparency: 0, visible: false, zindex: 185 })),
   holder("CornerDecoration", ASSET.cornerDecoration, CROP.cornerDecoration, udim2(0, 1000, 0, 1090), udim2(0, 185, 0, 225), 208, false),
 ]);
 

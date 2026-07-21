@@ -158,8 +158,19 @@ const tabNodes = tabs.map((tab) => node("ImageButton", tab.name, {
 
 const fishCardTemplate = node("ImageLabel", "FishCardTemplate", {
   ...imageProps({ image: ASSET.fishCard, position: udim2(0, 0, 0, 0), size: udim2(0, 390, 0, 270), visible: false, zindex: 206 }),
+  BackgroundColor3: color(2, 31, 82),
+  BackgroundTransparency: scalar("float", 0),
+  ImageTransparency: scalar("float", 1),
   LayoutOrder: scalar("int", 0),
 }, [
+  corner("ReferenceCardCorner", 0, 18),
+  stroke("ReferenceCardBorder", 10, 112, 255, 3, 0),
+  node("Frame", "ReferenceInnerBorder", gui({
+    position: udim2(0, 8, 0, 8), size: udim2(1, -16, 1, -16), zindex: 206,
+  }), [
+    corner("ReferenceInnerCorner", 0, 14),
+    stroke("ReferenceInnerStroke", 7, 76, 181, 2, .18),
+  ]),
   node("ImageLabel", "FishImage", imageProps({
     image: "",
     position: udim2(.5, 0, .33, 0),
@@ -177,28 +188,42 @@ const fishCardTemplate = node("ImageLabel", "FishCardTemplate", {
     scaled: true,
     zindex: 207,
   }), [sizeConstraint(12, 25)]),
-  node("ImageLabel", "RarityBadge", imageProps({
-    image: "",
-    position: udim2(.5, 0, .84, 0),
-    size: udim2(.84, 0, .28, 0),
-    anchor: vec2(.5, .5),
-    zindex: 207,
-  }), [
+  node("ImageLabel", "RarityBadge", {
+    ...imageProps({
+      image: "",
+      position: udim2(.5, 0, .84, 0),
+      size: udim2(.62, 0, .18, 0),
+      anchor: vec2(.5, .5),
+      zindex: 207,
+    }),
+    BackgroundColor3: color(82, 92, 112),
+    BackgroundTransparency: scalar("float", 0),
+    ImageTransparency: scalar("float", 1),
+  }, [
+    corner("ReferenceCorner", 0, 12),
+    stroke("ReferenceBorder", 190, 202, 224, 3, 0),
+    node("UIGradient", "ReferenceGradient", {
+      Color: colorSequence(
+        [0, 255, 255, 255],
+        [1, 190, 200, 220],
+      ),
+      Rotation: scalar("float", 90),
+    }),
     node("TextLabel", "RarityText", textProps({
       text: "COMMON",
       position: udim2(.5, 0, .5, 0),
-      size: udim2(.34, 0, .34, 0),
+      size: udim2(.88, 0, .72, 0),
       anchor: vec2(.5, .5),
-      textSize: 17,
+      textSize: 22,
       scaled: true,
       zindex: 208,
-    }), [sizeConstraint(8, 17)]),
+    }), [sizeConstraint(10, 22)]),
   ]),
 ]);
 
 const title = node("TextLabel", "FishdexTitle", textProps({
   text: "FISHDEX",
-  position: udim2(0, 790, 0, 25),
+  position: udim2(0, 790, 0, 35),
   size: udim2(0, 650, 0, 112),
   anchor: vec2(.5, 0),
   textSize: 100,
@@ -221,14 +246,14 @@ const closeVisual = node("ImageLabel", "CloseButtonStaticVisual", {
 }, [node("UIScale", "ClosePressScale", { Scale: scalar("float", 1) })]);
 
 const cardsHolder = node("Frame", "CardsHolder", {
-  ...gui({ size: udim2(1, -8, 0, 0), zindex: 202 }),
+  ...gui({ position: udim2(0, 3, 0, 3), size: udim2(1, -6, 0, 0), zindex: 202 }),
   AutomaticSize: scalar("token", 2),
 }, [node("UIGridLayout", "UIGridLayout", {
   CellPadding: udim2(0, 24, 0, 22),
   CellSize: udim2(0, 390, 0, 270),
   FillDirection: scalar("token", 0),
   FillDirectionMaxCells: scalar("int", 3),
-  HorizontalAlignment: scalar("token", 1),
+  HorizontalAlignment: scalar("token", 0),
   SortOrder: scalar("token", 2),
 })]);
 
@@ -333,7 +358,7 @@ const canvas = node("ImageLabel", "ModernFishdex", imageProps({
 }), [
   node("UIScale", "ResponsiveScale", { Scale: scalar("float", .37) }),
   title,
-  node("ImageLabel", "FishdexHeaderIcon", imageProps({ image: ASSET.fishdexIcon, position: udim2(0, 540, 0, 10), size: udim2(0, 114, 0, 114), anchor: vec2(.5, 0), scaleType: 3, zindex: 210 })),
+  node("ImageLabel", "FishdexHeaderIcon", imageProps({ image: ASSET.fishdexIcon, position: udim2(0, 540, 0, 30), size: udim2(0, 114, 0, 114), anchor: vec2(.5, 0), scaleType: 3, zindex: 210 })),
   node("ImageLabel", "HeaderYellowBadge", imageProps({ image: ASSET.yellowBadge, position: udim2(0, 48, 0, 43), size: udim2(0, 60, 0, 60), scaleType: 3, zindex: 210 })),
   closeButton,
   closeVisual,

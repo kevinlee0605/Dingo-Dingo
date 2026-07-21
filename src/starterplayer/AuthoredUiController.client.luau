@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local GuiService = game:GetService("GuiService")
 local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
@@ -47,6 +48,69 @@ local cameraConnection = nil
 local boundTopButtons = setmetatable({}, { __mode = "k" })
 local boundPanelEvents = setmetatable({}, { __mode = "k" })
 local boundMenuRoots = setmetatable({}, { __mode = "k" })
+local hiddenScrollbarVisuals = setmetatable({}, { __mode = "k" })
+local hiddenNativeScrollbars = setmetatable({}, { __mode = "k" })
+local customHotbarEnabledBeforeMenu = nil
+local bottomButtonsVisibleBeforeMenu = nil
+
+-- Scrollable content remains fully interactive through mouse wheels,
+-- trackpads, and touch dragging; only the native/custom visual bars are
+-- suppressed across every authored menu.
+local function isScrollbarVisual(instance)
+	if not instance:IsA("GuiObject") or instance:IsA("ScrollingFrame") then
+		return false
+	end
+	local name = string.lower(instance.Name)
+	if not string.find(name, "scroll", 1, true) then
+		return false
+	end
+	return string.find(name, "track", 1, true) ~= nil
+		or string.find(name, "thumb", 1, true) ~= nil
+		or string.find(name, "scrollbar", 1, true) ~= nil
+		or string.find(name, "lane", 1, true) ~= nil
+		or string.find(name, "channel", 1, true) ~= nil
+end
+
+local function suppressScrollbar(instance)
+	if instance:IsA("ScrollingFrame") then
+		instance.ScrollBarThickness = 0
+		instance.ScrollBarImageTransparency = 1
+		if not hiddenNativeScrollbars[instance] then
+			hiddenNativeScrollbars[instance] = true
+			instance:GetPropertyChangedSignal("ScrollBarThickness"):Connect(function()
+				if instance.Parent and instance.ScrollBarThickness ~= 0 then
+					instance.ScrollBarThickness = 0
+				end
+			end)
+			instance:GetPropertyChangedSignal("ScrollBarImageTransparency"):Connect(function()
+				if instance.Parent and instance.ScrollBarImageTransparency ~= 1 then
+					instance.ScrollBarImageTransparency = 1
+				end
+			end)
+		end
+		return
+	end
+	if not isScrollbarVisual(instance) then
+		return
+	end
+	instance.Visible = false
+	if hiddenScrollbarVisuals[instance] then
+		return
+	end
+	hiddenScrollbarVisuals[instance] = true
+	instance:GetPropertyChangedSignal("Visible"):Connect(function()
+		if instance.Parent and instance.Visible then
+			instance.Visible = false
+		end
+	end)
+end
+
+for _, descendant in ipairs(playerGui:GetDescendants()) do
+	suppressScrollbar(descendant)
+end
+playerGui.DescendantAdded:Connect(function(descendant)
+	task.defer(suppressScrollbar, descendant)
+end)
 
 local topButtonMenuGroup = {
 	SettingsButton = "Settings",
@@ -69,10 +133,29 @@ local menuRootGroup = {
 	FishmongerSellOverlay = "Other",
 }
 
+local function getMenuGroup(instance)
+	local group = menuRootGroup[instance.Name]
+	if group then
+		return group
+	end
+
+	-- These two authored feature canvases use generic root names, so scope them
+	-- by their ScreenGui instead of treating every Root/Interface as a menu.
+	if instance.Name == "Root" and instance:FindFirstAncestor("AquariumViewerGui") then
+		return "Other"
+	end
+	if instance.Name == "ModernAquariumEditor"
+		and instance:FindFirstAncestor("AquariumFreePlacementGui") then
+		return "Other"
+	end
+
+	return nil
+end
+
 local function closeMenusExcept(requestedGroup)
 	for _, descendant in ipairs(playerGui:GetDescendants()) do
 		if descendant:IsA("GuiObject") and descendant.Visible then
-			local openGroup = menuRootGroup[descendant.Name]
+			local openGroup = getMenuGroup(descendant)
 			if openGroup and openGroup ~= requestedGroup then
 				descendant.Visible = false
 			end
@@ -129,7 +212,7 @@ local function updateTopButtonsVisibility()
 	local menuVisible = false
 	for _, descendant in ipairs(playerGui:GetDescendants()) do
 		if descendant:IsA("GuiObject")
-			and menuRootGroup[descendant.Name]
+			and getMenuGroup(descendant)
 			and descendant.Visible then
 			menuVisible = true
 			break
@@ -145,10 +228,36 @@ local function updateTopButtonsVisibility()
 			edgeHud.Visible = not menuVisible
 		end
 	end
+
+	local customHotbarGui = playerGui:FindFirstChild("CustomHotbarGui")
+	if customHotbarGui and customHotbarGui:IsA("ScreenGui") then
+		if menuVisible then
+			if customHotbarEnabledBeforeMenu == nil then
+				customHotbarEnabledBeforeMenu = customHotbarGui.Enabled
+			end
+			customHotbarGui.Enabled = false
+		elseif customHotbarEnabledBeforeMenu ~= nil then
+			customHotbarGui.Enabled = customHotbarEnabledBeforeMenu
+			customHotbarEnabledBeforeMenu = nil
+		end
+	end
+
+	local bottomButtons = findNamed(fishingGui, "BottomButtonsFrame")
+	if bottomButtons and bottomButtons:IsA("GuiObject") then
+		if menuVisible then
+			if bottomButtonsVisibleBeforeMenu == nil then
+				bottomButtonsVisibleBeforeMenu = bottomButtons.Visible
+			end
+			bottomButtons.Visible = false
+		elseif bottomButtonsVisibleBeforeMenu ~= nil then
+			bottomButtons.Visible = bottomButtonsVisibleBeforeMenu
+			bottomButtonsVisibleBeforeMenu = nil
+		end
+	end
 end
 
 local function bindMenuRoot(instance)
-	if not instance:IsA("GuiObject") or not menuRootGroup[instance.Name] or boundMenuRoots[instance] then
+	if not instance:IsA("GuiObject") or not getMenuGroup(instance) or boundMenuRoots[instance] then
 		return
 	end
 	boundMenuRoots[instance] = true
@@ -199,16 +308,23 @@ local function getDeviceScale(target)
 end
 
 local function calculateHudScale(viewport)
-	-- v1636 used 0.74 for the edge HUD at both the 894x465 reference capture
-	-- and the full desktop layout. Keep that value stable on desktop so the
-	-- saved StarterGui hierarchy and PlayerGui are visually identical. Only
-	-- reduce it when a genuinely smaller viewport cannot fit the authored HUD.
+	-- PC uses a larger authored baseline for the top icons, interaction buttons,
+	-- and left statistics. Touch devices retain the established tablet/mobile
+	-- scale so this desktop request cannot disturb their tuned layouts.
+	local isDesktopPc = UserInputService.PreferredInput == Enum.PreferredInput.KeyboardAndMouse
+	local baseScale = isDesktopPc and 0.86 or 0.74
 	local fit = math.min(viewport.X / 894, viewport.Y / 465, 1)
-	return math.clamp(0.74 * fit, 0.52, 0.74)
+	return math.clamp(baseScale * fit, 0.52, baseScale)
 end
 
 local function calculateLeftStatsScale(viewport)
-	return calculateHudScale(viewport)
+	local scale = calculateHudScale(viewport)
+	if math.min(viewport.X, viewport.Y) <= 600 then
+		-- Currency readouts are not touch targets. Keep them more compact than
+		-- the mobile buttons so the three-row block occupies less of the view.
+		return math.clamp(scale * 0.84, 0.42, 0.58)
+	end
+	return scale
 end
 
 local function calculateModalScale(viewport, designWidth, designHeight)
@@ -232,16 +348,32 @@ local function applyScale(target, value)
 	end
 end
 
-local function updateLeftStats(_viewport, statsScale)
+local function updateLeftStats(viewport, statsScale)
 	local xp = findNamed(fishingGui, "FishingXPText")
 	local coins = findNamed(fishingGui, "CoinsHud")
 	local seaStars = findNamed(fishingGui, "SeaStarsHud")
+	local isMobile = math.min(viewport.X, viewport.Y) <= 600
+	-- Landscape phones reserve a substantial right-side safe area for the
+	-- camera cutout/home affordance. Keep the group against that usable edge
+	-- instead of the raw viewport edge, where its text would be clipped.
+	local rightEdgeScale = 0.99
+	-- FishingGui is inset by CoreUISafeInsets while TopHudGui is positioned
+	-- from DeviceSafeInsets. Cancel only the core top inset for these edge HUD
+	-- rows so their top edge matches the four circular buttons on every device.
+	local coreTopInset = select(1, GuiService:GetGuiInset()).Y
+	local statsTopOffset = -coreTopInset
+	local coinTopOffset = statsTopOffset + (isMobile and 30 or 44)
+	local seaStarTopOffset = coinTopOffset + (isMobile and 38 or 49)
 
 	if xp and xp:IsA("GuiObject") then
-		-- Align the level label's left edge with the coin and Sea Star icons.
-		xp.AnchorPoint = Vector2.zero
-		xp.Position = UDim2.new(0.01, 0, 0.10, -44)
-		xp.Size = UDim2.fromOffset(380, 54)
+		-- Keep the three stat rows as one right-edge group. Their authored widths
+		-- are identical so their visible left edges remain aligned while the
+		-- shared UIScale responds to desktop, tablet, and phone viewports.
+		xp.AnchorPoint = Vector2.new(1, 0)
+		-- On phones, close the oversized gap above the currency rows while
+		-- preserving the established desktop/tablet layout.
+		xp.Position = UDim2.new(rightEdgeScale, 0, 0, statsTopOffset)
+		xp.Size = UDim2.fromOffset(330, 54)
 		local levelText = xp:FindFirstChild("XPCombinedText")
 		if levelText and levelText:IsA("TextLabel") then
 			levelText.TextXAlignment = Enum.TextXAlignment.Left
@@ -249,16 +381,18 @@ local function updateLeftStats(_viewport, statsScale)
 		applyScale(xp, statsScale)
 	end
 	if coins and coins:IsA("GuiObject") then
-		coins.AnchorPoint = Vector2.zero
+		coins.AnchorPoint = Vector2.new(1, 0)
 		-- The icon artwork has six transparent pixels on its left edge. Offset
 		-- the host so the first visible pixel lines up with the level text.
-		coins.Position = UDim2.new(0.01, -6, 0.10, 0)
-		coins.Size = UDim2.fromOffset(430, 96)
+		coins.Position = UDim2.new(rightEdgeScale, 6, 0, coinTopOffset)
+		coins.Size = UDim2.fromOffset(330, 96)
 		applyScale(coins, statsScale)
 	end
 	if seaStars and seaStars:IsA("GuiObject") then
-		seaStars.AnchorPoint = Vector2.zero
-		seaStars.Position = UDim2.new(0.01, -8, 0.10, 49)
+		seaStars.AnchorPoint = Vector2.new(1, 0)
+		-- Match the coin host offset exactly so both visible icon X coordinates
+		-- remain aligned at every responsive scale.
+		seaStars.Position = UDim2.new(rightEdgeScale, 6, 0, seaStarTopOffset)
 		seaStars.Size = UDim2.fromOffset(330, 96)
 		applyScale(seaStars, statsScale)
 	end

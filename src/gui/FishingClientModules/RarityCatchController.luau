@@ -364,6 +364,7 @@ function RarityCatchController.start(options)
 			return
 		end
 		session.lastTapAt = now
+		FishingSFX.playReelTap()
 		session.tapCount = math.min(session.tapGoal, session.tapCount + 1)
 		reportInput("Tap")
 		usePhaseGauge()
@@ -390,7 +391,14 @@ function RarityCatchController.start(options)
 	)
 	options.forcePureWhiteText(ui.minigameText)
 
-	table.insert(connections, tapButton.Activated:Connect(registerTap))
+	table.insert(connections, tapButton.InputBegan:Connect(function(input)
+		if session.phase == "TAP"
+			and (input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch)
+		then
+			registerTap()
+		end
+	end))
 	table.insert(connections, inputService.InputBegan:Connect(function(input, gameProcessedEvent)
 		if gameProcessedEvent and input.UserInputType == Enum.UserInputType.Keyboard then
 			return

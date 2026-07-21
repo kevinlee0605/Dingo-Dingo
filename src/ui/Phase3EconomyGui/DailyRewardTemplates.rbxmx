@@ -88,7 +88,7 @@
 					<float name="BackgroundTransparency">1</float>
 					<int name="BorderSizePixel">0</int>
 					<bool name="ClipsDescendants">false</bool>
-					<token name="Font">26</token>
+					<token name="Font">19</token>
 					<int name="LayoutOrder">0</int>
 					<UDim2 name="Position">
 						<XS>0</XS>
@@ -146,7 +146,7 @@
 					<int name="LayoutOrder">0</int>
 					<UDim2 name="Position">
 						<XS>0</XS>
-						<XO>18</XO>
+						<XO>14</XO>
 						<YS>0</YS>
 						<YO>66</YO>
 					</UDim2>
@@ -266,7 +266,7 @@
 						<B>1.0</B>
 					</Color3>
 					<bool name="TextScaled">false</bool>
-					<float name="TextSize">20</float>
+					<float name="TextSize">22</float>
 					<Color3 name="TextStrokeColor3">
 						<R>0.0</R>
 						<G>0.0</G>
@@ -308,7 +308,7 @@
 					<XS>0</XS>
 					<XO>177</XO>
 					<YS>0</YS>
-					<YO>21</YO>
+					<YO>24</YO>
 				</UDim2>
 				<bool name="Visible">false</bool>
 				<int name="ZIndex">1106</int>
@@ -350,7 +350,7 @@
 						<B>1.0</B>
 					</Color3>
 					<bool name="TextScaled">false</bool>
-					<float name="TextSize">16</float>
+					<float name="TextSize">20</float>
 					<Color3 name="TextStrokeColor3">
 						<R>0.0</R>
 						<G>0.0</G>

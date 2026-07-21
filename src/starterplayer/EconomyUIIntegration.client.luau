@@ -19,10 +19,11 @@ local seaStarPreviewSlot = nil
 local boundThemeLocks = setmetatable({}, { __mode = "k" })
 
 -- Match the coin readout and leave room for the outlined glyph edges.
-local DIGIT_WIDTH = 24
-local COMMA_WIDTH = 12
+local DIGIT_WIDTH = 28
+local COMMA_WIDTH = 15
 local DIGIT_HEIGHT = 72
 local SEA_STAR_NUMBER_AREA_WIDTH = 240
+local GLYPH_HORIZONTAL_PADDING = 3
 
 local SHORT_THEME_LABELS = {
 	ModernGlass = { modern = true },
@@ -30,6 +31,7 @@ local SHORT_THEME_LABELS = {
 	JapaneseKoiPond = { japanese = true },
 	AncientRuins = { ancient = true },
 }
+local AQUARIUM_THEME_TEXT_SIZE = 18
 
 local function formatNumber(value)
 	local number = math.max(0, math.floor(tonumber(value) or 0))
@@ -73,8 +75,13 @@ local function renderSeaStarDigits(value)
 		local width = characterWidth(character)
 		local slot = seaStarPreviewSlot:Clone()
 		slot.Name = "DigitSlot"
-		slot.Position = UDim2.fromOffset(xOffset, 0)
-		slot.Size = UDim2.fromOffset(width, DIGIT_HEIGHT)
+		-- Match the coin readout: preserve the glyph center while giving its
+		-- outline room beyond the otherwise clipped rolling-digit slot.
+		slot.Position = UDim2.fromOffset(xOffset - GLYPH_HORIZONTAL_PADDING, 0)
+		slot.Size = UDim2.fromOffset(
+			width + GLYPH_HORIZONTAL_PADDING * 2,
+			DIGIT_HEIGHT
+		)
 		slot.Visible = true
 		slot.Parent = seaStarDigitsHolder
 
@@ -188,18 +195,22 @@ local function showFullThemeName(button, theme, themeId)
 	local fullName = theme.displayName or theme.name or themeId
 	if button:IsA("TextButton") then
 		button.Text = fullName
-		button.TextScaled = true
+		button.TextScaled = false
+		button.TextSize = AQUARIUM_THEME_TEXT_SIZE
+		button.TextWrapped = true
 		return fullName
 	end
 
 	for _, descendant in ipairs(button:GetDescendants()) do
 		if descendant:IsA("TextLabel") and not descendant:FindFirstAncestor("SeaStarThemeLock") then
 			descendant.Text = fullName
-			descendant.TextScaled = true
+			descendant.TextScaled = false
+			descendant.TextSize = AQUARIUM_THEME_TEXT_SIZE
+			descendant.TextWrapped = true
 			local constraint = descendant:FindFirstChild("SeaStarThemeTextConstraint")
 			if constraint and constraint:IsA("UITextSizeConstraint") then
-				constraint.MinTextSize = 6
-				constraint.MaxTextSize = 12
+				constraint.MinTextSize = AQUARIUM_THEME_TEXT_SIZE
+				constraint.MaxTextSize = AQUARIUM_THEME_TEXT_SIZE
 			end
 			break
 		end

@@ -6,7 +6,7 @@
 		<Properties>
 			<string name="Name">SeaStarsHud</string>
 			<Vector2 name="AnchorPoint">
-				<X>0</X>
+				<X>1</X>
 				<Y>0</Y>
 			</Vector2>
 			<Color3 name="BackgroundColor3">
@@ -19,10 +19,10 @@
 			<bool name="ClipsDescendants">false</bool>
 			<int name="LayoutOrder">3</int>
 			<UDim2 name="Position">
-				<XS>0.01</XS>
-				<XO>-8</XO>
-				<YS>0.1</YS>
-				<YO>49</YO>
+				<XS>0.99</XS>
+				<XO>8</XO>
+				<YS>0</YS>
+				<YO>93</YO>
 			</UDim2>
 			<UDim2 name="Size">
 				<XS>0</XS>
@@ -36,7 +36,7 @@
 		<Item class="UIScale" referent="RBX00000002">
 			<Properties>
 				<string name="Name">LeftStatsScale</string>
-				<float name="Scale">0.74</float>
+				<float name="Scale">0.86</float>
 			</Properties>
 		</Item>
 		<Item class="UISizeConstraint" referent="RBX00000003">
@@ -397,7 +397,7 @@
 										<B>0.08235294117647059</B>
 									</Color3>
 									<token name="LineJoinMode">0</token>
-									<float name="Thickness">3.3</float>
+									<float name="Thickness">1.6</float>
 									<float name="Transparency">0</float>
 								</Properties>
 							</Item>
@@ -502,7 +502,7 @@
 										<B>0.08235294117647059</B>
 									</Color3>
 									<token name="LineJoinMode">0</token>
-									<float name="Thickness">3.3</float>
+									<float name="Thickness">1.6</float>
 									<float name="Transparency">0</float>
 								</Properties>
 							</Item>
