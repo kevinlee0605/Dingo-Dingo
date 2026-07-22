@@ -1,0 +1,2 @@
+The container did not expose a Blender/bpy runtime, so the included .blend is the current Riverbend source scaffold. Run Riverbend_Island_Voxel_Build.py once in Blender 5.x to regenerate the voxel .blend directly from the verified GLB.
+Runtime error: ModuleNotFoundError("No module named 'bpy'")

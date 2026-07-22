@@ -7,6 +7,7 @@ local Services = {
 	CollectionService = game:GetService("CollectionService"),
 	RunService = game:GetService("RunService"),
 }
+Services.AquariumDirectory = require(script.Parent:WaitForChild("AquariumDirectoryService"))
 
 local AQUARIUM_DECOR_TEMPLATE_FOLDER_NAME = "AquariumDecorationTemplates"
 local AQUARIUM_DECOR_TEMPLATE_LARGEST_AXIS = {
@@ -458,8 +459,8 @@ function playerData.normalizeAquariumLikes(aquarium)
 	end
 
 	aquarium.LikedBy = normalized
-	aquarium.LikeCount = count
-	return normalized, count
+	aquarium.LikeCount = math.max(count, math.max(0, math.floor(tonumber(aquarium.LikeCount) or 0)))
+	return normalized, aquarium.LikeCount
 end
 
 function SeaStars.ensureState(data)
@@ -1551,6 +1552,15 @@ local function getLoadedAquariumViewState(player)
 	local ownerUserId = aquarium and tonumber(aquarium:GetAttribute("OccupantUserId")) or nil
 	local ownerName = aquarium and aquarium:GetAttribute("OccupantName") or nil
 	local canEdit = ownerUserId ~= nil and ownerUserId == player.UserId
+	local assignedOk, hasAssignedBay = pcall(function()
+		return require(script.Parent:WaitForChild("AquariumGalleryPrototypeService"))
+			.playerHasAssignedBay(player)
+	end)
+	if assignedOk and hasAssignedBay then
+		canEdit = true
+		ownerUserId = player.UserId
+		ownerName = player.DisplayName
+	end
 
 	return {
 		OwnerUserId = ownerUserId,
@@ -1574,6 +1584,8 @@ local function makeClientState(player, data)
 	local aquariumLevel = math.clamp(tonumber(aquarium.Level) or 1, 1, 4)
 	local aquariumFish = type(aquarium.Fish) == "table" and aquarium.Fish or {}
 	local _, aquariumLikeCount = playerData.normalizeAquariumLikes(aquarium)
+	aquariumLikeCount = Services.AquariumDirectory.getLikeCount(player.UserId, aquariumLikeCount)
+	aquarium.LikeCount = aquariumLikeCount
 	local aquariumVisitors = {}
 	local equippedBait = Bait.getEquippedId(data)
 
@@ -1653,6 +1665,45 @@ local function sendStateToAll()
 	end
 end
 
+Services.AquariumDirectory.configure({
+	onChanged = sendStateToAll,
+})
+Services.AquariumDirectory.start()
+
+function playerData.makeAquariumSnapshot(player, data)
+	if not player or type(data) ~= "table" or type(data.Aquarium) ~= "table" then
+		return nil
+	end
+
+	local level = math.clamp(tonumber(data.Aquarium.Level) or 1, 1, 4)
+	local fish = type(data.Aquarium.Fish) == "table" and data.Aquarium.Fish or {}
+	local totalValue = 0
+	for _, displayedFish in ipairs(fish) do
+		totalValue += math.max(0, tonumber(displayedFish.value) or 0)
+	end
+
+	return {
+		UserId = player.UserId,
+		Name = player.Name,
+		DisplayName = player.DisplayName,
+		AquariumLevel = level,
+		FishCount = #fish,
+		UsedCapacity = GameConfig.getAquariumUsedSpace(fish),
+		Capacity = GameConfig.AquariumCapacities[level] or GameConfig.AquariumCapacities[1],
+		TotalValue = totalValue,
+		LikeCount = math.max(0, math.floor(tonumber(data.Aquarium.LikeCount) or 0)),
+		BestCatch = data.BestCatch and playerData.copyForSave(data.BestCatch) or nil,
+		Aquarium = {
+			Level = level,
+			Fish = playerData.copyArray(fish),
+			LikeCount = math.max(0, math.floor(tonumber(data.Aquarium.LikeCount) or 0)),
+		},
+		AquariumDesign = playerData.copyForSave(data.AquariumDesign),
+		SeaStars = SeaStars.normalizeBalance(data.SeaStars),
+		SeaStarUnlocks = playerData.shallowCopyMap(data.SeaStarUnlocks),
+	}
+end
+
 local function notify(player, message)
 	Remote.Notice:FireClient(player, message)
 end
@@ -1691,7 +1742,9 @@ local function makeDefaultData()
 			Level = 1,
 			Fish = {},
 			LikedBy = {},
+			LikeCount = 0,
 		},
+		AquariumLikedTargets = {},
 		AquariumDecorations = {},
 		AquariumDesign = Monetization.normalizeAquariumDesign(nil),
 		AquariumPreviewDesign = nil,
@@ -1740,6 +1793,7 @@ local function sanitizeLoadedData(loaded)
 	data.Aquarium.Level = math.clamp(tonumber(data.Aquarium.Level) or 1, 1, 4)
 	data.Aquarium.Fish = type(data.Aquarium.Fish) == "table" and data.Aquarium.Fish or {}
 	playerData.normalizeAquariumLikes(data.Aquarium)
+	data.AquariumLikedTargets = type(loaded.AquariumLikedTargets) == "table" and loaded.AquariumLikedTargets or {}
 	data.AquariumDecorations = type(loaded.AquariumDecorations) == "table" and loaded.AquariumDecorations or data.AquariumDecorations
 	data.AquariumDesign = Monetization.normalizeAquariumDesign(loaded.AquariumDesign)
 	data.AquariumPreviewDesign = nil
@@ -1999,6 +2053,7 @@ function playerData.buildSavePayload(data)
 		Fishdex = data.Fishdex,
 		QuestState = data.QuestState,
 		Aquarium = data.Aquarium,
+		AquariumLikedTargets = data.AquariumLikedTargets,
 		AquariumDecorations = data.AquariumDecorations,
 		AquariumDesign = data.AquariumDesign,
 		BestCatch = data.BestCatch,
@@ -3712,6 +3767,8 @@ end
 
 getAquariumVisitorsState = function(requestingPlayer)
 	local visitors = {}
+	local requestingData = playerData[requestingPlayer]
+	local likedTargets = requestingData and requestingData.AquariumLikedTargets or {}
 
 	for _, otherPlayer in ipairs(Services.Players:GetPlayers()) do
 		local otherData = playerData[otherPlayer]
@@ -3719,7 +3776,9 @@ getAquariumVisitorsState = function(requestingPlayer)
 			local level = otherData.Aquarium.Level or 1
 			local capacity = GameConfig.AquariumCapacities[level] or GameConfig.AquariumCapacities[1]
 			local fish = otherData.Aquarium.Fish or {}
-			local likedBy, likeCount = playerData.normalizeAquariumLikes(otherData.Aquarium)
+			local _, likeCount = playerData.normalizeAquariumLikes(otherData.Aquarium)
+			likeCount = Services.AquariumDirectory.getLikeCount(otherPlayer.UserId, likeCount)
+			otherData.Aquarium.LikeCount = likeCount
 			local totalValue = 0
 			for _, displayedFish in ipairs(fish) do
 				totalValue += math.max(0, tonumber(displayedFish.value) or 0)
@@ -3729,13 +3788,14 @@ getAquariumVisitorsState = function(requestingPlayer)
 				Name = otherPlayer.Name,
 				DisplayName = otherPlayer.DisplayName,
 				IsSelf = otherPlayer == requestingPlayer,
+				Online = true,
 				AquariumLevel = level,
 				FishCount = #fish,
 				UsedCapacity = GameConfig.getAquariumUsedSpace(fish),
 				Capacity = capacity,
 				TotalValue = totalValue,
 				LikeCount = likeCount,
-				LikedByViewer = likedBy[tostring(requestingPlayer.UserId)] == true,
+				LikedByViewer = likedTargets[tostring(otherPlayer.UserId)] == true,
 				BestCatch = otherData.BestCatch and {
 					id = otherData.BestCatch.id,
 					imageKey = otherData.BestCatch.imageKey,
@@ -3755,6 +3815,18 @@ getAquariumVisitorsState = function(requestingPlayer)
 		return string.lower(left.DisplayName or left.Name or "") < string.lower(right.DisplayName or right.Name or "")
 	end)
 
+	local success, directory = pcall(
+		Services.AquariumDirectory.getDirectory,
+		requestingPlayer,
+		likedTargets,
+		visitors
+	)
+	if success and type(directory) == "table" then
+		return directory
+	end
+	if not success then
+		warn("Aquarium directory state failed for", requestingPlayer.Name, directory)
+	end
 	return visitors
 end
 
@@ -3778,6 +3850,12 @@ local function getAquariumDimensions(level)
 end
 
 local function ensureAquariumSharedLand(folder, minimumSlots)
+	local activeGallery = workspace:FindFirstChild("AquariumGalleryPrototypeVisual")
+	if activeGallery and activeGallery:IsA("Model") then
+		AquariumLayout.FallSafetyBounds = nil
+		return activeGallery
+	end
+
 	-- SharedAquariumShowcase is a Studio-authored map model. Reuse it exactly as
 	-- saved instead of generating another showcase inside PersonalAquariums.
 	local authoredShowcase = workspace:FindFirstChild("SharedAquariumShowcase", true)
@@ -5020,6 +5098,72 @@ local function ensurePrebuiltAquariumSlots()
 	ensureAquariumSharedLand(folder, 1)
 end
 
+function playerData.showAquariumSnapshotInCenter(snapshot, labelPrefix)
+	if type(snapshot) ~= "table" or type(snapshot.Aquarium) ~= "table" then
+		return false
+	end
+
+	local userId = math.floor(tonumber(snapshot.UserId) or 0)
+	if userId <= 0 then
+		return false
+	end
+	local displayName = tostring(snapshot.DisplayName or snapshot.Name or ("Player " .. userId))
+	local identity = {
+		UserId = userId,
+		Name = tostring(snapshot.Name or displayName),
+		DisplayName = displayName,
+	}
+	local snapshotData = {
+		Aquarium = playerData.copyForSave(snapshot.Aquarium),
+		AquariumDesign = playerData.copyForSave(snapshot.AquariumDesign),
+		SeaStars = SeaStars.normalizeBalance(snapshot.SeaStars),
+		SeaStarUnlocks = type(snapshot.SeaStarUnlocks) == "table"
+			and playerData.shallowCopyMap(snapshot.SeaStarUnlocks)
+			or {},
+		AquariumDecorations = {},
+		BackpackSize = GameConfig.BASE_BACKPACK_SIZE,
+	}
+	local model = buildAquariumSlotModel(1, identity, snapshotData)
+	if not model then
+		return false
+	end
+
+	pcall(function()
+		require(script.Parent:WaitForChild("AquariumGalleryPrototypeService"))
+			.setFeaturedLabel(string.upper(tostring(labelPrefix or "FEATURED")) .. " • " .. displayName)
+	end)
+	playerData.FeaturedCenterUserId = userId
+	playerData.FeaturedCenterUpdatedAt = tonumber(snapshot.UpdatedAt) or 0
+	return true
+end
+
+function playerData.refreshFeaturedAquarium(forceRefresh)
+	local now = os.clock()
+	local snapshot
+	local labelPrefix = "FEATURED"
+	if playerData.ManualFeaturedSnapshot and now < (playerData.ManualFeaturedUntil or 0) then
+		snapshot = playerData.ManualFeaturedSnapshot
+		labelPrefix = "NOW VIEWING"
+	else
+		playerData.ManualFeaturedSnapshot = nil
+		playerData.ManualFeaturedUntil = nil
+		snapshot = Services.AquariumDirectory.getFeaturedSnapshot()
+	end
+	if not snapshot then
+		return false
+	end
+
+	local userId = math.floor(tonumber(snapshot.UserId) or 0)
+	local updatedAt = tonumber(snapshot.UpdatedAt) or 0
+	if not forceRefresh
+		and userId == playerData.FeaturedCenterUserId
+		and updatedAt == playerData.FeaturedCenterUpdatedAt
+	then
+		return true
+	end
+	return playerData.showAquariumSnapshotInCenter(snapshot, labelPrefix)
+end
+
 local function refreshPlayerAquarium(player)
 	local data = playerData[player]
 	if not data then
@@ -5029,10 +5173,39 @@ local function refreshPlayerAquarium(player)
 	ensurePrebuiltAquariumSlots()
 	local slot = getPlayerAquariumSlot(player)
 	local model = buildAquariumSlotModel(slot, player, data)
+	if model then
+		local galleryUpdated, galleryError = pcall(function()
+			require(script.Parent:WaitForChild("AquariumGalleryPrototypeService"))
+				.displayPlayerAquarium(player, model)
+		end)
+		if not galleryUpdated then
+			warn("Aquarium gallery player display failed", galleryError)
+		end
+
+		local snapshot = playerData.makeAquariumSnapshot(player, data)
+		if snapshot then
+			local published, likeCount = Services.AquariumDirectory.publish(player, snapshot)
+			if likeCount ~= nil then
+				data.Aquarium.LikeCount = likeCount
+			end
+			if published == false and not Services.RunService:IsStudio() then
+				warn("Aquarium directory publish failed for", player.Name)
+			end
+		end
+		playerData.refreshFeaturedAquarium(true)
+	end
 	return model ~= nil
 end
 
 local function playerOwnsAssignedAquarium(player)
+	local galleryOk, hasAssignedBay = pcall(function()
+		return require(script.Parent:WaitForChild("AquariumGalleryPrototypeService"))
+			.playerHasAssignedBay(player)
+	end)
+	if galleryOk and hasAssignedBay then
+		return true
+	end
+
 	local folder = getAquariumsFolder()
 	local slot = getPlayerAquariumSlot(player)
 	local aquarium = folder and folder:FindFirstChild(getAquariumSlotName(slot))
@@ -6961,6 +7134,14 @@ local function buildWorld()
 		world.Parent = workspace
 	end
 
+	local galleryPrepared, galleryError = pcall(function()
+		local galleryService = require(script.Parent:WaitForChild("AquariumGalleryPrototypeService"))
+		galleryService.ensure()
+		galleryService.applyAuthoredMigration()
+	end)
+	if not galleryPrepared then
+		warn("Aquarium gallery prototype preparation failed", galleryError)
+	end
 	ensurePrebuiltAquariumSlots()
 	ensureFountainAnimations()
 	ensureFountainBiomeWarpTrigger()
@@ -7245,8 +7426,23 @@ function Travel.getGroundBiomeAtPosition(position, ignoreInstances)
 	params.FilterDescendantsInstances = ignoreInstances or {}
 
 	local result = workspace:Raycast(position + Vector3.new(0, 12, 0), Vector3.new(0, -90, 0), params)
-	if result and Travel.isBeginnerPondInstance(result.Instance) then
-		return DEFAULT_FISHING_ISLAND_ID
+	if result then
+		if Travel.isBeginnerPondInstance(result.Instance) then
+			return DEFAULT_FISHING_ISLAND_ID
+		end
+
+		local ancestor = result.Instance
+		while ancestor and ancestor ~= workspace do
+			local configuredBiomeId = ancestor:GetAttribute("BiomeId") or ancestor:GetAttribute("IslandId")
+			local biomeId = if type(configuredBiomeId) == "string"
+				then IslandConfig.normalizeBiomeId(configuredBiomeId)
+				else nil
+			biomeId = biomeId or IslandConfig.normalizeBiomeId(ancestor.Name)
+			if biomeId then
+				return biomeId
+			end
+			ancestor = ancestor.Parent
+		end
 	end
 
 	return nil
@@ -7674,9 +7870,18 @@ function Travel.teleportPlayerToAquariumOwner(player, ownerPlayer)
 	print("Loading aquarium:", ownerPlayer.DisplayName or ownerPlayer.Name)
 	refreshPlayerAquarium(ownerPlayer)
 
-	local position = AquariumLayout.getViewerSpawnPosition(ownerPlayer)
-	local lookAt = getAquariumSlotOrigin(getPlayerAquariumSlot(ownerPlayer)) + Vector3.new(0, 5, 0)
-	local moved = AquariumLayout.safePivotPlayer(player, CFrame.lookAt(position, lookAt))
+	local galleryCFrame
+	pcall(function()
+		galleryCFrame = require(script.Parent:WaitForChild("AquariumGalleryPrototypeService"))
+			.getPlayerViewCFrame(ownerPlayer.UserId, (player.UserId % 4) + 1)
+	end)
+	local destination = galleryCFrame
+	if not destination then
+		local position = AquariumLayout.getViewerSpawnPosition(ownerPlayer)
+		local lookAt = getAquariumSlotOrigin(getPlayerAquariumSlot(ownerPlayer)) + Vector3.new(0, 5, 0)
+		destination = CFrame.lookAt(position, lookAt)
+	end
+	local moved = AquariumLayout.safePivotPlayer(player, destination)
 	if not moved then
 		return false
 	end
@@ -7697,8 +7902,28 @@ function Travel.teleportPlayerToAquariumUserId(player, ownerUserId)
 		return Travel.teleportPlayerToAquariumOwner(player, ownerPlayer)
 	end
 
-	notify(player, "That player is not online.")
-	return false
+	local snapshot = Services.AquariumDirectory.getSnapshot(ownerUserId)
+	if type(snapshot) ~= "table" or type(snapshot.Aquarium) ~= "table" then
+		notify(player, "That aquarium is not available yet.")
+		return false
+	end
+
+	playerData.ManualFeaturedSnapshot = snapshot
+	playerData.ManualFeaturedUntil = os.clock() + 120
+	if not playerData.showAquariumSnapshotInCenter(snapshot, "NOW VIEWING") then
+		notify(player, "That aquarium could not be displayed.")
+		return false
+	end
+
+	local position = AquariumLayout.getViewerSpawnPosition(player)
+	local lookAt = getAquariumSlotOrigin(1) + Vector3.new(0, 5, 0)
+	if not AquariumLayout.safePivotPlayer(player, CFrame.lookAt(position, lookAt)) then
+		return false
+	end
+
+	sendStateToAll()
+	notify(player, "Viewing " .. tostring(snapshot.DisplayName or snapshot.Name or "this player") .. "'s read-only aquarium.")
+	return true
 end
 
 local areaPortalTouchCooldowns = {}
@@ -7815,6 +8040,7 @@ function RuntimeConfig.setupPlayer(player)
 	end
 
 	playerData[player] = loadData(player)
+	Services.AquariumDirectory.markOnline(player)
 	local appliedOwnerGrant = applyOwnerGrants(player, playerData[player])
 	Monetization.syncGamePassOwnership(player, playerData[player])
 	local addedStudioFish = giveStudioBeginnerFishInBag(playerData[player])
@@ -7852,7 +8078,7 @@ function RuntimeConfig.setupPlayer(player)
 		local data = playerData[player]
 		safeEnsureWorld("deferred player setup")
 		if data then
-			ensurePrebuiltAquariumSlots()
+			refreshPlayerAquarium(player)
 			applyCharacterMonetizationVisuals(player)
 		end
 		sendState(player)
@@ -8859,39 +9085,48 @@ Remote.AquariumAction.OnServerEvent:Connect(function(player, action, fishSerial,
 			return
 		end
 
-		local targetPlayer = Services.Players:GetPlayerByUserId(targetUserId)
-		local targetData = targetPlayer and playerData[targetPlayer]
-		if not targetPlayer or not targetData or type(targetData.Aquarium) ~= "table" then
-			notify(player, "That aquarium is no longer available.")
-			return
-		end
-
 		local now = os.clock()
 		if now - (playerData.AquariumLikeCooldowns[player] or 0) < 0.35 then
 			return
 		end
 		playerData.AquariumLikeCooldowns[player] = now
 
-		local likedBy = playerData.normalizeAquariumLikes(targetData.Aquarium)
-		local viewerKey = tostring(player.UserId)
-		local isNowLiked
-		if likedBy[viewerKey] then
-			likedBy[viewerKey] = nil
-			isNowLiked = false
-		else
-			likedBy[viewerKey] = true
-			isNowLiked = true
+		data.AquariumLikedTargets = type(data.AquariumLikedTargets) == "table"
+			and data.AquariumLikedTargets
+			or {}
+		local toggled, isNowLiked, newCount, toggleWarning = Services.AquariumDirectory.toggleLike(
+			player,
+			targetUserId,
+			data.AquariumLikedTargets
+		)
+		if not toggled then
+			notify(player, toggleWarning or "That aquarium is not available.")
+			return
 		end
-		playerData.normalizeAquariumLikes(targetData.Aquarium)
 
-		playerData.queueSave(targetPlayer)
+		local targetPlayer = Services.Players:GetPlayerByUserId(targetUserId)
+		local targetData = targetPlayer and playerData[targetPlayer]
+		if targetData and type(targetData.Aquarium) == "table" then
+			targetData.Aquarium.LikeCount = newCount
+			playerData.queueSave(targetPlayer)
+		end
+		playerData.queueSave(player)
 		sendStateToAll()
+
+		local targetName = targetPlayer and targetPlayer.DisplayName
+		if not targetName then
+			local snapshot = Services.AquariumDirectory.getSnapshot(targetUserId)
+			targetName = snapshot and (snapshot.DisplayName or snapshot.Name) or "that player"
+		end
 		notify(
 			player,
 			isNowLiked
-				and ("Liked " .. targetPlayer.DisplayName .. "'s aquarium.")
-				or ("Removed your like from " .. targetPlayer.DisplayName .. "'s aquarium.")
+				and ("Liked " .. targetName .. "'s aquarium.")
+				or ("Removed your like from " .. targetName .. "'s aquarium.")
 		)
+		if toggleWarning and Services.RunService:IsStudio() then
+			warn("Aquarium like persistence:", toggleWarning)
+		end
 		return
 	end
 
@@ -9173,6 +9408,10 @@ for _, player in ipairs(Services.Players:GetPlayers()) do
 end
 
 Services.Players.PlayerRemoving:Connect(function(player)
+	Services.AquariumDirectory.markOffline(player)
+	pcall(function()
+		require(script.Parent:WaitForChild("AquariumGalleryPrototypeService")).releasePlayer(player)
+	end)
 	saveData(player)
 	local data = playerData[player]
 	if data then
@@ -9237,6 +9476,7 @@ task.spawn(function()
 	while true do
 		task.wait(60)
 		FishCaughtLeaderboard.refresh(true)
+		playerData.refreshFeaturedAquarium(false)
 	end
 end)
 

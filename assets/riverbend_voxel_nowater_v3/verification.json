@@ -1,0 +1,133 @@
+{
+  "asset": "Riverbend_Island_Voxel_NoWater",
+  "source_layout_preserved": true,
+  "source_dimensions_blender_studs": [
+    354.228,
+    308.0,
+    74.0
+  ],
+  "final_dimensions_blender_studs": [
+    354.2279968261719,
+    308.0,
+    74.0
+  ],
+  "dimension_delta_studs": [
+    -3e-06,
+    0.0,
+    0.0
+  ],
+  "root_name": "Riverbend_Island_ROOT",
+  "root_present": true,
+  "root_pivot_center_bottom": true,
+  "scene_origin": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "water_geometry_count": 0,
+  "water_geometry_names": [],
+  "water_material_present": false,
+  "riverbed_present": true,
+  "river_mouth_open_to_ocean": true,
+  "riverbed_max_height_glb_y": 21.0,
+  "former_waterline_glb_y": 30.0,
+  "riverbed_below_former_waterline": true,
+  "seven_fishing_markers_exist": true,
+  "fishing_marker_names": [
+    "FishingSpotMarker_01",
+    "FishingSpotMarker_02",
+    "FishingSpotMarker_03",
+    "FishingSpotMarker_04",
+    "FishingSpotMarker_05",
+    "FishingSpotMarker_06",
+    "FishingSpotMarker_07"
+  ],
+  "fishing_marker_coordinates_blender_z_up": {
+    "FishingSpotMarker_01": [
+      -58.0,
+      -63.0,
+      38.605
+    ],
+    "FishingSpotMarker_02": [
+      -41.0,
+      -25.0,
+      38.605
+    ],
+    "FishingSpotMarker_03": [
+      -39.0,
+      58.0,
+      38.605
+    ],
+    "FishingSpotMarker_04": [
+      54.0,
+      -64.0,
+      38.605
+    ],
+    "FishingSpotMarker_05": [
+      54.0,
+      28.0,
+      38.605
+    ],
+    "FishingSpotMarker_06": [
+      42.0,
+      104.0,
+      38.605
+    ],
+    "FishingSpotMarker_07": [
+      45.0,
+      151.0,
+      39.345
+    ]
+  },
+  "spawn_marker_exists": true,
+  "spawn_marker_coordinate_blender_z_up": [
+    -106.0,
+    104.0,
+    42.2
+  ],
+  "required_groups_present": {
+    "IslandGround": true,
+    "CliffSections": true,
+    "Riverbed": true,
+    "WaterPreview": true,
+    "Bridges": true,
+    "Dock": true,
+    "Paths": true,
+    "Trees": true,
+    "Rocks": true,
+    "Foliage": true,
+    "FishingSpotMarkers": true
+  },
+  "mesh_object_count": 157,
+  "triangle_count": 6600,
+  "vertex_count": 19800,
+  "triangle_count_below_20000": true,
+  "materials": [
+    "GrassTop",
+    "GrassSide",
+    "Dirt",
+    "Stone",
+    "Riverbed",
+    "Path",
+    "Gravel",
+    "Wood",
+    "DarkWood",
+    "Leaves",
+    "Sand",
+    "Flower",
+    "Mushroom",
+    "WoodEnd",
+    "FishingMarker_DEV",
+    "SpawnMarker_DEV"
+  ],
+  "material_count": 16,
+  "water_material_removed": true,
+  "embedded_png_image_count": 21,
+  "textures_embedded": true,
+  "pixel_sampler_nearest_repeat": true,
+  "uvs_present": true,
+  "normals_present": true,
+  "transforms_applied": true,
+  "editable_blend_source_included": true,
+  "blend_regeneration_script_included": true
+}

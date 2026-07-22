@@ -360,7 +360,11 @@ function AquariumViewerModernUI.create(context)
 			local playerName = descendant(row, "PlayerName", "TextLabel")
 			playerName.Text = displayName
 			local onlineStatus = descendant(row, "OnlineStatus", "TextLabel")
-			onlineStatus.Text = "● Online"
+			local isOnline = visitor.Online ~= false
+			onlineStatus.Text = isOnline and "● Online" or "○ Offline"
+			onlineStatus.TextColor3 = isOnline
+				and Color3.fromRGB(55, 255, 188)
+				or Color3.fromRGB(190, 198, 214)
 			local playerNameWidth = TextService:GetTextSize(
 				displayName,
 				playerName.TextSize,

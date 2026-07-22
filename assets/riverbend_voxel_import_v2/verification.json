@@ -1,0 +1,112 @@
+{
+  "asset": "Riverbend_Island_Voxel",
+  "glb_reimport_success": true,
+  "root_name": "Riverbend_Island_ROOT",
+  "root_present": true,
+  "root_pivot_is_center_bottom": true,
+  "root_pivot_position": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "scene_origin": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "dimensions_studs": [
+    354.2279968261719,
+    308.0,
+    74.0
+  ],
+  "requested_dimensions_studs": [
+    354.228,
+    308.0,
+    74.0
+  ],
+  "dimension_tolerance_studs": 3.1738281336401997e-06,
+  "mesh_object_count": 129,
+  "triangle_count": 8844,
+  "vertex_count": 17688,
+  "triangle_count_below_20000": true,
+  "seven_fishing_markers_exist": true,
+  "fishing_marker_names": [
+    "FishingSpotMarker_01",
+    "FishingSpotMarker_02",
+    "FishingSpotMarker_03",
+    "FishingSpotMarker_04",
+    "FishingSpotMarker_05",
+    "FishingSpotMarker_06",
+    "FishingSpotMarker_07"
+  ],
+  "fishing_marker_coordinates": {
+    "FishingSpotMarker_01": [
+      -58.0,
+      63.0,
+      38.605
+    ],
+    "FishingSpotMarker_02": [
+      -41.0,
+      25.0,
+      38.605
+    ],
+    "FishingSpotMarker_03": [
+      -39.0,
+      -58.0,
+      38.605
+    ],
+    "FishingSpotMarker_04": [
+      54.0,
+      64.0,
+      38.605
+    ],
+    "FishingSpotMarker_05": [
+      54.0,
+      -28.0,
+      38.605
+    ],
+    "FishingSpotMarker_06": [
+      42.0,
+      -104.0,
+      38.605
+    ],
+    "FishingSpotMarker_07": [
+      45.0,
+      -151.0,
+      39.345
+    ]
+  },
+  "one_spawn_marker_exists": true,
+  "spawn_marker_coordinate": [
+    -106.0,
+    -104.0,
+    42.2
+  ],
+  "water_preview_separate": true,
+  "required_groups_present": {
+    "IslandGround": true,
+    "CliffSections": true,
+    "Riverbed": true,
+    "WaterPreview": true,
+    "Bridges": true,
+    "Dock": true,
+    "Paths": true,
+    "Trees": true,
+    "Rocks": true,
+    "Foliage": true,
+    "FishingSpotMarkers": true,
+    "SpawnMarker": true
+  },
+  "not_flattened_into_one_mesh": true,
+  "transforms_applied": true,
+  "textures_embedded": true,
+  "embedded_image_count": 6,
+  "materials_count": 4,
+  "normals_present": true,
+  "uvs_present": true,
+  "water_meshes_are_separate_nodes": true,
+  "marker_meshes_development_only": true,
+  "blend_generated_from_voxel_glb": false,
+  "blend_file_present": true,
+  "blend_generation_script_included": true
+}
