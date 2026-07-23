@@ -1,5 +1,7 @@
 local ServerStorage = game:GetService("ServerStorage")
 local CollectionService = game:GetService("CollectionService")
+local TweenService = game:GetService("TweenService")
+local AquariumFishAnimator = require(script.Parent:WaitForChild("AquariumFishAnimator"))
 
 local AquariumGalleryPrototypeService = {}
 
@@ -15,7 +17,11 @@ local WALKWAY_RADIUS = 145
 local GALLERY_RING_WIDTH = 66
 local GALLERY_LAYOUT_VERSION = 11
 local GALLERY_TANK_LAYOUT_VERSION = 2
-local GALLERY_TANK_PLATFORM_OFFSET_Y = 1.8
+-- Larger upgrade tiers need slightly more clearance from the bay's raised
+-- front lip. These values are applied from AquariumBase, not the changing
+-- model bounds, so the lift is predictable at every tank size.
+local GALLERY_TANK_BASE_OFFSET_Y = 1.8
+local GALLERY_TANK_LEVEL_OFFSET_Y = 0.25
 local BAY_HOLOGRAM_NAME = "AquariumOwnerHologram"
 local BAY_HOLOGRAM_HEIGHT = 2.5
 local BAY_HOLOGRAM_MAX_DISTANCE = 82
@@ -247,6 +253,19 @@ local function getTankMountCFrame(bay)
 	return bay:GetPivot() * CFrame.new(0, 1, 8)
 end
 
+local function getGalleryTankPlatformOffset(tank)
+	local level = tonumber(tank:GetAttribute("AquariumLevel"))
+	if not level then
+		local water = tank:FindFirstChild("AquariumWaterSurface", true)
+		if water and water:IsA("BasePart") then
+			-- Runtime tank water widths are 22, 30, 38, and 46 studs for levels 1-4.
+			level = math.floor((((water.Size.X - 22) / 8) + 1) + 0.5)
+		end
+	end
+	level = math.clamp(math.floor(level or 1), 1, 4)
+	return GALLERY_TANK_BASE_OFFSET_Y + ((level - 1) * GALLERY_TANK_LEVEL_OFFSET_Y)
+end
+
 local function hidePhysicalBaySign(bay)
 	local signMount = bay:FindFirstChild("BaySignMount", true)
 	if not signMount or not (signMount:IsA("BasePart") or signMount:IsA("Model")) then
@@ -315,6 +334,105 @@ local function updateBayHologram(bay, labelText)
 	label.TextStrokeColor3 = Color3.fromRGB(0, 45, 85)
 	label.TextStrokeTransparency = 0.12
 	label.Parent = billboard
+end
+
+local function isInsideAquariumFish(instance, tank)
+	local current = instance.Parent
+	while current and current ~= tank do
+		if current:IsA("Model") and string.sub(current.Name, 1, 13) == "AquariumFish_" then
+			return true
+		end
+		current = current.Parent
+	end
+	return false
+end
+
+local function startGalleryFishAnimations(tank)
+	local originFrame, dimensions = AquariumFishAnimator.getTankContext(tank)
+	if not originFrame or not dimensions then
+		warn("Gallery aquarium fish animation context is missing for", tank:GetFullName())
+		return
+	end
+
+	local fishRoots = {}
+	for _, descendant in ipairs(tank:GetDescendants()) do
+		if descendant:IsA("BasePart") and descendant.Name == "FishRoot" then
+			table.insert(fishRoots, descendant)
+		end
+	end
+
+	for index, root in ipairs(fishRoots) do
+		local fishIndex = math.max(1, math.floor(tonumber(root:GetAttribute("AquariumFishIndex")) or index))
+		local ownerUserId = math.floor(tonumber(tank:GetAttribute("DisplayedAquariumUserId")) or 0)
+		local seed = math.floor(tonumber(root:GetAttribute("AquariumAnimationSeed")) or (ownerUserId + (fishIndex * 997)))
+		AquariumFishAnimator.start(root, originFrame, fishIndex, seed, dimensions, tank)
+	end
+end
+
+local function hideRuntimeSourceAquarium(sourceAquarium, gallery)
+	if sourceAquarium:IsDescendantOf(gallery) then
+		return
+	end
+	if sourceAquarium:GetAttribute("GalleryRuntimeSource") == true then
+		sourceAquarium:Destroy()
+		return
+	end
+
+	sourceAquarium:SetAttribute("GalleryRuntimeSourceHidden", true)
+	for _, descendant in ipairs(sourceAquarium:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			descendant.Transparency = 1
+			descendant.CanCollide = false
+			descendant.CanTouch = false
+			descendant.CanQuery = false
+			descendant.CastShadow = false
+		elseif descendant:IsA("Decal") or descendant:IsA("Texture") then
+			descendant.Transparency = 1
+		elseif descendant:IsA("ParticleEmitter") or descendant:IsA("Beam") or descendant:IsA("Trail") then
+			descendant.Enabled = false
+		elseif descendant:IsA("Light") then
+			descendant.Enabled = false
+		elseif descendant:IsA("BillboardGui") or descendant:IsA("SurfaceGui") then
+			descendant.Enabled = false
+		end
+	end
+end
+
+local function prepareGalleryDisplayTank(displayTank)
+	for _, descendant in ipairs(displayTank:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			-- Aquarium fish are welded to an anchored FishRoot. Their visual parts
+			-- must remain unanchored so the gallery swim loop moves the whole fish.
+			local isFishPart = isInsideAquariumFish(descendant, displayTank)
+			if isFishPart and descendant.Name == "FishRoot" then
+				descendant.Anchored = true
+			elseif isFishPart then
+				descendant.Anchored = false
+				descendant.CanCollide = false
+				descendant.CanQuery = false
+				descendant.Massless = true
+			else
+				descendant.Anchored = true
+			end
+			descendant.CanTouch = false
+		end
+	end
+
+	local aquariumBase = displayTank:FindFirstChild("AquariumBase", true)
+	if aquariumBase and aquariumBase:IsA("BasePart") then
+		displayTank.PrimaryPart = aquariumBase
+	end
+end
+
+local function getFeaturedTankMountCFrame(featured)
+	local mount = featured:FindFirstChild("FeaturedAquariumOrigin", true)
+	if mount and mount:IsA("Model") then
+		return mount:GetPivot()
+	end
+	if mount and mount:IsA("BasePart") then
+		return mount.CFrame
+	end
+	return featured:GetPivot()
 end
 
 local function setModelVisible(model, visible)
@@ -555,10 +673,11 @@ local function makeClassicPlaceholderTank(bay, slotNumber)
 	tank:SetAttribute("GalleryPlaceholder", true)
 	tank:SetAttribute("ReplaceWhenPlayerJoins", true)
 	tank:SetAttribute("Theme", "Classic")
+	tank:SetAttribute("AquariumLevel", 1)
 	tank:SetAttribute("SlotIndex", slotNumber)
 	tank:SetAttribute("GalleryTankLayoutVersion", GALLERY_TANK_LAYOUT_VERSION)
 	tank:SetAttribute("GalleryAssemblyLifted", true)
-	tank:SetAttribute("GalleryPlatformOffsetY", GALLERY_TANK_PLATFORM_OFFSET_Y)
+	tank:SetAttribute("GalleryPlatformOffsetY", getGalleryTankPlatformOffset(tank))
 	tank.Parent = bay
 
 	local width = 24
@@ -673,7 +792,7 @@ local function makeClassicPlaceholderTank(bay, slotNumber)
 	if not themeApplied then
 		warn("Gallery Classic placeholder theme failed", themeError)
 	end
-	tank:PivotTo(mountCFrame * CFrame.new(0, GALLERY_TANK_PLATFORM_OFFSET_Y, 0))
+	tank:PivotTo(mountCFrame * CFrame.new(0, getGalleryTankPlatformOffset(tank), 0))
 	hidePhysicalBaySign(bay)
 	updateBayHologram(bay, "OPEN AQUARIUM")
 	bay:SetAttribute("PlatformOwnerUserId", 0)
@@ -1235,14 +1354,15 @@ function AquariumGalleryPrototypeService.displayPlayerAquarium(player, sourceAqu
 	displayTank:SetAttribute("GalleryPlaceholder", false)
 	displayTank:SetAttribute("DisplayedAquariumUserId", player.UserId)
 	displayTank:SetAttribute("SlotIndex", assignedSlot.slotNumber)
-	for _, descendant in ipairs(displayTank:GetDescendants()) do
-		if descendant:IsA("BasePart") then
-			descendant.Anchored = true
-			descendant.CanTouch = false
-		end
-	end
+	prepareGalleryDisplayTank(displayTank)
+	-- All aquarium levels share AquariumBase as their stable construction
+	-- reference. Using it as the pivot prevents taller upgraded tanks from
+	-- sinking into the bay floor as their bounding box grows.
+	local platformOffsetY = getGalleryTankPlatformOffset(displayTank)
+	displayTank:SetAttribute("GalleryPlatformOffsetY", platformOffsetY)
+	displayTank:PivotTo(getTankMountCFrame(bay) * CFrame.new(0, platformOffsetY, 0))
 	displayTank.Parent = bay
-	displayTank:PivotTo(getTankMountCFrame(bay) * CFrame.new(0, GALLERY_TANK_PLATFORM_OFFSET_Y, 0))
+	startGalleryFishAnimations(displayTank)
 	hidePhysicalBaySign(bay)
 	updateBayHologram(bay, player.DisplayName .. "'s Aquarium")
 
@@ -1250,7 +1370,56 @@ function AquariumGalleryPrototypeService.displayPlayerAquarium(player, sourceAqu
 	bay:SetAttribute("DisplayedAquariumUserId", player.UserId)
 	bay:SetAttribute("TankState", "PlayerAquarium")
 	player:SetAttribute("AquariumGallerySlot", assignedSlot.slotNumber)
+	-- The model in PersonalAquariums is only a runtime construction source for
+	-- the gallery clone. Keep it available for the next refresh, but prevent the
+	-- old world-position copy from appearing as a floating aquarium.
+	hideRuntimeSourceAquarium(sourceAquarium, gallery)
 	return assignedSlot.slotNumber
+end
+
+function AquariumGalleryPrototypeService.displayFeaturedAquarium(sourceAquarium, ownerUserId, labelText)
+	if not sourceAquarium or not sourceAquarium:IsA("Model") then
+		return false
+	end
+
+	local gallery = AquariumGalleryPrototypeService.ensureWorkspaceDefaults()
+	if not gallery then
+		return false
+	end
+	local featured = gallery:FindFirstChild("AquariumGalleryFeaturedCenter", true)
+		or gallery:FindFirstChild("GlobalFeaturedAquarium", true)
+	if not featured or not featured:IsA("Model") then
+		return false
+	end
+
+	local previousTank = featured:FindFirstChild("FeaturedGalleryTank")
+	if previousTank then
+		previousTank:Destroy()
+	end
+
+	local displayTank = sourceAquarium:Clone()
+	displayTank.Name = "FeaturedGalleryTank"
+	displayTank:SetAttribute("ReadOnlyDisplay", true)
+	displayTank:SetAttribute("DisplayedAquariumUserId", math.floor(tonumber(ownerUserId) or 0))
+	prepareGalleryDisplayTank(displayTank)
+
+	local platformOffsetY = getGalleryTankPlatformOffset(displayTank)
+	displayTank:SetAttribute("GalleryPlatformOffsetY", platformOffsetY)
+	displayTank:PivotTo(getFeaturedTankMountCFrame(featured) * CFrame.new(0, platformOffsetY, 0))
+	displayTank.Parent = featured
+	startGalleryFishAnimations(displayTank)
+	setModelVisible(featured:FindFirstChild("FeaturedSignMount", true), false)
+	updateFeaturedHologram(featured)
+
+	local hologram = featured:FindFirstChild(FEATURED_HOLOGRAM_NAME)
+	local label = hologram and hologram:FindFirstChild("FeaturedLabel", true)
+	if label and label:IsA("TextLabel") then
+		label.Text = tostring(labelText or "FEATURED AQUARIUM")
+	end
+
+	hideRuntimeSourceAquarium(sourceAquarium, gallery)
+	featured:SetAttribute("DisplayedAquariumUserId", math.floor(tonumber(ownerUserId) or 0))
+	return true
 end
 
 function AquariumGalleryPrototypeService.playerHasAssignedBay(player)
@@ -1300,6 +1469,33 @@ function AquariumGalleryPrototypeService.getPlayerViewCFrame(userId, visitorInde
 		end
 	end
 	return nil
+end
+
+function AquariumGalleryPrototypeService.getFeaturedViewCFrame(visitorIndex)
+	local gallery = workspace:FindFirstChild(WORKSPACE_GALLERY_NAME)
+	if not gallery or not gallery:IsA("Model") then
+		return nil
+	end
+	local featured = gallery:FindFirstChild("AquariumGalleryFeaturedCenter", true)
+		or gallery:FindFirstChild("GlobalFeaturedAquarium", true)
+	if not featured or not featured:IsA("Model") then
+		return nil
+	end
+	local tank = featured:FindFirstChild("FeaturedGalleryTank")
+	if not tank or not tank:IsA("Model") then
+		return nil
+	end
+
+	local markerNumber = math.clamp(math.floor(tonumber(visitorIndex) or 1), 1, 4)
+	local lateralOffsets = { -15, -5, 5, 15 }
+	local tankCFrame, tankSize = tank:GetBoundingBox()
+	local mountCFrame = getFeaturedTankMountCFrame(featured)
+	local distance = math.max(19, (tankSize.Z * 0.5) + 13)
+	local position = (mountCFrame * CFrame.new(lateralOffsets[markerNumber], 4, -distance)).Position
+	return CFrame.lookAt(
+		position,
+		tankCFrame.Position + Vector3.new(0, math.min(5, tankSize.Y * 0.3), 0)
+	)
 end
 
 function AquariumGalleryPrototypeService.setFeaturedLabel(labelText)

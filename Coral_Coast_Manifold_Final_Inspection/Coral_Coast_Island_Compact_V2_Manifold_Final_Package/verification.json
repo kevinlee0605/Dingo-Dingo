@@ -1,0 +1,128 @@
+{
+  "asset": "Coral Coast Island Compact V2 Manifold Final",
+  "root_name": "CoralCoast_Island_ROOT",
+  "coordinate_system": "Y-up",
+  "root_scene_origin": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "root_pivot_center_bottom": true,
+  "dimensions_studs": {
+    "X": 240.0,
+    "Y": 75.5,
+    "Z": 224.0
+  },
+  "requested_horizontal_size_range_met": true,
+  "bounds": [
+    [
+      -120.0,
+      0.0,
+      -112.0
+    ],
+    [
+      120.0,
+      75.5,
+      112.0
+    ]
+  ],
+  "triangle_count": 9120,
+  "vertex_count": 18240,
+  "under_20000_triangles": true,
+  "object_count": 10,
+  "objects": [
+    "IslandGround",
+    "PortalPlacement_Left",
+    "PortalPlacement_Right",
+    "PalmTrees_Trunks",
+    "PalmTrees_Leaves",
+    "CoralFormations",
+    "Rocks",
+    "BushesAndPlants",
+    "Flowers",
+    "BeachDecorations"
+  ],
+  "water_geometry_count": 0,
+  "water_geometry_absent": true,
+  "portal_placement_left_center_xz": [
+    -100.0,
+    0.0
+  ],
+  "portal_placement_right_center_xz": [
+    100.0,
+    0.0
+  ],
+  "portal_areas_opposite_on_x_axis": true,
+  "portal_areas_same_center_z": true,
+  "portal_pad_dimensions": [
+    36.0,
+    4.0,
+    28.0
+  ],
+  "textures_embedded_in_glb": true,
+  "embedded_image_count": 3,
+  "applied_node_transforms": true,
+  "texture_resolution": [
+    2048,
+    2048
+  ],
+  "atlas_tiles": [
+    "SandTop",
+    "SandSide",
+    "Dirt",
+    "Stone",
+    "GrassTop",
+    "GrassSide",
+    "Path",
+    "Wood",
+    "Leaves",
+    "PalmTrunk",
+    "CoralOrange",
+    "CoralRed",
+    "CoralYellow",
+    "Rock",
+    "Bush",
+    "Flower",
+    "Starfish",
+    "Shell",
+    "PortalPad",
+    "Details"
+  ],
+  "sand_is_dominant": true,
+  "watertight_after_vertex_merge": {
+    "IslandGround": true,
+    "PortalPlacement_Left": true,
+    "PortalPlacement_Right": true,
+    "PalmTrees_Trunks": true,
+    "PalmTrees_Leaves": true,
+    "CoralFormations": true,
+    "Rocks": true,
+    "BushesAndPlants": true,
+    "Flowers": true,
+    "BeachDecorations": true
+  },
+  "all_meshes_watertight_after_merge": true,
+  "manifold_repairs": {
+    "IslandGround": "Removed one rear diagonal pinch voxel at grid (12,2,25) and retained a grass-topped supporting terrace",
+    "PalmTrees_Trunks": "Added one elbow voxel at every leaned-trunk transition",
+    "PalmTrees_Leaves": "Filled the lower central 3x3 support in each palm crown"
+  },
+  "preserved_dimensions": true,
+  "preserved_root_pivot": true,
+  "preserved_portal_coordinates": true,
+  "preserved_object_names": true,
+  "preserved_textures": true,
+  "reference_image": "image.png",
+  "no_portal_models_included": true,
+  "detailed_topology_validation_file": "manifold_repair_validation.json",
+  "all_meshes_have_zero_boundary_edges_after_merge": true,
+  "all_meshes_have_zero_nonmanifold_edges_after_merge": true,
+  "all_meshes_have_no_duplicate_faces_after_merge": true,
+  "all_meshes_have_no_degenerate_faces_after_merge": true,
+  "all_meshes_winding_consistent_after_merge": true,
+  "all_meshes_are_volumes_after_merge": true,
+  "source_dimensions_exactly_preserved": true,
+  "source_bounds_exactly_preserved": true,
+  "texture_files_binary_identical_to_source": true,
+  "unaffected_objects_geometry_preserved": true
+}

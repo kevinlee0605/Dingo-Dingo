@@ -1,0 +1,36 @@
+RIVERBEND ISLAND — 4096 TEXTURE / UV REVISION
+
+FILES
+- Riverbend_Island_TextureUV_4096.glb: Roblox-ready GLB with embedded 4096 px atlases
+- Riverbend_TextureAtlas_BaseColor_4096.png: final BaseColor atlas
+- Riverbend_TextureAtlas_Normal_4096.png: embedded normal atlas
+- Riverbend_TextureAtlas_MetallicRoughness_4096.png: embedded metallic-roughness atlas
+- comparison_report.json: exact source/output comparison
+- Riverbend_TextureUV_4096_SoftwarePreview.png: isometric texture/UV validation preview
+- Riverbend_TextureUV_4096_SoftwareTop.png: top-down texture/UV validation preview
+
+ROBLOX STUDIO IMPORT SETTINGS
+- Import Only as a Model: ON
+- Add to Workspace: ON
+- Anchored: ON
+- Merge Meshes: OFF
+- Scale Unit: Stud
+- Scale Factor: 1
+
+WHAT CHANGED
+- Replaced the 512 x 512 atlas with an original 4096 x 4096 voxel pixel-art atlas.
+- Rebuilt UVs using consistent world-space texel density instead of stretching one tile across large surfaces.
+- Added 32 px edge padding around every 512 px atlas cell.
+- Enabled nearest-neighbor texture sampling in the GLB.
+- Preserved all mesh names, geometry, dimensions, transforms, pivots, hierarchy, markers, and placement areas.
+
+DIMENSIONS
+- glTF Y-up extents: 354.227997 x 74.000000 x 308.000000
+- Equivalent Blender Z-up raw dimensions: 354.228 x 308.000 x 74.000 studs
+
+WATER NOTE
+The supplied GLB includes WaterPreview_River, WaterPreview_SourcePool, WaterPreview_Waterfall, and WaterPreview_WaterfallFoam. They were preserved unchanged because this texture-only revision explicitly prohibited adding or removing meshes. No new ocean or water-plane geometry was added.
+
+POST-IMPORT
+- Keep FishingSpotMarker_01 through FishingSpotMarker_07 and SpawnMarker non-collidable/invisible in the live game.
+- If the WaterPreview group is development-only in your Roblox project, keep its existing project-side visibility/collision behavior.

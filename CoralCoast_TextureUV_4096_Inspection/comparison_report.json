@@ -1,0 +1,220 @@
+{
+  "source_file": "Coral_Coast_Island_Compact_V2_Manifold_Final.glb",
+  "output_file": "Coral_Coast_Island_TextureUV_4096.glb",
+  "geometry_unchanged": true,
+  "geometry_sha256_source": "633cac405dfcd2052352ea7b5111d0f96288df6b6d9d29d432d0bd18e04bb6cd",
+  "geometry_sha256_output": "633cac405dfcd2052352ea7b5111d0f96288df6b6d9d29d432d0bd18e04bb6cd",
+  "positions_unchanged": true,
+  "indices_unchanged": true,
+  "dimensions_unchanged": true,
+  "source_dimensions_xyz": [
+    240.0,
+    75.5,
+    224.0
+  ],
+  "output_dimensions_xyz": [
+    240.0,
+    75.5,
+    224.0
+  ],
+  "expected_dimensions_studs": [
+    240.0,
+    75.5,
+    224.0
+  ],
+  "hierarchy_unchanged": true,
+  "node_and_mesh_names_unchanged": true,
+  "node_names": [
+    "CoralCoast_Island_ROOT",
+    "IslandGround",
+    "PortalPlacement_Left",
+    "PortalPlacement_Right",
+    "PalmTrees_Trunks",
+    "PalmTrees_Leaves",
+    "CoralFormations",
+    "Rocks",
+    "BushesAndPlants",
+    "Flowers",
+    "BeachDecorations"
+  ],
+  "mesh_names": [
+    "IslandGround",
+    "PortalPlacement_Left",
+    "PortalPlacement_Right",
+    "PalmTrees_Trunks",
+    "PalmTrees_Leaves",
+    "CoralFormations",
+    "Rocks",
+    "BushesAndPlants",
+    "Flowers",
+    "BeachDecorations"
+  ],
+  "transforms_and_pivots_unchanged": true,
+  "primitive_material_assignments_unchanged": true,
+  "mesh_count_unchanged": true,
+  "mesh_count": 10,
+  "portal_placement_locations_unchanged": true,
+  "portal_placement_left_center": [
+    -100.0,
+    34.0,
+    0.0
+  ],
+  "portal_placement_right_center": [
+    100.0,
+    34.0,
+    0.0
+  ],
+  "no_water_geometry_added": true,
+  "uv_coordinates_changed": true,
+  "source_uv_sha256": "b82f531719780b2cb1045f7e982aa0979f62de4b11d5c3d28029eba0c106910c",
+  "output_uv_sha256": "ef2a1d8fd15c2c9313af3e1b5a9e0966d449384f9bed425780401e13e58e9304",
+  "texture_resolution": [
+    4096,
+    4096
+  ],
+  "texture_files": [
+    "Coral_Coast_TextureAtlas_BaseColor_4096.png",
+    "Coral_Coast_TextureAtlas_Normal_4096.png",
+    "Coral_Coast_TextureAtlas_MetallicRoughness_4096.png"
+  ],
+  "textures_embedded_in_glb": true,
+  "nearest_neighbor_sampling_enabled": true,
+  "sampler": {
+    "name": "NearestNeighbor_Clamp_4096",
+    "magFilter": 9728,
+    "minFilter": 9728,
+    "wrapS": 33071,
+    "wrapT": 33071
+  },
+  "uv_atlas_cell_size_pixels": 768,
+  "uv_active_region_pixels": 640,
+  "uv_padding_pixels_each_side": 64,
+  "uv_padding_added": true,
+  "pixel_art_source_resolution_per_tile": [
+    128,
+    128
+  ],
+  "atlas_is_newly_authored_not_upscaled_from_source": true,
+  "natural_material_metallic_factor": 0.0,
+  "natural_material_roughness_factor": 1.0,
+  "only_uv_texture_sampler_and_texture_reference_data_changed": true,
+  "validation_summary": "Geometry, positions, indices, hierarchy, names, transforms, pivots, material assignments, dimensions, and portal locations are unchanged. UV bytes, embedded images, sampler state, and image buffer references were updated.",
+  "manifold_geometry_preserved": true,
+  "all_meshes_watertight_after_position_merge": true,
+  "all_meshes_winding_consistent_after_position_merge": true,
+  "all_meshes_closed_volume_after_position_merge": true,
+  "manifold_audit_output": {
+    "IslandGround": {
+      "vertices_after_position_merge": 1794,
+      "watertight": true,
+      "winding_consistent": true,
+      "is_volume": true,
+      "boundary_edge_count": 0,
+      "nonmanifold_edge_count": 0
+    },
+    "PortalPlacement_Left": {
+      "vertices_after_position_merge": 160,
+      "watertight": true,
+      "winding_consistent": true,
+      "is_volume": true,
+      "boundary_edge_count": 0,
+      "nonmanifold_edge_count": 0
+    },
+    "PortalPlacement_Right": {
+      "vertices_after_position_merge": 160,
+      "watertight": true,
+      "winding_consistent": true,
+      "is_volume": true,
+      "boundary_edge_count": 0,
+      "nonmanifold_edge_count": 0
+    },
+    "PalmTrees_Trunks": {
+      "vertices_after_position_merge": 376,
+      "watertight": true,
+      "winding_consistent": true,
+      "is_volume": true,
+      "boundary_edge_count": 0,
+      "nonmanifold_edge_count": 0
+    },
+    "PalmTrees_Leaves": {
+      "vertices_after_position_merge": 880,
+      "watertight": true,
+      "winding_consistent": true,
+      "is_volume": true,
+      "boundary_edge_count": 0,
+      "nonmanifold_edge_count": 0
+    },
+    "CoralFormations": {
+      "vertices_after_position_merge": 744,
+      "watertight": true,
+      "winding_consistent": true,
+      "is_volume": true,
+      "boundary_edge_count": 0,
+      "nonmanifold_edge_count": 0
+    },
+    "Rocks": {
+      "vertices_after_position_merge": 90,
+      "watertight": true,
+      "winding_consistent": true,
+      "is_volume": true,
+      "boundary_edge_count": 0,
+      "nonmanifold_edge_count": 0
+    },
+    "BushesAndPlants": {
+      "vertices_after_position_merge": 134,
+      "watertight": true,
+      "winding_consistent": true,
+      "is_volume": true,
+      "boundary_edge_count": 0,
+      "nonmanifold_edge_count": 0
+    },
+    "Flowers": {
+      "vertices_after_position_merge": 100,
+      "watertight": true,
+      "winding_consistent": true,
+      "is_volume": true,
+      "boundary_edge_count": 0,
+      "nonmanifold_edge_count": 0
+    },
+    "BeachDecorations": {
+      "vertices_after_position_merge": 268,
+      "watertight": true,
+      "winding_consistent": true,
+      "is_volume": true,
+      "boundary_edge_count": 0,
+      "nonmanifold_edge_count": 0
+    }
+  },
+  "embedded_texture_validation": [
+    {
+      "size": [
+        4096,
+        4096
+      ],
+      "mode": "RGB",
+      "mimeType": "image/png"
+    },
+    {
+      "size": [
+        4096,
+        4096
+      ],
+      "mode": "RGB",
+      "mimeType": "image/png"
+    },
+    {
+      "size": [
+        4096,
+        4096
+      ],
+      "mode": "RGB",
+      "mimeType": "image/png"
+    }
+  ],
+  "missing_textures_detected": false,
+  "black_materials_detected": false,
+  "transparent_seams_expected": false,
+  "alpha_mode": "OPAQUE",
+  "normal_geometry_preserved": true,
+  "validation_passed": true
+}

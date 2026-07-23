@@ -1,0 +1,34 @@
+CORAL COAST ISLAND — 4096 TEXTURE & UV UPGRADE
+
+FILES
+- Coral_Coast_Island_TextureUV_4096.glb
+- Coral_Coast_TextureAtlas_BaseColor_4096.png
+- Coral_Coast_TextureAtlas_Normal_4096.png
+- Coral_Coast_TextureAtlas_MetallicRoughness_4096.png
+- comparison_report.json
+
+ROBLOX STUDIO IMPORT
+1. Open File > Import 3D and select Coral_Coast_Island_TextureUV_4096.glb.
+2. Set Import Only as a Model = On.
+3. Set Add to Workspace = On.
+4. Set Anchored = On.
+5. Keep Merge Meshes = Off.
+6. Use Scale Unit = Stud and Scale Factor = 1.
+7. Do not rotate, resize, or reposition child meshes individually.
+
+VERIFIED PRESERVATION
+- Exact dimensions remain 240 × 75.5 × 224 studs.
+- All 10 mesh objects and every node name are unchanged.
+- Geometry positions and indices are byte-identical to the supplied GLB.
+- Node hierarchy, transforms, pivots, portal pads, and material assignments are unchanged.
+- PortalPlacement_Left remains centered at (-100, 34, 0).
+- PortalPlacement_Right remains centered at (100, 34, 0).
+- No water or ocean geometry is included.
+
+TEXTURE NOTES
+- The BaseColor, Normal, and Metallic-Roughness atlases are newly authored 4096 × 4096 PNGs.
+- They are embedded in the GLB and also supplied separately.
+- Pixel-art source tiles were authored at 128 × 128 logical pixels and enlarged only with nearest-neighbor sampling.
+- Each 768 × 768 atlas cell contains a 640 × 640 active tile with 64 pixels of edge-dilated padding on every side.
+- The embedded sampler requests nearest-neighbor filtering and clamp-to-edge wrapping.
+- Natural materials remain zero-metallic and high-roughness.

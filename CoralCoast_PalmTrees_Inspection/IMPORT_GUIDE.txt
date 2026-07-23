@@ -1,0 +1,30 @@
+CORAL COAST ISLAND — VOXEL PALM TREE REVISION
+
+Main file:
+- Coral_Coast_Island_PalmTrees.glb
+
+What changed:
+- Only PalmTrees_Trunks and PalmTrees_Leaves were replaced.
+- All 11 existing tree placements were preserved.
+- New trees use tall segmented voxel trunks and broad, stepped palm fronds extending in four long directions.
+- The source 4096×4096 BaseColor, Normal, and Metallic-Roughness atlases remain embedded and are also included separately.
+
+What did not change:
+- Island terrain, coastline, dimensions, root, transforms, hierarchy, portal pads, coral, paths, rocks, bushes, flowers, beach decorations, and water-free setup.
+- PortalPlacement_Left remains at (-100, 34, 0).
+- PortalPlacement_Right remains at (100, 34, 0).
+
+Roblox Studio import settings:
+- Import Only as a Model: On
+- Add to Workspace: On
+- Anchored: On
+- Merge Meshes: Off
+- Scale Unit: Stud
+- Scale Factor: 1
+
+Recommended collision:
+- IslandGround and portal pads: CanCollide = true
+- PalmTrees_Trunks: optional simple collision
+- PalmTrees_Leaves and small decorations: CanCollide = false
+
+The model is already Y-up and should not be rotated after import.

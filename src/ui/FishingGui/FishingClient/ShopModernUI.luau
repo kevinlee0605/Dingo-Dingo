@@ -1634,6 +1634,59 @@ local function renderPasses(context)
 			order += 1
 		end
 	end
+
+	createSummaryRow(
+		context,
+		"Aquarium Themes",
+		"Unlock aquarium themes permanently with Sea Stars.",
+		order
+	)
+	order += 1
+
+	local themeUnlocks = context.state
+		and context.state.SeaStarUnlocks
+		or {}
+	local designer = context.MonetizationConfig.AquariumDesigner or {}
+	for _, themeId in ipairs(designer.themeOrder or {}) do
+		local themeKey = themeId
+		local theme = designer.themes and designer.themes[themeKey]
+		if theme and theme.free ~= true and theme.purchasable == true then
+			local owned = themeUnlocks[themeKey] == true
+			local action
+			if owned then
+				action = {
+					text = "Owned",
+					type = "BlueButton",
+					enabled = false,
+				}
+			else
+				action = {
+					text = "Buy",
+					type = "GreenButton",
+					enabled = true,
+						onClick = function()
+						context.fireShopAction(
+							"PurchaseAquariumTheme",
+							"AquariumTheme",
+							themeKey
+						)
+					end,
+				}
+			end
+
+			createProductCard(context, {
+				key = themeKey .. "AquariumTheme",
+				iconImage = SEA_STAR_ICON,
+				iconSize = 132,
+				layoutOrder = order,
+				title = theme.displayName or theme.name or themeKey,
+				description = "Permanent aquarium theme unlock.",
+				priceText = tostring(theme.seaStarPrice or 0) .. " Sea Stars",
+				action = action,
+			})
+			order += 1
+		end
+	end
 end
 
 local function renderItems(context)

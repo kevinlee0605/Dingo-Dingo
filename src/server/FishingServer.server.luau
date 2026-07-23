@@ -6,8 +6,10 @@ local Services = {
 	StarterPack = game:GetService("StarterPack"),
 	CollectionService = game:GetService("CollectionService"),
 	RunService = game:GetService("RunService"),
+	TweenService = game:GetService("TweenService"),
 }
 Services.AquariumDirectory = require(script.Parent:WaitForChild("AquariumDirectoryService"))
+Services.AquariumFishAnimator = require(script.Parent:WaitForChild("AquariumFishAnimator"))
 
 local AQUARIUM_DECOR_TEMPLATE_FOLDER_NAME = "AquariumDecorationTemplates"
 local AQUARIUM_DECOR_TEMPLATE_LARGEST_AXIS = {
@@ -135,6 +137,7 @@ playerData.SaveLocks = {}
 playerData.SaveScheduled = {}
 playerData.SaveRevision = {}
 playerData.AquariumLikeCooldowns = {}
+playerData.AquariumLikeLocks = {}
 
 function playerData.copyForSave(value)
 	if type(value) ~= "table" then
@@ -1666,7 +1669,14 @@ local function sendStateToAll()
 end
 
 Services.AquariumDirectory.configure({
-	onChanged = sendStateToAll,
+	onChanged = function()
+		sendStateToAll()
+		-- Directory changes can alter the authoritative top-five pool or advance
+		-- its rotation. Keep the physical centerpiece and Viewer data in sync.
+		if playerData.refreshFeaturedAquarium then
+			task.defer(playerData.refreshFeaturedAquarium)
+		end
+	end,
 })
 Services.AquariumDirectory.start()
 
@@ -1793,7 +1803,20 @@ local function sanitizeLoadedData(loaded)
 	data.Aquarium.Level = math.clamp(tonumber(data.Aquarium.Level) or 1, 1, 4)
 	data.Aquarium.Fish = type(data.Aquarium.Fish) == "table" and data.Aquarium.Fish or {}
 	playerData.normalizeAquariumLikes(data.Aquarium)
-	data.AquariumLikedTargets = type(loaded.AquariumLikedTargets) == "table" and loaded.AquariumLikedTargets or {}
+	data.AquariumLikedTargets = {}
+	if type(loaded.AquariumLikedTargets) == "table" then
+		for rawTargetUserId, liked in pairs(loaded.AquariumLikedTargets) do
+			local targetUserId = tonumber(rawTargetUserId)
+			if liked == true
+				and targetUserId
+				and targetUserId == targetUserId
+				and targetUserId > 0
+				and targetUserId < math.huge
+			then
+				data.AquariumLikedTargets[tostring(math.floor(targetUserId))] = true
+			end
+		end
+	end
 	data.AquariumDecorations = type(loaded.AquariumDecorations) == "table" and loaded.AquariumDecorations or data.AquariumDecorations
 	data.AquariumDesign = Monetization.normalizeAquariumDesign(loaded.AquariumDesign)
 	data.AquariumPreviewDesign = nil
@@ -1826,16 +1849,29 @@ local function sanitizeLoadedData(loaded)
 end
 
 local function loadData(player)
-	local success, loaded = pcall(function()
-		return saveStore:GetAsync(tostring(player.UserId))
-	end)
-
-	if success then
-		return sanitizeLoadedData(loaded)
+	local lastError
+	for attempt = 1, 3 do
+		local success, loaded = pcall(function()
+			return saveStore:GetAsync(tostring(player.UserId))
+		end)
+		if success then
+			return sanitizeLoadedData(loaded)
+		end
+		lastError = loaded
+		warn("Fishy Fish save load attempt failed for", player.UserId, attempt, loaded)
+		if attempt < 3 then
+			task.wait(attempt)
+		end
 	end
 
-	warn("Fishy Fish save load failed for", player.UserId, loaded)
-	return makeDefaultData()
+	if Services.RunService:IsStudio() then
+		warn("Fishy Fish save load unavailable in Studio; using isolated Studio defaults for", player.UserId, lastError)
+		return makeDefaultData()
+	end
+
+	warn("Fishy Fish save load failed; refusing to overwrite stored data for", player.UserId, lastError)
+	player:Kick("Your fishing data could not be loaded safely. Please rejoin in a moment.")
+	return nil
 end
 
 local function applyOwnerGrants(player, data)
@@ -4392,63 +4428,12 @@ end
 
 local function getAquariumFishSwimLane(origin, index, dimensions)
 	dimensions = dimensions or getAquariumDimensions(1)
-	local lane = (index - 1) % 24
-	local layer = lane % 4
-
-	return {
-		center = origin + Vector3.new(0, 3.6 + (layer * math.max(1.1, dimensions.tankHeight * 0.11)), 0),
-		xRadius = math.max(5.5, (dimensions.tankWidth / 2) - 4 - (layer * 0.35)),
-		zRadius = math.max(2.4, (dimensions.tankDepth / 2) - 2.4 - ((layer % 2) * 0.25)),
-		heightDrift = math.max(0.24, dimensions.tankHeight * 0.035),
-	}
+	return Services.AquariumFishAnimator.getSwimLane(origin, index, dimensions)
 end
 
 local function animateAquariumFish(part, origin, index, seed, dimensions)
-	local random = Random.new(seed)
-	local lane = getAquariumFishSwimLane(origin, index, dimensions)
-	local phase = random:NextNumber(0, math.pi * 2)
-	local direction = random:NextInteger(0, 1) == 0 and -1 or 1
-	local angularSpeed = random:NextNumber(0.5, 0.75) * direction
-	local swaySpeed = random:NextNumber(0.8, 1.3)
-	local heightPhase = random:NextNumber(0, math.pi * 2)
-	local sidePhase = random:NextNumber(0, math.pi * 2)
-	local sideDrift = random:NextNumber(0.22, 0.46)
-
-	task.spawn(function()
-		local startedAt = os.clock()
-		local lastPosition = part.Position
-		local lookVector = Vector3.new(direction, 0, 0)
-		local lastTick = os.clock()
-
-		while part.Parent do
-			local now = os.clock()
-			local deltaTime = math.clamp(now - lastTick, 0.016, 0.12)
-			lastTick = now
-
-			local elapsed = now - startedAt
-			local currentPhase = phase + (elapsed * angularSpeed)
-			local position = lane.center + Vector3.new(
-				math.cos(currentPhase) * lane.xRadius,
-				math.sin((elapsed * swaySpeed) + heightPhase) * lane.heightDrift,
-				(math.sin(currentPhase) * lane.zRadius) + (math.sin((elapsed * 0.7) + sidePhase) * sideDrift)
-			)
-
-			local moveDirection = position - lastPosition
-			if moveDirection.Magnitude > 0.01 then
-				local turnAlpha = math.clamp(deltaTime * 2.8, 0, 1)
-				lookVector = lookVector:Lerp(moveDirection.Unit, turnAlpha)
-				if lookVector.Magnitude < 0.01 then
-					lookVector = moveDirection.Unit
-				else
-					lookVector = lookVector.Unit
-				end
-			end
-
-			part.CFrame = CFrame.lookAt(position, position + lookVector)
-			lastPosition = position
-			task.wait(0.05)
-		end
-	end)
+	dimensions = dimensions or getAquariumDimensions(1)
+	return Services.AquariumFishAnimator.start(part, origin, index, seed, dimensions)
 end
 
 -- Maximum model dimension in studs for each storage tier. Aquarium fish are
@@ -4784,6 +4769,7 @@ local function makeAquariumFish(parent, fish, origin, index, ownerUserId, dimens
 	end
 
 	scaleAquariumFishToStorageSize(model, fish)
+	model.PrimaryPart = root
 
 	local light = Instance.new("PointLight")
 	light.Brightness = 0.18
@@ -4791,18 +4777,32 @@ local function makeAquariumFish(parent, fish, origin, index, ownerUserId, dimens
 	light.Color = rarityGlow
 	light.Parent = root
 
-	model.PrimaryPart = root
-	animateAquariumFish(root, origin, index, ownerUserId + (index * 997), dimensions)
+	local animationSeed = ownerUserId + (index * 997)
+	root:SetAttribute("AquariumFishIndex", index)
+	root:SetAttribute("AquariumAnimationSeed", animationSeed)
+	animateAquariumFish(root, origin, index, animationSeed, dimensions)
 	return model
 end
 
-local function buildAquariumSlotModel(slot, ownerPlayer, ownerData)
-	local folder = getAquariumsFolder()
+local function buildAquariumSlotModel(slot, ownerPlayer, ownerData, buildOffscreen)
+	local folder
+	if buildOffscreen then
+		folder = Services.ServerStorage:FindFirstChild("AquariumRuntimeSources")
+		if not folder then
+			folder = Instance.new("Folder")
+			folder.Name = "AquariumRuntimeSources"
+			folder.Parent = Services.ServerStorage
+		end
+	else
+		folder = getAquariumsFolder()
+	end
 	if not folder then
 		return
 	end
 
-	ensureAquariumSharedLand(folder, slot)
+	if not buildOffscreen then
+		ensureAquariumSharedLand(folder, slot)
+	end
 
 	local modelName = getAquariumSlotName(slot)
 	local existing = folder:FindFirstChild(modelName)
@@ -4810,7 +4810,7 @@ local function buildAquariumSlotModel(slot, ownerPlayer, ownerData)
 		existing:Destroy()
 	end
 
-	local origin = getAquariumSlotOrigin(slot)
+	local origin = buildOffscreen and Vector3.zero or getAquariumSlotOrigin(slot)
 	local aquariumLevel = ownerData and ownerData.Aquarium and ownerData.Aquarium.Level or 1
 	local dimensions = getAquariumDimensions(aquariumLevel)
 	local aquariumDesign = ownerData and Monetization.getActiveAquariumDesign(ownerData) or Monetization.normalizeAquariumDesign(nil)
@@ -4824,7 +4824,13 @@ local function buildAquariumSlotModel(slot, ownerPlayer, ownerData)
 	local lightColor = (lightingOption and lightingOption.color) or Color3.fromRGB(255, 248, 216)
 	local model = Instance.new("Model")
 	model.Name = modelName
+	model:SetAttribute("GalleryRuntimeSource", buildOffscreen == true)
 	model:SetAttribute("SlotNumber", slot)
+	model:SetAttribute("AquariumLevel", aquariumLevel)
+	model:SetAttribute("AquariumTankWidth", dimensions.tankWidth)
+	model:SetAttribute("AquariumTankHeight", dimensions.tankHeight)
+	model:SetAttribute("AquariumTankDepth", dimensions.tankDepth)
+	model:SetAttribute("AquariumFishOriginYOffsetFromBase", 2)
 	model:SetAttribute("BackdropEnabled", aquariumDesign.backdropEnabled ~= false)
 	if ownerPlayer then
 		model:SetAttribute("OccupantUserId", ownerPlayer.UserId)
@@ -5123,15 +5129,23 @@ function playerData.showAquariumSnapshotInCenter(snapshot, labelPrefix)
 		AquariumDecorations = {},
 		BackpackSize = GameConfig.BASE_BACKPACK_SIZE,
 	}
-	local model = buildAquariumSlotModel(1, identity, snapshotData)
+	local model = buildAquariumSlotModel(1, identity, snapshotData, true)
 	if not model then
 		return false
 	end
 
-	pcall(function()
-		require(script.Parent:WaitForChild("AquariumGalleryPrototypeService"))
-			.setFeaturedLabel(string.upper(tostring(labelPrefix or "FEATURED")) .. " • " .. displayName)
+	local displayed, displayError = pcall(function()
+		return require(script.Parent:WaitForChild("AquariumGalleryPrototypeService"))
+			.displayFeaturedAquarium(
+				model,
+				userId,
+				string.upper(tostring(labelPrefix or "FEATURED")) .. " • " .. displayName
+			)
 	end)
+	if not displayed or displayError ~= true then
+		warn("Aquarium gallery featured display failed", displayError)
+		return false
+	end
 	playerData.FeaturedCenterUserId = userId
 	playerData.FeaturedCenterUpdatedAt = tonumber(snapshot.UpdatedAt) or 0
 	return true
@@ -5172,7 +5186,7 @@ local function refreshPlayerAquarium(player)
 
 	ensurePrebuiltAquariumSlots()
 	local slot = getPlayerAquariumSlot(player)
-	local model = buildAquariumSlotModel(slot, player, data)
+	local model = buildAquariumSlotModel(slot, player, data, true)
 	if model then
 		local galleryUpdated, galleryError = pcall(function()
 			require(script.Parent:WaitForChild("AquariumGalleryPrototypeService"))
@@ -7915,9 +7929,17 @@ function Travel.teleportPlayerToAquariumUserId(player, ownerUserId)
 		return false
 	end
 
-	local position = AquariumLayout.getViewerSpawnPosition(player)
-	local lookAt = getAquariumSlotOrigin(1) + Vector3.new(0, 5, 0)
-	if not AquariumLayout.safePivotPlayer(player, CFrame.lookAt(position, lookAt)) then
+	local destination
+	pcall(function()
+		destination = require(script.Parent:WaitForChild("AquariumGalleryPrototypeService"))
+			.getFeaturedViewCFrame((player.UserId % 4) + 1)
+	end)
+	if not destination then
+		local position = AquariumLayout.getViewerSpawnPosition(player)
+		local lookAt = getAquariumSlotOrigin(1) + Vector3.new(0, 5, 0)
+		destination = CFrame.lookAt(position, lookAt)
+	end
+	if not AquariumLayout.safePivotPlayer(player, destination) then
 		return false
 	end
 
@@ -8039,7 +8061,11 @@ function RuntimeConfig.setupPlayer(player)
 		return
 	end
 
-	playerData[player] = loadData(player)
+	local loadedData = loadData(player)
+	if not loadedData or not player.Parent then
+		return
+	end
+	playerData[player] = loadedData
 	Services.AquariumDirectory.markOnline(player)
 	local appliedOwnerGrant = applyOwnerGrants(player, playerData[player])
 	Monetization.syncGamePassOwnership(player, playerData[player])
@@ -9076,12 +9102,20 @@ Remote.AquariumAction.OnServerEvent:Connect(function(player, action, fishSerial,
 	end
 
 	if action == "ToggleLike" then
-		local targetUserId = math.floor(tonumber(fishSerial) or 0)
-		if targetUserId <= 0 then
+		local numericTargetUserId = tonumber(fishSerial)
+		if not numericTargetUserId
+			or numericTargetUserId ~= numericTargetUserId
+			or numericTargetUserId <= 0
+			or numericTargetUserId == math.huge
+		then
 			return
 		end
+		local targetUserId = math.floor(numericTargetUserId)
 		if targetUserId == player.UserId then
 			notify(player, "You cannot like your own aquarium.")
+			return
+		end
+		if playerData.AquariumLikeLocks[player] then
 			return
 		end
 
@@ -9094,11 +9128,19 @@ Remote.AquariumAction.OnServerEvent:Connect(function(player, action, fishSerial,
 		data.AquariumLikedTargets = type(data.AquariumLikedTargets) == "table"
 			and data.AquariumLikedTargets
 			or {}
-		local toggled, isNowLiked, newCount, toggleWarning = Services.AquariumDirectory.toggleLike(
+		playerData.AquariumLikeLocks[player] = true
+		local callSucceeded, toggled, isNowLiked, newCount, toggleWarning = pcall(
+			Services.AquariumDirectory.toggleLike,
 			player,
 			targetUserId,
 			data.AquariumLikedTargets
 		)
+		playerData.AquariumLikeLocks[player] = nil
+		if not callSucceeded then
+			warn("Aquarium like request failed for", player.UserId, toggled)
+			notify(player, "That like could not be saved. Please try again.")
+			return
+		end
 		if not toggled then
 			notify(player, toggleWarning or "That aquarium is not available.")
 			return
@@ -9422,7 +9464,7 @@ Services.Players.PlayerRemoving:Connect(function(player)
 		local folder = getAquariumsFolder()
 		local aquarium = folder and folder:FindFirstChild(getAquariumSlotName(slot))
 		if aquarium and aquarium:GetAttribute("OccupantUserId") == player.UserId then
-			buildAquariumSlotModel(slot, nil, nil)
+			aquarium:Destroy()
 		end
 	end
 
@@ -9431,6 +9473,7 @@ Services.Players.PlayerRemoving:Connect(function(player)
 	playerData.SaveScheduled[player] = nil
 	playerData.SaveRevision[player] = nil
 	playerData.AquariumLikeCooldowns[player] = nil
+	playerData.AquariumLikeLocks[player] = nil
 	pendingFishing[player] = nil
 	RodPurchase.Locks[player] = nil
 	IslandPurchase.Locks[player] = nil

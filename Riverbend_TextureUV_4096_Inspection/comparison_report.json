@@ -1,0 +1,84 @@
+{
+  "source_file": "Riverbend_Island_Voxel.glb",
+  "output_file": "Riverbend_Island_TextureUV_4096.glb",
+  "source_sha256": "5f0315a24475ba1d6d6b0e4acbfdd0540e35a0edf1712ef6ddfd0345423cf122",
+  "output_sha256": "648cb56c16d03b1c4eb89471fb7b95d2c8834ff05f2d852ab46d44e06cb84f76",
+  "geometry_unchanged": true,
+  "geometry_digest_source": "9508e17aafda67e8492cb34a8181cef07e6b17046a5c3971e9320d52dc9eea38",
+  "geometry_digest_output": "9508e17aafda67e8492cb34a8181cef07e6b17046a5c3971e9320d52dc9eea38",
+  "node_hierarchy_unchanged": true,
+  "mesh_count_source": 129,
+  "mesh_count_output": 129,
+  "mesh_names_unchanged": true,
+  "node_count_source": 142,
+  "node_count_output": 142,
+  "source_dimensions_glTF_XYZ": [
+    354.2279968261719,
+    74.0,
+    308.0
+  ],
+  "output_dimensions_glTF_XYZ": [
+    354.2279968261719,
+    74.0,
+    308.0
+  ],
+  "dimensions_unchanged": true,
+  "source_bounds": [
+    [
+      -177.11399841308594,
+      0.0,
+      -149.0
+    ],
+    [
+      177.11399841308594,
+      74.0,
+      159.0
+    ]
+  ],
+  "output_bounds": [
+    [
+      -177.11399841308594,
+      0.0,
+      -149.0
+    ],
+    [
+      177.11399841308594,
+      74.0,
+      159.0
+    ]
+  ],
+  "source_uv_digest": "ffab98919a06efa433e73a8381815cd990a9915280515aebf17a6889d882a2dd",
+  "output_uv_digest": "bd898dfda1cf0784d1a86cd5905efe6586ad63b640ac63cc43df5c52ecbf11cc",
+  "uv_mapping_changed": true,
+  "atlas_resolution_source": [
+    512,
+    512
+  ],
+  "atlas_resolution_output": [
+    4096,
+    4096
+  ],
+  "nearest_neighbor_sampler": true,
+  "texture_padding_pixels_per_tile": 32,
+  "texture_grid": [
+    8,
+    8
+  ],
+  "unique_uv_accessor_per_mesh": true,
+  "materials_count_source": 4,
+  "materials_count_output": 4,
+  "material_names_unchanged": true,
+  "embedded_png_images": 6,
+  "water_preview_meshes_from_supplied_file_preserved_unchanged": [
+    "WaterPreview_River",
+    "WaterPreview_SourcePool",
+    "WaterPreview_Waterfall",
+    "WaterPreview_WaterfallFoam"
+  ],
+  "new_ocean_or_water_plane_meshes_added": false,
+  "notes": [
+    "Only UV accessors, embedded textures, texture sampler settings, and normal-map scale were changed.",
+    "All supplied mesh geometry, node names, transforms, pivots, marker positions, and hierarchy were preserved byte-for-byte at the decoded geometry level.",
+    "The supplied file contains four WaterPreview meshes. They were preserved because the request also prohibited removing meshes; no new ocean or water-plane geometry was added."
+  ]
+}

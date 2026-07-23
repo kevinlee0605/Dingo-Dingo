@@ -209,12 +209,25 @@ function AquariumViewerModernUI.create(context)
 		local query = string.lower(searchBox.Text or "")
 
 		for _, visitor in ipairs(source) do
-			local name = string.lower(visitor.DisplayName or visitor.Name or "")
-			local matchesSearch = query == "" or string.find(name, query, 1, true) ~= nil
+			local displayName = string.lower(visitor.DisplayName or "")
+			local username = string.lower(visitor.Name or "")
+			local matchesSearch = query == ""
+				or string.find(displayName, query, 1, true) ~= nil
+				or string.find(username, query, 1, true) ~= nil
 			local matchesFilter = true
-			if controller.filter == "Friends" and not visitor.IsSelf then
-				local ok, isFriend = pcall(context.player.IsFriendsWith, context.player, visitor.UserId)
-				matchesFilter = ok and isFriend == true
+			if query ~= "" then
+				-- Searching is a directory-wide action, not a filter within whichever
+				-- category button happened to be selected previously.
+				matchesFilter = true
+			elseif controller.filter == "Featured" then
+				matchesFilter = visitor.Featured == true
+			elseif controller.filter == "Friends" then
+				if visitor.IsSelf then
+					matchesFilter = false
+				else
+					local ok, isFriend = pcall(context.player.IsFriendsWith, context.player, visitor.UserId)
+					matchesFilter = ok and isFriend == true
+				end
 			elseif controller.filter == "Random" then
 				matchesFilter = not visitor.IsSelf
 			end
@@ -235,10 +248,12 @@ function AquariumViewerModernUI.create(context)
 			end)
 		elseif controller.filter == "Featured" then
 			table.sort(result, function(a, b)
-				if a.IsSelf ~= b.IsSelf then
-					return a.IsSelf
+				local leftOrder = tonumber(a.FeaturedOrder) or math.huge
+				local rightOrder = tonumber(b.FeaturedOrder) or math.huge
+				if leftOrder ~= rightOrder then
+					return leftOrder < rightOrder
 				end
-				return (tonumber(a.AquariumLevel) or 1) > (tonumber(b.AquariumLevel) or 1)
+				return (tonumber(a.FeaturedRank) or math.huge) < (tonumber(b.FeaturedRank) or math.huge)
 			end)
 		elseif controller.filter == "Random" then
 			for index = #result, 2, -1 do
@@ -482,7 +497,7 @@ function AquariumViewerModernUI.create(context)
 			end
 		end
 		if #choices == 0 then
-			context.showToast("No other aquariums are online right now.")
+			context.showToast("No other aquariums are available yet.")
 			return
 		end
 		visitVisitor(choices[math.random(1, #choices)])

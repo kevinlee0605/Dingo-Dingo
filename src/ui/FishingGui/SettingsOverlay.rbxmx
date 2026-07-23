@@ -2043,7 +2043,7 @@
 							<YS>0</YS>
 							<YO>110</YO>
 						</UDim2>
-						<string name="Text">My Aquarium</string>
+						<string name="Text">Aquarium</string>
 						<Color3 name="TextColor3">
 							<R>1.0</R>
 							<G>1.0</G>

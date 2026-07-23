@@ -1,0 +1,7 @@
+[ERROR rojo] Could not start the Rojo server on 127.0.0.1:34872.
+        The address may already be in use or reserved. Another Rojo server might already be running, or another program may be using that port.
+        You can pick a different port with the --port option.
+        
+        Caused by:
+            0: error creating server listener: Only one usage of each socket address (protocol/network address/port) is normally permitted. (os error 10048)
+            1: Only one usage of each socket address (protocol/network address/port) is normally permitted. (os error 10048)

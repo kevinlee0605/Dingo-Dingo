@@ -14927,7 +14927,7 @@ function SettingsPanelHud.create(deps, refs)
 	makeLabel(
 		aquariumRow,
 		"AquariumTitle",
-		"My Aquarium",
+		"Aquarium",
 		UDim2.fromOffset(220, 55),
 		UDim2.fromOffset(830, 110),
 		46,

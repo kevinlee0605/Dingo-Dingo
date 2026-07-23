@@ -1791,7 +1791,7 @@ def make_settings_overlay() -> Node:
             ),
             settings_label(
                 "AquariumTitle",
-                "My Aquarium",
+                "Aquarium",
                 udim2(0, 220, 0, 55),
                 udim2(0, 830, 0, 110),
                 46,

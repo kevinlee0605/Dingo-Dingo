@@ -1,0 +1,357 @@
+{
+  "source_asset": "Coral_Coast_Island_Compact_V2.glb",
+  "repaired_asset": "Coral_Coast_Island_Compact_V2_Manifold_Final.glb",
+  "source_bounds": [
+    [
+      -120.0,
+      0.0,
+      -112.0
+    ],
+    [
+      120.0,
+      75.5,
+      112.0
+    ]
+  ],
+  "repaired_bounds": [
+    [
+      -120.0,
+      0.0,
+      -112.0
+    ],
+    [
+      120.0,
+      75.5,
+      112.0
+    ]
+  ],
+  "bounds_exactly_preserved": true,
+  "source_dimensions": [
+    240.0,
+    75.5,
+    224.0
+  ],
+  "repaired_dimensions": [
+    240.0,
+    75.5,
+    224.0
+  ],
+  "dimensions_exactly_preserved": true,
+  "root_node_present": true,
+  "object_names_exactly_preserved": true,
+  "portal_pad_coordinates_preserved": true,
+  "portal_pad_geometry_preserved": {
+    "PortalPlacement_Left": true,
+    "PortalPlacement_Right": true
+  },
+  "unaffected_objects_geometry_preserved": {
+    "PortalPlacement_Left": true,
+    "PortalPlacement_Right": true,
+    "CoralFormations": true,
+    "Rocks": true,
+    "BushesAndPlants": true,
+    "Flowers": true,
+    "BeachDecorations": true
+  },
+  "target_mesh_bounds_preserved": {
+    "IslandGround": true,
+    "PalmTrees_Trunks": true,
+    "PalmTrees_Leaves": true
+  },
+  "texture_files_binary_identical": {
+    "CoralCoast_Compact_BaseColor_2048.png": true,
+    "CoralCoast_Compact_MetallicRoughness_2048.png": true,
+    "CoralCoast_Compact_Normal_2048.png": true,
+    "CoralCoast_Compact_Roughness_2048.png": true
+  },
+  "texture_sha256": {
+    "CoralCoast_Compact_BaseColor_2048.png": {
+      "source_sha256": "e2209c9aebaad82843006129cd2fff52b18e9884e6040d9cfadd673765f5dd6a",
+      "repaired_sha256": "e2209c9aebaad82843006129cd2fff52b18e9884e6040d9cfadd673765f5dd6a"
+    },
+    "CoralCoast_Compact_MetallicRoughness_2048.png": {
+      "source_sha256": "d9421b51eaaa577c278718d7fdd28827833676ca4a67250c2d979c3750c1050f",
+      "repaired_sha256": "d9421b51eaaa577c278718d7fdd28827833676ca4a67250c2d979c3750c1050f"
+    },
+    "CoralCoast_Compact_Normal_2048.png": {
+      "source_sha256": "1bb83baf3724212c15e9fbc34f8caf15ae06d6a3d601454a41aa6b5716fce5e4",
+      "repaired_sha256": "1bb83baf3724212c15e9fbc34f8caf15ae06d6a3d601454a41aa6b5716fce5e4"
+    },
+    "CoralCoast_Compact_Roughness_2048.png": {
+      "source_sha256": "7f704bd79e213e3e2be3896453c5e95dc10554d9cbb40c5bc2c314f869d64dee",
+      "repaired_sha256": "7f704bd79e213e3e2be3896453c5e95dc10554d9cbb40c5bc2c314f869d64dee"
+    }
+  },
+  "mesh_checks": {
+    "IslandGround": {
+      "exported_vertices": 7176,
+      "exported_triangles": 3588,
+      "vertices_after_position_merge": 1794,
+      "watertight_after_vertex_merge": true,
+      "winding_consistent_after_vertex_merge": true,
+      "is_volume_after_vertex_merge": true,
+      "boundary_edge_count_after_merge": 0,
+      "nonmanifold_edge_count_after_merge": 0,
+      "all_edges_have_exactly_two_incident_faces": true,
+      "duplicate_face_groups_after_merge": 0,
+      "degenerate_face_count_after_merge": 0,
+      "connected_components_after_merge": 1,
+      "bounds": [
+        [
+          -120.0,
+          0.0,
+          -112.0
+        ],
+        [
+          120.0,
+          48.0,
+          112.0
+        ]
+      ]
+    },
+    "PortalPlacement_Left": {
+      "exported_vertices": 632,
+      "exported_triangles": 316,
+      "vertices_after_position_merge": 160,
+      "watertight_after_vertex_merge": true,
+      "winding_consistent_after_vertex_merge": true,
+      "is_volume_after_vertex_merge": true,
+      "boundary_edge_count_after_merge": 0,
+      "nonmanifold_edge_count_after_merge": 0,
+      "all_edges_have_exactly_two_incident_faces": true,
+      "duplicate_face_groups_after_merge": 0,
+      "degenerate_face_count_after_merge": 0,
+      "connected_components_after_merge": 1,
+      "bounds": [
+        [
+          -118.0,
+          32.0,
+          -14.0
+        ],
+        [
+          -82.0,
+          36.0,
+          14.0
+        ]
+      ]
+    },
+    "PortalPlacement_Right": {
+      "exported_vertices": 632,
+      "exported_triangles": 316,
+      "vertices_after_position_merge": 160,
+      "watertight_after_vertex_merge": true,
+      "winding_consistent_after_vertex_merge": true,
+      "is_volume_after_vertex_merge": true,
+      "boundary_edge_count_after_merge": 0,
+      "nonmanifold_edge_count_after_merge": 0,
+      "all_edges_have_exactly_two_incident_faces": true,
+      "duplicate_face_groups_after_merge": 0,
+      "degenerate_face_count_after_merge": 0,
+      "connected_components_after_merge": 1,
+      "bounds": [
+        [
+          82.0,
+          32.0,
+          -14.0
+        ],
+        [
+          118.0,
+          36.0,
+          14.0
+        ]
+      ]
+    },
+    "PalmTrees_Trunks": {
+      "exported_vertices": 1416,
+      "exported_triangles": 708,
+      "vertices_after_position_merge": 376,
+      "watertight_after_vertex_merge": true,
+      "winding_consistent_after_vertex_merge": true,
+      "is_volume_after_vertex_merge": true,
+      "boundary_edge_count_after_merge": 0,
+      "nonmanifold_edge_count_after_merge": 0,
+      "all_edges_have_exactly_two_incident_faces": true,
+      "duplicate_face_groups_after_merge": 0,
+      "degenerate_face_count_after_merge": 0,
+      "connected_components_after_merge": 11,
+      "bounds": [
+        [
+          -76.0,
+          23.5,
+          -76.0
+        ],
+        [
+          78.0,
+          63.5,
+          92.0
+        ]
+      ]
+    },
+    "PalmTrees_Leaves": {
+      "exported_vertices": 3432,
+      "exported_triangles": 1716,
+      "vertices_after_position_merge": 880,
+      "watertight_after_vertex_merge": true,
+      "winding_consistent_after_vertex_merge": true,
+      "is_volume_after_vertex_merge": true,
+      "boundary_edge_count_after_merge": 0,
+      "nonmanifold_edge_count_after_merge": 0,
+      "all_edges_have_exactly_two_incident_faces": true,
+      "duplicate_face_groups_after_merge": 0,
+      "degenerate_face_count_after_merge": 0,
+      "connected_components_after_merge": 11,
+      "bounds": [
+        [
+          -84.0,
+          51.5,
+          -84.0
+        ],
+        [
+          86.0,
+          75.5,
+          100.0
+        ]
+      ]
+    },
+    "CoralFormations": {
+      "exported_vertices": 2864,
+      "exported_triangles": 1432,
+      "vertices_after_position_merge": 744,
+      "watertight_after_vertex_merge": true,
+      "winding_consistent_after_vertex_merge": true,
+      "is_volume_after_vertex_merge": true,
+      "boundary_edge_count_after_merge": 0,
+      "nonmanifold_edge_count_after_merge": 0,
+      "all_edges_have_exactly_two_incident_faces": true,
+      "duplicate_face_groups_after_merge": 0,
+      "degenerate_face_count_after_merge": 0,
+      "connected_components_after_merge": 14,
+      "bounds": [
+        [
+          -92.0,
+          15.5,
+          -94.0
+        ],
+        [
+          92.0,
+          55.5,
+          110.0
+        ]
+      ]
+    },
+    "Rocks": {
+      "exported_vertices": 328,
+      "exported_triangles": 164,
+      "vertices_after_position_merge": 90,
+      "watertight_after_vertex_merge": true,
+      "winding_consistent_after_vertex_merge": true,
+      "is_volume_after_vertex_merge": true,
+      "boundary_edge_count_after_merge": 0,
+      "nonmanifold_edge_count_after_merge": 0,
+      "all_edges_have_exactly_two_incident_faces": true,
+      "duplicate_face_groups_after_merge": 0,
+      "degenerate_face_count_after_merge": 0,
+      "connected_components_after_merge": 4,
+      "bounds": [
+        [
+          -104.0,
+          15.5,
+          -96.0
+        ],
+        [
+          40.0,
+          31.5,
+          98.0
+        ]
+      ]
+    },
+    "BushesAndPlants": {
+      "exported_vertices": 480,
+      "exported_triangles": 240,
+      "vertices_after_position_merge": 134,
+      "watertight_after_vertex_merge": true,
+      "winding_consistent_after_vertex_merge": true,
+      "is_volume_after_vertex_merge": true,
+      "boundary_edge_count_after_merge": 0,
+      "nonmanifold_edge_count_after_merge": 0,
+      "all_edges_have_exactly_two_incident_faces": true,
+      "duplicate_face_groups_after_merge": 0,
+      "degenerate_face_count_after_merge": 0,
+      "connected_components_after_merge": 7,
+      "bounds": [
+        [
+          -88.0,
+          23.5,
+          -60.0
+        ],
+        [
+          89.0,
+          47.5,
+          66.0
+        ]
+      ]
+    },
+    "Flowers": {
+      "exported_vertices": 320,
+      "exported_triangles": 160,
+      "vertices_after_position_merge": 100,
+      "watertight_after_vertex_merge": true,
+      "winding_consistent_after_vertex_merge": true,
+      "is_volume_after_vertex_merge": true,
+      "boundary_edge_count_after_merge": 0,
+      "nonmanifold_edge_count_after_merge": 0,
+      "all_edges_have_exactly_two_incident_faces": true,
+      "duplicate_face_groups_after_merge": 0,
+      "degenerate_face_count_after_merge": 0,
+      "connected_components_after_merge": 10,
+      "bounds": [
+        [
+          -69.25,
+          32.099998474121094,
+          -67.25
+        ],
+        [
+          67.25,
+          45.099998474121094,
+          71.25
+        ]
+      ]
+    },
+    "BeachDecorations": {
+      "exported_vertices": 960,
+      "exported_triangles": 480,
+      "vertices_after_position_merge": 268,
+      "watertight_after_vertex_merge": true,
+      "winding_consistent_after_vertex_merge": true,
+      "is_volume_after_vertex_merge": true,
+      "boundary_edge_count_after_merge": 0,
+      "nonmanifold_edge_count_after_merge": 0,
+      "all_edges_have_exactly_two_incident_faces": true,
+      "duplicate_face_groups_after_merge": 0,
+      "degenerate_face_count_after_merge": 0,
+      "connected_components_after_merge": 14,
+      "bounds": [
+        [
+          -96.4000015258789,
+          16.079999923706055,
+          -95.19999694824219
+        ],
+        [
+          96.4000015258789,
+          34.31999969482422,
+          91.19999694824219
+        ]
+      ]
+    }
+  },
+  "all_meshes_watertight_after_merge": true,
+  "all_meshes_have_zero_boundary_edges_after_merge": true,
+  "all_meshes_have_zero_nonmanifold_edges_after_merge": true,
+  "all_meshes_have_no_duplicate_faces_after_merge": true,
+  "all_meshes_have_no_degenerate_faces_after_merge": true,
+  "all_meshes_winding_consistent_after_merge": true,
+  "all_meshes_are_volumes_after_merge": true,
+  "all_unaffected_objects_geometry_preserved": true,
+  "all_texture_files_binary_identical": true,
+  "water_geometry_absent": true
+}

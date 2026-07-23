@@ -1,0 +1,164 @@
+{
+  "source_file": "Coral_Coast_Island_TextureUV_4096.glb",
+  "output_file": "Coral_Coast_Island_PalmTrees.glb",
+  "revision_scope": "PalmTrees_Trunks and PalmTrees_Leaves geometry/UV only; all other meshes and all textures preserved.",
+  "overall_dimensions_source_xyz": [
+    240.0,
+    75.5,
+    224.0
+  ],
+  "overall_dimensions_output_xyz": [
+    240.0,
+    75.5,
+    224.0
+  ],
+  "dimensions_unchanged": true,
+  "overall_bounds_source": [
+    [
+      -120.0,
+      0.0,
+      -112.0
+    ],
+    [
+      120.0,
+      75.5,
+      112.0
+    ]
+  ],
+  "overall_bounds_output": [
+    [
+      -120.0,
+      0.0,
+      -112.0
+    ],
+    [
+      120.0,
+      75.5,
+      112.0
+    ]
+  ],
+  "mesh_count_source": 10,
+  "mesh_count_output": 10,
+  "mesh_names_unchanged": true,
+  "node_names_unchanged": true,
+  "hierarchy_json_unchanged": true,
+  "non_tree_geometry_binary_hash_source": "cd26c19544653a2ed89d439d323c501e5b0f8b464af2ec06c2b1c81cb40e1c43",
+  "non_tree_geometry_binary_hash_output": "cd26c19544653a2ed89d439d323c501e5b0f8b464af2ec06c2b1c81cb40e1c43",
+  "all_non_tree_geometry_unchanged": true,
+  "portal_placements_unchanged": {
+    "PortalPlacement_Left": [
+      -100.0,
+      34.0,
+      0.0
+    ],
+    "PortalPlacement_Right": [
+      100.0,
+      34.0,
+      0.0
+    ],
+    "expected_left": [
+      -100.0,
+      34.0,
+      0.0
+    ],
+    "expected_right": [
+      100.0,
+      34.0,
+      0.0
+    ],
+    "passed": true
+  },
+  "palm_tree_count": 11,
+  "trunk_audit": {
+    "vertices_after_position_merge": 1374,
+    "triangles": 2704,
+    "components": 11,
+    "watertight": true,
+    "winding_consistent": true,
+    "component_watertight": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "bounds": [
+      [
+        -76.0,
+        23.5,
+        -76.0
+      ],
+      [
+        78.0,
+        63.5,
+        92.0
+      ]
+    ]
+  },
+  "leaf_audit": {
+    "vertices_after_position_merge": 660,
+    "triangles": 1276,
+    "components": 11,
+    "watertight": true,
+    "winding_consistent": true,
+    "component_watertight": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "bounds": [
+      [
+        -84.0,
+        51.5,
+        -84.0
+      ],
+      [
+        86.0,
+        75.5,
+        100.0
+      ]
+    ]
+  },
+  "new_tree_style": {
+    "segmented_block_trunks": true,
+    "drooping_block_tips": true,
+    "pine_or_cube_canopy_removed": true,
+    "wide_four_direction_voxel_fronds": true
+  },
+  "textures_preserved_from_4096_package": [
+    "Coral_Coast_TextureAtlas_BaseColor_4096.png",
+    "Coral_Coast_TextureAtlas_Normal_4096.png",
+    "Coral_Coast_TextureAtlas_MetallicRoughness_4096.png"
+  ],
+  "texture_resolution": [
+    4096,
+    4096
+  ],
+  "textures_embedded_in_glb": true,
+  "nearest_neighbor_sampler_preserved": true,
+  "sampler": {
+    "name": "NearestNeighbor_Clamp_4096",
+    "magFilter": 9728,
+    "minFilter": 9728,
+    "wrapS": 33071,
+    "wrapT": 33071
+  },
+  "water_geometry_present": false,
+  "water_geometry_check": [],
+  "material_assignment_preserved": true,
+  "validation_passed": true
+}

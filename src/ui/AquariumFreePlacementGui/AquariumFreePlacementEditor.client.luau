@@ -566,7 +566,47 @@ local function getMaxFreeDecorations()
 	return math.max(0, math.floor(tonumber(maxByLevel[getAquariumLevel()]) or 0))
 end
 
+local function getActiveGalleryAndPlayerTank()
+	local gallery = workspace:FindFirstChild("AquariumGalleryPrototypeVisual")
+	if not gallery or not gallery:IsA("Model") then
+		return nil, nil
+	end
+
+	for _, descendant in ipairs(gallery:GetDescendants()) do
+		if descendant:IsA("Model")
+			and tonumber(descendant:GetAttribute("PlatformOwnerUserId")) == player.UserId
+		then
+			local tank = descendant:FindFirstChild("GalleryTank")
+			if tank and tank:IsA("Model") then
+				return gallery, tank
+			end
+		end
+	end
+
+	return gallery, nil
+end
+
+local function isPlayerInsideGallery(gallery)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local rootPosition = root and root.Position or nil
+	if not gallery or not rootPosition then
+		return false
+	end
+
+	local boundsCFrame, boundsSize = gallery:GetBoundingBox()
+	local localPosition = boundsCFrame:PointToObjectSpace(rootPosition)
+	return math.abs(localPosition.X) <= (boundsSize.X * 0.5) + 24
+		and math.abs(localPosition.Z) <= (boundsSize.Z * 0.5) + 24
+		and math.abs(localPosition.Y) <= math.max(90, boundsSize.Y * 0.5 + 30)
+end
+
 local function findOwnAquarium()
+	local _, galleryTank = getActiveGalleryAndPlayerTank()
+	if galleryTank then
+		return galleryTank
+	end
+
 	-- The authored world is nested under the saved map hierarchy.  A direct
 	-- Workspace lookup made the editor button disappear even though the loaded
 	-- AquariumViewerTank still existed in Play mode.
@@ -609,6 +649,12 @@ local function updateNearAquarium()
 	if not canEditLoadedAquarium() then
 		runtime.nearOwnAquarium = false
 		return false
+	end
+
+	local gallery, galleryTank = getActiveGalleryAndPlayerTank()
+	if galleryTank and isPlayerInsideGallery(gallery) then
+		runtime.nearOwnAquarium = true
+		return true
 	end
 
 	local aquariumPosition = getModelPosition(findOwnAquarium())

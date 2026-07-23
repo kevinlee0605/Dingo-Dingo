@@ -2151,8 +2151,26 @@ end
 
 local AQUARIUM_HUB_CENTER = Vector3.new(6000, 0, 6000)
 
+local function isInsideActiveAquariumGallery()
+	local gallery = workspace:FindFirstChild("AquariumGalleryPrototypeVisual")
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not gallery or not gallery:IsA("Model") or not root then
+		return false
+	end
+
+	local boundsCFrame, boundsSize = gallery:GetBoundingBox()
+	local localPosition = boundsCFrame:PointToObjectSpace(root.Position)
+	return math.abs(localPosition.X) <= (boundsSize.X * 0.5) + 24
+		and math.abs(localPosition.Z) <= (boundsSize.Z * 0.5) + 24
+		and math.abs(localPosition.Y) <= math.max(90, boundsSize.Y * 0.5 + 30)
+end
+
 local function isInAquariumHub()
 	if getLocalTravelLocation() == "AquariumHub" then
+		return true
+	end
+	if isInsideActiveAquariumGallery() then
 		return true
 	end
 
